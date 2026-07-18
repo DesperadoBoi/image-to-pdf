@@ -16,6 +16,16 @@
         android:textAppearance="?attr/textAppearanceBodyMedium"
         tools:text="Страница 1" />
 
+    <ImageButton
+        android:id="@+id/button_drag_page"
+        android:layout_width="@dimen/page_action_button_size"
+        android:layout_height="@dimen/page_action_button_size"
+        android:layout_marginStart="@dimen/page_item_spacing"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_reorder_page_content_description_generic"
+        android:src="@drawable/ic_drag_handle_24"
+        app:tint="?attr/colorControlNormal" />
+
     <ImageView
         android:id="@+id/image_page_thumbnail"
         android:layout_width="@dimen/page_thumbnail_size"

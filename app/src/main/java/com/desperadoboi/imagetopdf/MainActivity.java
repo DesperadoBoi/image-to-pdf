@@ -16,11 +16,13 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
 import com.desperadoboi.imagetopdf.model.PageItem;
+import com.desperadoboi.imagetopdf.model.PageOrderManager;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerator;
 import com.desperadoboi.imagetopdf.ui.PageAdapter;
@@ -52,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private PdfGenerator pdfGenerator;
     private ThumbnailLoader thumbnailLoader;
     private PageAdapter pageAdapter;
+    private ItemTouchHelper pageTouchHelper;
 
     private boolean awaitingSaveLocation;
     private boolean generationInProgress;
@@ -115,10 +118,27 @@ public class MainActivity extends AppCompatActivity {
                     public void onDelete(int position) {
                         deletePage(position);
                     }
+
+                    @Override
+                    public void onDragStart(RecyclerView.ViewHolder viewHolder) {
+                        startPageDrag(viewHolder);
+                    }
+
+                    @Override
+                    public boolean onMoveUp(int position) {
+                        return movePage(position, position - 1);
+                    }
+
+                    @Override
+                    public boolean onMoveDown(int position) {
+                        return movePage(position, position + 1);
+                    }
                 }
         );
         pagesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         pagesRecyclerView.setAdapter(pageAdapter);
+        pageTouchHelper = new ItemTouchHelper(new PageMoveCallback());
+        pageTouchHelper.attachToRecyclerView(pagesRecyclerView);
     }
 
     private void registerActivityResultLaunchers() {
@@ -209,6 +229,34 @@ public class MainActivity extends AppCompatActivity {
         pagesVersion++;
         transientStatusMessage = null;
         updateUiState();
+    }
+
+    private void startPageDrag(RecyclerView.ViewHolder viewHolder) {
+        if (!canEditPages()) {
+            return;
+        }
+        pageTouchHelper.startDrag(viewHolder);
+    }
+
+    private boolean movePage(int fromPosition, int toPosition) {
+        if (!canEditPages()
+                || fromPosition < 0
+                || fromPosition >= pageItems.size()
+                || toPosition < 0
+                || toPosition >= pageItems.size()) {
+            return false;
+        }
+
+        boolean moved = PageOrderManager.move(pageItems, fromPosition, toPosition);
+        if (!moved) {
+            return false;
+        }
+
+        pagesVersion++;
+        submittedPagesVersion = pagesVersion;
+        transientStatusMessage = null;
+        pageAdapter.submitMovedPages(pageItems, fromPosition, toPosition);
+        return true;
     }
 
     private boolean canEditPages() {
@@ -319,5 +367,55 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isUiSafe() {
         return !activityDestroyed && !isFinishing() && !isDestroyed();
+    }
+
+    private final class PageMoveCallback extends ItemTouchHelper.SimpleCallback {
+        private static final float DRAG_ACTIVE_ALPHA = 0.85f;
+
+        PageMoveCallback() {
+            super(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
+        }
+
+        @Override
+        public boolean isLongPressDragEnabled() {
+            return false;
+        }
+
+        @Override
+        public boolean isItemViewSwipeEnabled() {
+            return false;
+        }
+
+        @Override
+        public boolean onMove(
+                RecyclerView recyclerView,
+                RecyclerView.ViewHolder viewHolder,
+                RecyclerView.ViewHolder target
+        ) {
+            int fromPosition = viewHolder.getBindingAdapterPosition();
+            int toPosition = target.getBindingAdapterPosition();
+            if (fromPosition == RecyclerView.NO_POSITION || toPosition == RecyclerView.NO_POSITION) {
+                return false;
+            }
+            return movePage(fromPosition, toPosition);
+        }
+
+        @Override
+        public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+        }
+
+        @Override
+        public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
+            super.onSelectedChanged(viewHolder, actionState);
+            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
+                viewHolder.itemView.setAlpha(DRAG_ACTIVE_ALPHA);
+            }
+        }
+
+        @Override
+        public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+            super.clearView(recyclerView, viewHolder);
+            viewHolder.itemView.setAlpha(1f);
+        }
     }
 }
