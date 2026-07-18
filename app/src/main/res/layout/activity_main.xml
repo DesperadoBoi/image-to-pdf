@@ -42,13 +42,22 @@
             android:text="@string/action_select_images" />
 
         <TextView
-            android:id="@+id/text_status"
+            android:id="@+id/text_selection_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_spacing_medium"
             android:gravity="center"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             tools:text="Изображения не выбраны" />
+
+        <TextView
+            android:id="@+id/text_operation_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/content_spacing_small"
+            android:gravity="center"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            tools:text="PDF успешно создан" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_create_pdf"

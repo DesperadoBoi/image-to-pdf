@@ -33,7 +33,8 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity {
     private MaterialButton selectImagesButton;
     private MaterialButton createPdfButton;
-    private TextView statusTextView;
+    private TextView selectionStatusTextView;
+    private TextView operationStatusTextView;
     private ProgressBar progressBar;
 
     private ActivityResultLauncher<PickVisualMediaRequest> photoPickerLauncher;
@@ -77,7 +78,8 @@ public class MainActivity extends AppCompatActivity {
     private void bindViews() {
         selectImagesButton = findViewById(R.id.button_select_images);
         createPdfButton = findViewById(R.id.button_create_pdf);
-        statusTextView = findViewById(R.id.text_status);
+        selectionStatusTextView = findViewById(R.id.text_selection_status);
+        operationStatusTextView = findViewById(R.id.text_operation_status);
         progressBar = findViewById(R.id.progress_generation);
     }
 
@@ -202,35 +204,30 @@ public class MainActivity extends AppCompatActivity {
         selectImagesButton.setEnabled(controlsEnabled);
         createPdfButton.setEnabled(controlsEnabled && !selectedImageUris.isEmpty());
         progressBar.setVisibility(generationInProgress ? View.VISIBLE : View.GONE);
-        statusTextView.setText(buildStatusText());
+        selectionStatusTextView.setText(buildSelectionStatusText());
+        operationStatusTextView.setText(buildOperationStatusText());
     }
 
-    private String buildStatusText() {
-        if (generationInProgress) {
-            return getString(R.string.status_pdf_generating);
-        }
-
-        String selectionSummary = selectedImageUris.isEmpty()
+    private String buildSelectionStatusText() {
+        return selectedImageUris.isEmpty()
                 ? getString(R.string.status_no_images_selected)
                 : getResources().getQuantityString(
                         R.plurals.selected_images_count,
                         selectedImageUris.size(),
                         selectedImageUris.size()
                 );
+    }
+
+    private String buildOperationStatusText() {
+        if (generationInProgress) {
+            return getString(R.string.status_pdf_generating);
+        }
 
         if (transientStatusMessage == null || transientStatusMessage.isEmpty()) {
-            return selectionSummary;
+            return "";
         }
 
-        if (selectedImageUris.isEmpty()) {
-            return transientStatusMessage;
-        }
-
-        return getString(
-                R.string.status_message_with_selection,
-                transientStatusMessage,
-                selectionSummary
-        );
+        return transientStatusMessage;
     }
 
     private void showToast(String message) {
