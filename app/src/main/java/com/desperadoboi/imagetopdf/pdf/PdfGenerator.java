@@ -5,11 +5,14 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
 
+import com.desperadoboi.imagetopdf.image.ImageOrientationReader;
+import com.desperadoboi.imagetopdf.image.ImageTransform;
 import com.desperadoboi.imagetopdf.util.ImagePlacementCalculator;
 
 import java.io.IOException;
@@ -27,10 +30,12 @@ public class PdfGenerator {
     private static final int CONTENT_HEIGHT_POINTS = PAGE_HEIGHT_POINTS - (PAGE_MARGIN_POINTS * 2);
 
     private final ContentResolver contentResolver;
+    private final ImageOrientationReader imageOrientationReader;
     private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
 
     public PdfGenerator(ContentResolver contentResolver) {
         this.contentResolver = contentResolver;
+        this.imageOrientationReader = new ImageOrientationReader(contentResolver);
     }
 
     public void generate(
@@ -63,8 +68,14 @@ public class PdfGenerator {
             for (int index = 0; index < imageUris.size(); index++) {
                 throwIfInterrupted();
 
-                Bitmap bitmap = decodeBitmap(imageUris.get(index), CONTENT_WIDTH_POINTS, CONTENT_HEIGHT_POINTS);
+                ImageTransform imageTransform = imageOrientationReader.read(imageUris.get(index));
+                Bitmap bitmap = decodeBitmap(
+                        imageUris.get(index),
+                        imageTransform.swapsDimensions() ? CONTENT_HEIGHT_POINTS : CONTENT_WIDTH_POINTS,
+                        imageTransform.swapsDimensions() ? CONTENT_WIDTH_POINTS : CONTENT_HEIGHT_POINTS
+                );
                 try {
+                    bitmap = applyTransform(bitmap, imageTransform);
                     PdfDocument.Page page = pdfDocument.startPage(
                             new PdfDocument.PageInfo.Builder(
                                     PAGE_WIDTH_POINTS,
@@ -135,6 +146,32 @@ public class PdfGenerator {
             throw new IOException("Unable to open input stream");
         }
         return inputStream;
+    }
+
+    private Bitmap applyTransform(Bitmap bitmap, ImageTransform imageTransform) {
+        if (imageTransform.isIdentity()) {
+            return bitmap;
+        }
+
+        Matrix matrix = new Matrix();
+        matrix.setRotate(imageTransform.getRotationDegrees());
+        if (imageTransform.shouldFlipHorizontally()) {
+            matrix.postScale(-1f, 1f);
+        }
+
+        Bitmap transformedBitmap = Bitmap.createBitmap(
+                bitmap,
+                0,
+                0,
+                bitmap.getWidth(),
+                bitmap.getHeight(),
+                matrix,
+                true
+        );
+        if (transformedBitmap != bitmap && !bitmap.isRecycled()) {
+            bitmap.recycle();
+        }
+        return transformedBitmap;
     }
 
     private void drawPage(Canvas canvas, Bitmap bitmap) {
