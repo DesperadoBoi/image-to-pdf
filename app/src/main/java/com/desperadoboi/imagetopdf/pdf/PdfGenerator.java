@@ -5,14 +5,15 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
 
+import com.desperadoboi.imagetopdf.image.ImageBitmapTransformer;
 import com.desperadoboi.imagetopdf.image.ImageOrientationReader;
 import com.desperadoboi.imagetopdf.image.ImageTransform;
+import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.util.ImagePlacementCalculator;
 
 import java.io.IOException;
@@ -39,7 +40,7 @@ public class PdfGenerator {
     }
 
     public void generate(
-            List<Uri> imageUris,
+            List<PageItem> pageItems,
             Uri outputUri,
             Executor backgroundExecutor,
             Executor callbackExecutor,
@@ -47,7 +48,7 @@ public class PdfGenerator {
     ) {
         backgroundExecutor.execute(() -> {
             try {
-                generateInternal(imageUris, outputUri);
+                generateInternal(pageItems, outputUri);
                 callbackExecutor.execute(() -> callback.onSuccess(outputUri));
             } catch (Exception exception) {
                 callbackExecutor.execute(() -> callback.onError(exception));
@@ -55,8 +56,8 @@ public class PdfGenerator {
         });
     }
 
-    private void generateInternal(List<Uri> imageUris, Uri outputUri) throws IOException {
-        if (imageUris == null || imageUris.isEmpty()) {
+    private void generateInternal(List<PageItem> pageItems, Uri outputUri) throws IOException {
+        if (pageItems == null || pageItems.isEmpty()) {
             throw new IllegalArgumentException("No images selected");
         }
         if (outputUri == null) {
@@ -65,17 +66,23 @@ public class PdfGenerator {
 
         PdfDocument pdfDocument = new PdfDocument();
         try (OutputStream outputStream = openOutputStream(outputUri)) {
-            for (int index = 0; index < imageUris.size(); index++) {
+            for (int index = 0; index < pageItems.size(); index++) {
                 throwIfInterrupted();
 
-                ImageTransform imageTransform = imageOrientationReader.read(imageUris.get(index));
+                PageItem pageItem = pageItems.get(index);
+                ImageTransform imageTransform = imageOrientationReader.read(pageItem.getImageUri());
+                boolean swapsDimensions = imageTransform.swapsDimensions() ^ pageItem.swapsDimensions();
                 Bitmap bitmap = decodeBitmap(
-                        imageUris.get(index),
-                        imageTransform.swapsDimensions() ? CONTENT_HEIGHT_POINTS : CONTENT_WIDTH_POINTS,
-                        imageTransform.swapsDimensions() ? CONTENT_WIDTH_POINTS : CONTENT_HEIGHT_POINTS
+                        pageItem.getImageUri(),
+                        swapsDimensions ? CONTENT_HEIGHT_POINTS : CONTENT_WIDTH_POINTS,
+                        swapsDimensions ? CONTENT_WIDTH_POINTS : CONTENT_HEIGHT_POINTS
                 );
                 try {
-                    bitmap = applyTransform(bitmap, imageTransform);
+                    bitmap = ImageBitmapTransformer.applyTransform(bitmap, imageTransform);
+                    bitmap = ImageBitmapTransformer.applyClockwiseRotation(
+                            bitmap,
+                            pageItem.getManualRotationDegrees()
+                    );
                     PdfDocument.Page page = pdfDocument.startPage(
                             new PdfDocument.PageInfo.Builder(
                                     PAGE_WIDTH_POINTS,
@@ -146,32 +153,6 @@ public class PdfGenerator {
             throw new IOException("Unable to open input stream");
         }
         return inputStream;
-    }
-
-    private Bitmap applyTransform(Bitmap bitmap, ImageTransform imageTransform) {
-        if (imageTransform.isIdentity()) {
-            return bitmap;
-        }
-
-        Matrix matrix = new Matrix();
-        matrix.setRotate(imageTransform.getRotationDegrees());
-        if (imageTransform.shouldFlipHorizontally()) {
-            matrix.postScale(-1f, 1f);
-        }
-
-        Bitmap transformedBitmap = Bitmap.createBitmap(
-                bitmap,
-                0,
-                0,
-                bitmap.getWidth(),
-                bitmap.getHeight(),
-                matrix,
-                true
-        );
-        if (transformedBitmap != bitmap && !bitmap.isRecycled()) {
-            bitmap.recycle();
-        }
-        return transformedBitmap;
     }
 
     private void drawPage(Canvas canvas, Bitmap bitmap) {

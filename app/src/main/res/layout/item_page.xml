@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingTop="@dimen/page_item_vertical_padding"
+    android:paddingBottom="@dimen/page_item_vertical_padding">
+
+    <TextView
+        android:id="@+id/text_page_number"
+        android:layout_width="@dimen/page_number_width"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        tools:text="Страница 1" />
+
+    <ImageView
+        android:id="@+id/image_page_thumbnail"
+        android:layout_width="@dimen/page_thumbnail_size"
+        android:layout_height="@dimen/page_thumbnail_size"
+        android:layout_marginStart="@dimen/page_item_spacing"
+        android:adjustViewBounds="false"
+        android:background="?attr/colorSurfaceVariant"
+        android:contentDescription="@string/page_thumbnail_content_description_generic"
+        android:scaleType="fitCenter"
+        tools:src="@drawable/ic_broken_image_24" />
+
+    <Space
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1" />
+
+    <ImageButton
+        android:id="@+id/button_rotate_page"
+        android:layout_width="@dimen/page_action_button_size"
+        android:layout_height="@dimen/page_action_button_size"
+        android:layout_marginStart="@dimen/page_item_spacing"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_rotate_page_content_description_generic"
+        android:src="@drawable/ic_rotate_right_24"
+        app:tint="?attr/colorControlNormal" />
+
+    <ImageButton
+        android:id="@+id/button_delete_page"
+        android:layout_width="@dimen/page_action_button_size"
+        android:layout_height="@dimen/page_action_button_size"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_delete_page_content_description_generic"
+        android:src="@drawable/ic_delete_24"
+        app:tint="?attr/colorControlNormal" />
+</LinearLayout>

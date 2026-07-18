@@ -7,18 +7,23 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
+import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerator;
+import com.desperadoboi.imagetopdf.ui.PageAdapter;
 import com.google.android.material.button.MaterialButton;
 
 import java.io.InterruptedIOException;
@@ -36,19 +41,24 @@ public class MainActivity extends AppCompatActivity {
     private TextView selectionStatusTextView;
     private TextView operationStatusTextView;
     private ProgressBar progressBar;
+    private RecyclerView pagesRecyclerView;
 
     private ActivityResultLauncher<PickVisualMediaRequest> photoPickerLauncher;
     private ActivityResultLauncher<String> createDocumentLauncher;
 
-    private final List<Uri> selectedImageUris = new ArrayList<>();
+    private final List<PageItem> pageItems = new ArrayList<>();
 
     private ExecutorService pdfExecutor;
     private PdfGenerator pdfGenerator;
+    private ThumbnailLoader thumbnailLoader;
+    private PageAdapter pageAdapter;
 
     private boolean awaitingSaveLocation;
     private boolean generationInProgress;
     private boolean activityDestroyed;
     private String transientStatusMessage;
+    private int pagesVersion;
+    private int submittedPagesVersion = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,8 +68,13 @@ public class MainActivity extends AppCompatActivity {
 
         pdfExecutor = Executors.newSingleThreadExecutor();
         pdfGenerator = new PdfGenerator(getApplicationContext().getContentResolver());
+        thumbnailLoader = new ThumbnailLoader(
+                getApplicationContext().getContentResolver(),
+                ContextCompat.getMainExecutor(this)
+        );
 
         bindViews();
+        configurePageList();
         registerActivityResultLaunchers();
         configureWindowInsets();
         configureClickListeners();
@@ -69,6 +84,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         activityDestroyed = true;
+        if (thumbnailLoader != null) {
+            thumbnailLoader.shutdown();
+        }
         if (pdfExecutor != null) {
             pdfExecutor.shutdownNow();
         }
@@ -81,6 +99,26 @@ public class MainActivity extends AppCompatActivity {
         selectionStatusTextView = findViewById(R.id.text_selection_status);
         operationStatusTextView = findViewById(R.id.text_operation_status);
         progressBar = findViewById(R.id.progress_generation);
+        pagesRecyclerView = findViewById(R.id.recycler_pages);
+    }
+
+    private void configurePageList() {
+        pageAdapter = new PageAdapter(
+                thumbnailLoader,
+                new PageAdapter.PageActionCallback() {
+                    @Override
+                    public void onRotate(int position) {
+                        rotatePage(position);
+                    }
+
+                    @Override
+                    public void onDelete(int position) {
+                        deletePage(position);
+                    }
+                }
+        );
+        pagesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        pagesRecyclerView.setAdapter(pageAdapter);
     }
 
     private void registerActivityResultLaunchers() {
@@ -88,8 +126,10 @@ public class MainActivity extends AppCompatActivity {
                 new ActivityResultContracts.PickMultipleVisualMedia(),
                 uris -> {
                     if (uris != null && !uris.isEmpty()) {
-                        selectedImageUris.clear();
-                        selectedImageUris.addAll(uris);
+                        for (Uri uri : uris) {
+                            pageItems.add(new PageItem(uri));
+                        }
+                        pagesVersion++;
                         transientStatusMessage = null;
                     } else {
                         transientStatusMessage = getString(R.string.status_image_selection_cancelled);
@@ -115,7 +155,12 @@ public class MainActivity extends AppCompatActivity {
     private void configureWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            v.setPadding(
+                    systemBars.left + getResources().getDimensionPixelSize(R.dimen.screen_content_padding),
+                    systemBars.top + getResources().getDimensionPixelSize(R.dimen.screen_content_padding),
+                    systemBars.right + getResources().getDimensionPixelSize(R.dimen.screen_content_padding),
+                    systemBars.bottom + getResources().getDimensionPixelSize(R.dimen.screen_content_padding)
+            );
             return insets;
         });
     }
@@ -126,6 +171,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void launchPhotoPicker() {
+        if (generationInProgress || awaitingSaveLocation) {
+            return;
+        }
         transientStatusMessage = null;
         PickVisualMediaRequest request = new PickVisualMediaRequest.Builder()
                 .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
@@ -134,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void launchCreateDocument() {
-        if (selectedImageUris.isEmpty() || generationInProgress || awaitingSaveLocation) {
+        if (pageItems.isEmpty() || generationInProgress || awaitingSaveLocation) {
             return;
         }
         awaitingSaveLocation = true;
@@ -143,13 +191,38 @@ public class MainActivity extends AppCompatActivity {
         createDocumentLauncher.launch(buildSuggestedFileName());
     }
 
+    private void rotatePage(int position) {
+        if (!canEditPages() || position < 0 || position >= pageItems.size()) {
+            return;
+        }
+        pageItems.set(position, pageItems.get(position).rotateClockwise());
+        pagesVersion++;
+        transientStatusMessage = null;
+        updateUiState();
+    }
+
+    private void deletePage(int position) {
+        if (!canEditPages() || position < 0 || position >= pageItems.size()) {
+            return;
+        }
+        pageItems.remove(position);
+        pagesVersion++;
+        transientStatusMessage = null;
+        updateUiState();
+    }
+
+    private boolean canEditPages() {
+        return !generationInProgress && !awaitingSaveLocation;
+    }
+
     private void startPdfGeneration(Uri outputUri) {
         generationInProgress = true;
         transientStatusMessage = null;
+        List<PageItem> pageSnapshot = new ArrayList<>(pageItems);
         updateUiState();
 
         pdfGenerator.generate(
-                new ArrayList<>(selectedImageUris),
+                pageSnapshot,
                 outputUri,
                 pdfExecutor,
                 ContextCompat.getMainExecutor(this),
@@ -200,21 +273,29 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateUiState() {
         boolean controlsEnabled = !generationInProgress && !awaitingSaveLocation;
+        boolean hasPages = !pageItems.isEmpty();
 
         selectImagesButton.setEnabled(controlsEnabled);
-        createPdfButton.setEnabled(controlsEnabled && !selectedImageUris.isEmpty());
+        selectImagesButton.setText(hasPages ? R.string.action_add_images : R.string.action_select_images);
+        createPdfButton.setEnabled(controlsEnabled && hasPages);
         progressBar.setVisibility(generationInProgress ? View.VISIBLE : View.GONE);
+        pagesRecyclerView.setVisibility(hasPages ? View.VISIBLE : View.GONE);
+        if (submittedPagesVersion != pagesVersion) {
+            pageAdapter.submitPages(pageItems);
+            submittedPagesVersion = pagesVersion;
+        }
+        pageAdapter.setActionsEnabled(controlsEnabled);
         selectionStatusTextView.setText(buildSelectionStatusText());
         operationStatusTextView.setText(buildOperationStatusText());
     }
 
     private String buildSelectionStatusText() {
-        return selectedImageUris.isEmpty()
+        return pageItems.isEmpty()
                 ? getString(R.string.status_no_images_selected)
                 : getResources().getQuantityString(
                         R.plurals.selected_images_count,
-                        selectedImageUris.size(),
-                        selectedImageUris.size()
+                        pageItems.size(),
+                        pageItems.size()
                 );
     }
 

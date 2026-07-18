@@ -1,79 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/screen_content_padding"
+    android:paddingTop="@dimen/screen_content_padding"
+    android:paddingEnd="@dimen/screen_content_padding"
+    android:paddingBottom="@dimen/screen_content_padding"
     tools:context=".MainActivity">
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/text_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:paddingStart="@dimen/screen_content_padding"
-        android:paddingTop="@dimen/screen_content_padding"
-        android:paddingEnd="@dimen/screen_content_padding"
-        android:paddingBottom="@dimen/screen_content_padding">
+        android:gravity="center"
+        android:text="@string/app_name"
+        android:textAppearance="?attr/textAppearanceHeadlineMedium" />
 
-        <TextView
-            android:id="@+id/text_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/app_name"
-            android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+    <TextView
+        android:id="@+id/text_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_small"
+        android:gravity="center"
+        android:text="@string/main_description"
+        android:textAppearance="?attr/textAppearanceBodyLarge" />
 
-        <TextView
-            android:id="@+id/text_description"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_spacing_small"
-            android:gravity="center"
-            android:text="@string/main_description"
-            android:textAppearance="?attr/textAppearanceBodyLarge" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_select_images"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_large"
+        android:text="@string/action_select_images" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_select_images"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_spacing_large"
-            android:text="@string/action_select_images" />
+    <TextView
+        android:id="@+id/text_selection_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_medium"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        tools:text="Изображения не выбраны" />
 
-        <TextView
-            android:id="@+id/text_selection_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_spacing_medium"
-            android:gravity="center"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            tools:text="Изображения не выбраны" />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_pages"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/content_spacing_medium"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:visibility="gone"
+        tools:itemCount="3"
+        tools:listitem="@layout/item_page" />
 
-        <TextView
-            android:id="@+id/text_operation_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_spacing_small"
-            android:gravity="center"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            tools:text="PDF успешно создан" />
+    <TextView
+        android:id="@+id/text_operation_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_small"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        tools:text="PDF успешно создан" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_create_pdf"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_spacing_medium"
-            android:enabled="false"
-            android:text="@string/action_create_pdf" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_create_pdf"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_medium"
+        android:enabled="false"
+        android:text="@string/action_create_pdf" />
 
-        <ProgressBar
-            android:id="@+id/progress_generation"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_spacing_medium"
-            android:visibility="gone" />
+    <ProgressBar
+        android:id="@+id/progress_generation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/content_spacing_medium"
+        android:visibility="gone" />
 
-    </LinearLayout>
-
-</androidx.core.widget.NestedScrollView>
+</LinearLayout>
