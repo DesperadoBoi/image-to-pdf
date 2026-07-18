@@ -1,6 +1,7 @@
 package com.desperadoboi.imagetopdf.ui;
 
 import android.graphics.Bitmap;
+import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,6 +10,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.view.AccessibilityDelegateCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.R;
@@ -33,6 +37,15 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         pageItems.clear();
         pageItems.addAll(newPageItems);
         notifyDataSetChanged();
+    }
+
+    public void submitMovedPages(List<PageItem> newPageItems, int fromPosition, int toPosition) {
+        pageItems.clear();
+        pageItems.addAll(newPageItems);
+        notifyItemMoved(fromPosition, toPosition);
+        int firstChangedPosition = Math.min(fromPosition, toPosition);
+        int changedItemCount = Math.abs(fromPosition - toPosition) + 1;
+        notifyItemRangeChanged(firstChangedPosition, changedItemCount);
     }
 
     public void setActionsEnabled(boolean actionsEnabled) {
@@ -74,6 +87,13 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
                         pageNumber
                 )
         );
+        holder.dragHandleButton.setContentDescription(
+                holder.itemView.getContext().getString(
+                        R.string.action_reorder_page_content_description,
+                        pageNumber
+                )
+        );
+        holder.dragHandleButton.setEnabled(actionsEnabled);
         holder.rotateButton.setEnabled(actionsEnabled);
         holder.deleteButton.setEnabled(actionsEnabled);
 
@@ -118,6 +138,15 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
                 callback.onDelete(adapterPosition);
             }
         });
+        holder.dragHandleButton.setOnLongClickListener(view -> {
+            int adapterPosition = holder.getBindingAdapterPosition();
+            if (actionsEnabled && adapterPosition != RecyclerView.NO_POSITION) {
+                callback.onDragStart(holder);
+                return true;
+            }
+            return false;
+        });
+        configureMoveAccessibilityActions(holder);
     }
 
     @Override
@@ -136,11 +165,61 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         void onRotate(int position);
 
         void onDelete(int position);
+
+        void onDragStart(RecyclerView.ViewHolder viewHolder);
+
+        boolean onMoveUp(int position);
+
+        boolean onMoveDown(int position);
+    }
+
+    private void configureMoveAccessibilityActions(PageViewHolder holder) {
+        ViewCompat.setAccessibilityDelegate(holder.dragHandleButton, new AccessibilityDelegateCompat() {
+            @Override
+            public void onInitializeAccessibilityNodeInfo(
+                    @NonNull View host,
+                    @NonNull AccessibilityNodeInfoCompat info
+            ) {
+                super.onInitializeAccessibilityNodeInfo(host, info);
+                int adapterPosition = holder.getBindingAdapterPosition();
+                if (!actionsEnabled || adapterPosition == RecyclerView.NO_POSITION) {
+                    return;
+                }
+                if (adapterPosition > 0) {
+                    info.addAction(new AccessibilityNodeInfoCompat.AccessibilityActionCompat(
+                            R.id.accessibility_action_move_page_up,
+                            host.getContext().getString(R.string.action_move_page_up)
+                    ));
+                }
+                if (adapterPosition < pageItems.size() - 1) {
+                    info.addAction(new AccessibilityNodeInfoCompat.AccessibilityActionCompat(
+                            R.id.accessibility_action_move_page_down,
+                            host.getContext().getString(R.string.action_move_page_down)
+                    ));
+                }
+            }
+
+            @Override
+            public boolean performAccessibilityAction(@NonNull View host, int action, Bundle args) {
+                int adapterPosition = holder.getBindingAdapterPosition();
+                if (!actionsEnabled || adapterPosition == RecyclerView.NO_POSITION) {
+                    return super.performAccessibilityAction(host, action, args);
+                }
+                if (action == R.id.accessibility_action_move_page_up) {
+                    return callback.onMoveUp(adapterPosition);
+                }
+                if (action == R.id.accessibility_action_move_page_down) {
+                    return callback.onMoveDown(adapterPosition);
+                }
+                return super.performAccessibilityAction(host, action, args);
+            }
+        });
     }
 
     static final class PageViewHolder extends RecyclerView.ViewHolder {
         private final TextView pageNumberTextView;
         private final ImageView thumbnailImageView;
+        private final ImageButton dragHandleButton;
         private final ImageButton rotateButton;
         private final ImageButton deleteButton;
 
@@ -148,6 +227,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
             super(itemView);
             pageNumberTextView = itemView.findViewById(R.id.text_page_number);
             thumbnailImageView = itemView.findViewById(R.id.image_page_thumbnail);
+            dragHandleButton = itemView.findViewById(R.id.button_drag_page);
             rotateButton = itemView.findViewById(R.id.button_rotate_page);
             deleteButton = itemView.findViewById(R.id.button_delete_page);
         }
