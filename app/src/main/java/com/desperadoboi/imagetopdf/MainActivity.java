@@ -3,7 +3,9 @@ package com.desperadoboi.imagetopdf;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,8 +23,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
+import com.desperadoboi.imagetopdf.model.ImagePlacementMode;
+import com.desperadoboi.imagetopdf.model.MarginPreset;
+import com.desperadoboi.imagetopdf.model.PageSizeMode;
 import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.model.PageOrderManager;
+import com.desperadoboi.imagetopdf.model.PdfOptions;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerator;
 import com.desperadoboi.imagetopdf.ui.PageAdapter;
@@ -44,11 +50,15 @@ public class MainActivity extends AppCompatActivity {
     private TextView operationStatusTextView;
     private ProgressBar progressBar;
     private RecyclerView pagesRecyclerView;
+    private Spinner pageSizeSpinner;
+    private Spinner imagePlacementSpinner;
+    private Spinner marginSpinner;
 
     private ActivityResultLauncher<PickVisualMediaRequest> photoPickerLauncher;
     private ActivityResultLauncher<String> createDocumentLauncher;
 
     private final List<PageItem> pageItems = new ArrayList<>();
+    private PdfOptions pdfOptions = PdfOptions.defaults();
 
     private ExecutorService pdfExecutor;
     private PdfGenerator pdfGenerator;
@@ -78,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
 
         bindViews();
         configurePageList();
+        configurePdfSettings();
         registerActivityResultLaunchers();
         configureWindowInsets();
         configureClickListeners();
@@ -103,6 +114,9 @@ public class MainActivity extends AppCompatActivity {
         operationStatusTextView = findViewById(R.id.text_operation_status);
         progressBar = findViewById(R.id.progress_generation);
         pagesRecyclerView = findViewById(R.id.recycler_pages);
+        pageSizeSpinner = findViewById(R.id.spinner_pdf_page_size);
+        imagePlacementSpinner = findViewById(R.id.spinner_pdf_image_placement);
+        marginSpinner = findViewById(R.id.spinner_pdf_margin);
     }
 
     private void configurePageList() {
@@ -139,6 +153,31 @@ public class MainActivity extends AppCompatActivity {
         pagesRecyclerView.setAdapter(pageAdapter);
         pageTouchHelper = new ItemTouchHelper(new PageMoveCallback());
         pageTouchHelper.attachToRecyclerView(pagesRecyclerView);
+    }
+
+    private void configurePdfSettings() {
+        setSpinnerSelectionsFromOptions(pdfOptions);
+
+        AdapterView.OnItemSelectedListener optionsListener =
+                new AdapterView.OnItemSelectedListener() {
+                    @Override
+                    public void onItemSelected(
+                            AdapterView<?> parent,
+                            View view,
+                            int position,
+                            long id
+                    ) {
+                        updatePdfOptionsFromControls();
+                    }
+
+                    @Override
+                    public void onNothingSelected(AdapterView<?> parent) {
+                    }
+                };
+
+        pageSizeSpinner.setOnItemSelectedListener(optionsListener);
+        imagePlacementSpinner.setOnItemSelectedListener(optionsListener);
+        marginSpinner.setOnItemSelectedListener(optionsListener);
     }
 
     private void registerActivityResultLaunchers() {
@@ -267,10 +306,12 @@ public class MainActivity extends AppCompatActivity {
         generationInProgress = true;
         transientStatusMessage = null;
         List<PageItem> pageSnapshot = new ArrayList<>(pageItems);
+        PdfOptions pdfOptionsSnapshot = pdfOptions;
         updateUiState();
 
         pdfGenerator.generate(
                 pageSnapshot,
+                pdfOptionsSnapshot,
                 outputUri,
                 pdfExecutor,
                 ContextCompat.getMainExecutor(this),
@@ -326,6 +367,7 @@ public class MainActivity extends AppCompatActivity {
         selectImagesButton.setEnabled(controlsEnabled);
         selectImagesButton.setText(hasPages ? R.string.action_add_images : R.string.action_select_images);
         createPdfButton.setEnabled(controlsEnabled && hasPages);
+        updatePdfSettingsEnabledState(controlsEnabled);
         progressBar.setVisibility(generationInProgress ? View.VISIBLE : View.GONE);
         pagesRecyclerView.setVisibility(hasPages ? View.VISIBLE : View.GONE);
         if (submittedPagesVersion != pagesVersion) {
@@ -357,6 +399,81 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return transientStatusMessage;
+    }
+
+    private void setSpinnerSelectionsFromOptions(PdfOptions options) {
+        pageSizeSpinner.setSelection(options.getPageSizeMode() == PageSizeMode.A4 ? 0 : 1);
+        imagePlacementSpinner.setSelection(
+                options.getImagePlacementMode() == ImagePlacementMode.FIT ? 0 : 1
+        );
+        switch (options.getMarginPreset()) {
+            case NONE:
+                marginSpinner.setSelection(0);
+                break;
+            case SMALL:
+                marginSpinner.setSelection(1);
+                break;
+            case STANDARD:
+            default:
+                marginSpinner.setSelection(2);
+                break;
+        }
+    }
+
+    private void updatePdfOptionsFromControls() {
+        PdfOptions nextOptions = new PdfOptions(
+                pageSizeFromSpinner(),
+                imagePlacementFromSpinner(),
+                marginPresetFromSpinner()
+        );
+        if (hasSameValues(pdfOptions, nextOptions)) {
+            updateUiState();
+            return;
+        }
+
+        pdfOptions = nextOptions;
+        if (!generationInProgress && !awaitingSaveLocation) {
+            transientStatusMessage = null;
+        }
+        updateUiState();
+    }
+
+    private void updatePdfSettingsEnabledState(boolean controlsEnabled) {
+        boolean placementEnabled =
+                controlsEnabled && pdfOptions.getPageSizeMode() == PageSizeMode.A4;
+        pageSizeSpinner.setEnabled(controlsEnabled);
+        marginSpinner.setEnabled(controlsEnabled);
+        imagePlacementSpinner.setEnabled(placementEnabled);
+        imagePlacementSpinner.setAlpha(placementEnabled ? 1f : 0.5f);
+    }
+
+    private PageSizeMode pageSizeFromSpinner() {
+        return pageSizeSpinner.getSelectedItemPosition() == 1
+                ? PageSizeMode.IMAGE
+                : PageSizeMode.A4;
+    }
+
+    private ImagePlacementMode imagePlacementFromSpinner() {
+        return imagePlacementSpinner.getSelectedItemPosition() == 1
+                ? ImagePlacementMode.FILL
+                : ImagePlacementMode.FIT;
+    }
+
+    private MarginPreset marginPresetFromSpinner() {
+        int selectedPosition = marginSpinner.getSelectedItemPosition();
+        if (selectedPosition == 0) {
+            return MarginPreset.NONE;
+        }
+        if (selectedPosition == 1) {
+            return MarginPreset.SMALL;
+        }
+        return MarginPreset.STANDARD;
+    }
+
+    private boolean hasSameValues(PdfOptions first, PdfOptions second) {
+        return first.getPageSizeMode() == second.getPageSizeMode()
+                && first.getImagePlacementMode() == second.getImagePlacementMode()
+                && first.getMarginPreset() == second.getMarginPreset();
     }
 
     private void showToast(String message) {

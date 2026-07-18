@@ -3,6 +3,8 @@
     <dimen name="content_spacing_small">12dp</dimen>
     <dimen name="content_spacing_medium">16dp</dimen>
     <dimen name="content_spacing_large">24dp</dimen>
+    <dimen name="pdf_options_label_width">124dp</dimen>
+    <dimen name="pdf_options_row_spacing">8dp</dimen>
     <dimen name="page_item_spacing">12dp</dimen>
     <dimen name="page_item_vertical_padding">8dp</dimen>
     <dimen name="page_number_width">64dp</dimen>
