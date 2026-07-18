@@ -1,3 +1,25 @@
 <resources>
     <string name="app_name">ImageToPDF</string>
+    <string name="main_description">Выберите изображения и объедините их в один PDF</string>
+    <string name="action_select_images">Выбрать изображения</string>
+    <string name="action_create_pdf">Создать PDF</string>
+    <string name="status_no_images_selected">Изображения не выбраны</string>
+    <string name="status_image_selection_cancelled">Выбор изображений отменён</string>
+    <string name="status_save_location_cancelled">Выбор места сохранения отменён</string>
+    <string name="status_pdf_generating">PDF создаётся</string>
+    <string name="status_pdf_created">PDF успешно создан</string>
+    <string name="status_pdf_creation_error">Не удалось создать PDF</string>
+    <string name="status_pdf_creation_permission_error">Не удалось получить доступ к выбранному файлу</string>
+    <string name="status_pdf_creation_invalid_input">Не удалось создать PDF из выбранных изображений</string>
+    <string name="status_pdf_creation_interrupted">Создание PDF было прервано</string>
+    <string name="status_message_with_selection">%1$s
+%2$s</string>
+    <string name="pdf_file_name_template">ImageToPDF_%1$s.pdf</string>
+
+    <plurals name="selected_images_count">
+        <item quantity="one">Выбрано %1$d изображение</item>
+        <item quantity="few">Выбрано %1$d изображения</item>
+        <item quantity="many">Выбрано %1$d изображений</item>
+        <item quantity="other">Выбрано %1$d изображения</item>
+    </plurals>
 </resources>
