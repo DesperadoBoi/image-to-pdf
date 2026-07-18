@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="pdf_page_size_options">
+        <item>@string/pdf_page_size_a4</item>
+        <item>@string/pdf_page_size_image</item>
+    </string-array>
+
+    <string-array name="pdf_image_placement_options">
+        <item>@string/pdf_image_placement_fit</item>
+        <item>@string/pdf_image_placement_fill</item>
+    </string-array>
+
+    <string-array name="pdf_margin_options">
+        <item>@string/pdf_margin_none</item>
+        <item>@string/pdf_margin_small</item>
+        <item>@string/pdf_margin_standard</item>
+    </string-array>
+</resources>

@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
@@ -13,7 +14,10 @@ import android.net.Uri;
 import com.desperadoboi.imagetopdf.image.ImageBitmapTransformer;
 import com.desperadoboi.imagetopdf.image.ImageOrientationReader;
 import com.desperadoboi.imagetopdf.image.ImageTransform;
+import com.desperadoboi.imagetopdf.model.ImagePlacementMode;
 import com.desperadoboi.imagetopdf.model.PageItem;
+import com.desperadoboi.imagetopdf.model.PageSizeMode;
+import com.desperadoboi.imagetopdf.model.PdfOptions;
 import com.desperadoboi.imagetopdf.util.ImagePlacementCalculator;
 
 import java.io.IOException;
@@ -21,15 +25,10 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 
 public class PdfGenerator {
-    private static final int PAGE_WIDTH_POINTS = 595;
-    private static final int PAGE_HEIGHT_POINTS = 842;
-    private static final int PAGE_MARGIN_POINTS = 24;
-    private static final int CONTENT_WIDTH_POINTS = PAGE_WIDTH_POINTS - (PAGE_MARGIN_POINTS * 2);
-    private static final int CONTENT_HEIGHT_POINTS = PAGE_HEIGHT_POINTS - (PAGE_MARGIN_POINTS * 2);
-
     private final ContentResolver contentResolver;
     private final ImageOrientationReader imageOrientationReader;
     private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -41,14 +40,16 @@ public class PdfGenerator {
 
     public void generate(
             List<PageItem> pageItems,
+            PdfOptions pdfOptions,
             Uri outputUri,
             Executor backgroundExecutor,
             Executor callbackExecutor,
             PdfGenerationCallback callback
     ) {
+        Objects.requireNonNull(pdfOptions, "pdfOptions is required");
         backgroundExecutor.execute(() -> {
             try {
-                generateInternal(pageItems, outputUri);
+                generateInternal(pageItems, pdfOptions, outputUri);
                 callbackExecutor.execute(() -> callback.onSuccess(outputUri));
             } catch (Exception exception) {
                 callbackExecutor.execute(() -> callback.onError(exception));
@@ -56,9 +57,16 @@ public class PdfGenerator {
         });
     }
 
-    private void generateInternal(List<PageItem> pageItems, Uri outputUri) throws IOException {
+    private void generateInternal(
+            List<PageItem> pageItems,
+            PdfOptions pdfOptions,
+            Uri outputUri
+    ) throws IOException {
         if (pageItems == null || pageItems.isEmpty()) {
             throw new IllegalArgumentException("No images selected");
+        }
+        if (pdfOptions == null) {
+            throw new IllegalArgumentException("PDF options are required");
         }
         if (outputUri == null) {
             throw new IllegalArgumentException("Output Uri is required");
@@ -70,12 +78,32 @@ public class PdfGenerator {
                 throwIfInterrupted();
 
                 PageItem pageItem = pageItems.get(index);
+                ImageBounds rawBounds = readImageBounds(pageItem.getImageUri());
                 ImageTransform imageTransform = imageOrientationReader.read(pageItem.getImageUri());
-                boolean swapsDimensions = imageTransform.swapsDimensions() ^ pageItem.swapsDimensions();
+                ImageBounds orientedBounds = rawBounds.swapIf(imageTransform.swapsDimensions());
+                ImageBounds finalBounds = orientedBounds.swapIf(pageItem.swapsDimensions());
+                PdfPageLayout pageLayout = PdfPageLayoutCalculator.calculate(
+                        pdfOptions,
+                        finalBounds.getWidth(),
+                        finalBounds.getHeight()
+                );
+                ImagePlacementMode placementMode = resolvePlacementMode(pdfOptions);
+                ImageBounds sampleTarget = calculateSampleTarget(
+                        finalBounds,
+                        pageLayout,
+                        placementMode
+                );
+                boolean totalTransformSwapsDimensions =
+                        imageTransform.swapsDimensions() ^ pageItem.swapsDimensions();
                 Bitmap bitmap = decodeBitmap(
                         pageItem.getImageUri(),
-                        swapsDimensions ? CONTENT_HEIGHT_POINTS : CONTENT_WIDTH_POINTS,
-                        swapsDimensions ? CONTENT_WIDTH_POINTS : CONTENT_HEIGHT_POINTS
+                        rawBounds,
+                        totalTransformSwapsDimensions
+                                ? sampleTarget.getHeight()
+                                : sampleTarget.getWidth(),
+                        totalTransformSwapsDimensions
+                                ? sampleTarget.getWidth()
+                                : sampleTarget.getHeight()
                 );
                 try {
                     bitmap = ImageBitmapTransformer.applyTransform(bitmap, imageTransform);
@@ -85,13 +113,13 @@ public class PdfGenerator {
                     );
                     PdfDocument.Page page = pdfDocument.startPage(
                             new PdfDocument.PageInfo.Builder(
-                                    PAGE_WIDTH_POINTS,
-                                    PAGE_HEIGHT_POINTS,
+                                    pageLayout.getPageWidth(),
+                                    pageLayout.getPageHeight(),
                                     index + 1
                             ).create()
                     );
                     try {
-                        drawPage(page.getCanvas(), bitmap);
+                        drawPage(page.getCanvas(), bitmap, pageLayout, placementMode);
                     } finally {
                         pdfDocument.finishPage(page);
                     }
@@ -109,6 +137,35 @@ public class PdfGenerator {
         }
     }
 
+    private ImagePlacementMode resolvePlacementMode(PdfOptions pdfOptions) {
+        if (pdfOptions.getPageSizeMode() == PageSizeMode.IMAGE) {
+            return ImagePlacementMode.FIT;
+        }
+        return pdfOptions.getImagePlacementMode();
+    }
+
+    private ImageBounds calculateSampleTarget(
+            ImageBounds finalBounds,
+            PdfPageLayout pageLayout,
+            ImagePlacementMode placementMode
+    ) {
+        ImagePlacementCalculator.ImageDrawPlan drawPlan =
+                ImagePlacementCalculator.calculateDrawPlan(
+                        finalBounds.getWidth(),
+                        finalBounds.getHeight(),
+                        pageLayout.getContentLeft(),
+                        pageLayout.getContentTop(),
+                        pageLayout.getContentWidth(),
+                        pageLayout.getContentHeight(),
+                        placementMode
+                );
+        ImagePlacementCalculator.PlacementRect destination = drawPlan.getDestinationRect();
+        return new ImageBounds(
+                Math.max(1, (int) Math.ceil(destination.getWidth())),
+                Math.max(1, (int) Math.ceil(destination.getHeight()))
+        );
+    }
+
     private OutputStream openOutputStream(Uri outputUri) throws IOException {
         OutputStream outputStream = contentResolver.openOutputStream(outputUri);
         if (outputStream == null) {
@@ -117,7 +174,7 @@ public class PdfGenerator {
         return outputStream;
     }
 
-    private Bitmap decodeBitmap(Uri imageUri, int targetWidth, int targetHeight) throws IOException {
+    private ImageBounds readImageBounds(Uri imageUri) throws IOException {
         BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
         boundsOptions.inJustDecodeBounds = true;
 
@@ -129,10 +186,19 @@ public class PdfGenerator {
             throw new IOException("Unable to read image bounds");
         }
 
+        return new ImageBounds(boundsOptions.outWidth, boundsOptions.outHeight);
+    }
+
+    private Bitmap decodeBitmap(
+            Uri imageUri,
+            ImageBounds bounds,
+            int targetWidth,
+            int targetHeight
+    ) throws IOException {
         BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
         decodeOptions.inSampleSize = calculateInSampleSize(
-                boundsOptions.outWidth,
-                boundsOptions.outHeight,
+                bounds.getWidth(),
+                bounds.getHeight(),
                 targetWidth,
                 targetHeight
         );
@@ -155,26 +221,40 @@ public class PdfGenerator {
         return inputStream;
     }
 
-    private void drawPage(Canvas canvas, Bitmap bitmap) {
+    private void drawPage(
+            Canvas canvas,
+            Bitmap bitmap,
+            PdfPageLayout pageLayout,
+            ImagePlacementMode placementMode
+    ) {
         canvas.drawColor(Color.WHITE);
 
-        ImagePlacementCalculator.PlacementRect placementRect =
-                ImagePlacementCalculator.calculateCenteredFit(
+        ImagePlacementCalculator.ImageDrawPlan drawPlan =
+                ImagePlacementCalculator.calculateDrawPlan(
                         bitmap.getWidth(),
                         bitmap.getHeight(),
-                        PAGE_MARGIN_POINTS,
-                        PAGE_MARGIN_POINTS,
-                        CONTENT_WIDTH_POINTS,
-                        CONTENT_HEIGHT_POINTS
+                        pageLayout.getContentLeft(),
+                        pageLayout.getContentTop(),
+                        pageLayout.getContentWidth(),
+                        pageLayout.getContentHeight(),
+                        placementMode
                 );
 
-        RectF destination = new RectF(
-                placementRect.getLeft(),
-                placementRect.getTop(),
-                placementRect.getRight(),
-                placementRect.getBottom()
+        ImagePlacementCalculator.PlacementRect sourceRect = drawPlan.getSourceRect();
+        ImagePlacementCalculator.PlacementRect destinationRect = drawPlan.getDestinationRect();
+        Rect source = new Rect(
+                Math.max(0, (int) Math.floor(sourceRect.getLeft())),
+                Math.max(0, (int) Math.floor(sourceRect.getTop())),
+                Math.min(bitmap.getWidth(), (int) Math.ceil(sourceRect.getRight())),
+                Math.min(bitmap.getHeight(), (int) Math.ceil(sourceRect.getBottom()))
         );
-        canvas.drawBitmap(bitmap, null, destination, bitmapPaint);
+        RectF destination = new RectF(
+                destinationRect.getLeft(),
+                destinationRect.getTop(),
+                destinationRect.getRight(),
+                destinationRect.getBottom()
+        );
+        canvas.drawBitmap(bitmap, source, destination, bitmapPaint);
     }
 
     private int calculateInSampleSize(
@@ -188,7 +268,8 @@ public class PdfGenerator {
         }
 
         int sampleSize = 1;
-        while ((sourceWidth / sampleSize) > targetWidth || (sourceHeight / sampleSize) > targetHeight) {
+        while ((sourceWidth / (sampleSize * 2)) >= targetWidth
+                && (sourceHeight / (sampleSize * 2)) >= targetHeight) {
             sampleSize *= 2;
         }
         return Math.max(1, sampleSize);
@@ -197,6 +278,34 @@ public class PdfGenerator {
     private void throwIfInterrupted() throws InterruptedIOException {
         if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedIOException("PDF generation interrupted");
+        }
+    }
+
+    private static final class ImageBounds {
+        private final int width;
+        private final int height;
+
+        private ImageBounds(int width, int height) {
+            if (width <= 0 || height <= 0) {
+                throw new IllegalArgumentException("Image dimensions must be positive");
+            }
+            this.width = width;
+            this.height = height;
+        }
+
+        private int getWidth() {
+            return width;
+        }
+
+        private int getHeight() {
+            return height;
+        }
+
+        private ImageBounds swapIf(boolean shouldSwap) {
+            if (!shouldSwap) {
+                return this;
+            }
+            return new ImageBounds(height, width);
         }
     }
 }
