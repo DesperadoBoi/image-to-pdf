@@ -6,6 +6,7 @@
     <string name="action_back">Назад</string>
     <string name="action_add">Добавить</string>
     <string name="action_create_pdf">Создать PDF</string>
+    <string name="action_cancel_pdf_generation">Отменить</string>
     <string name="action_open_pdf">Открыть PDF</string>
     <string name="action_share_pdf">Поделиться</string>
     <string name="action_new_document">Создать новый</string>
@@ -39,11 +40,13 @@
     <string name="status_image_selection_cancelled">Выбор изображений отменён</string>
     <string name="status_save_location_cancelled">Сохранение отменено</string>
     <string name="status_pdf_generating">Создание PDF…</string>
+    <string name="status_pdf_generation_progress">Создание PDF: %1$d из %2$d</string>
     <string name="status_pdf_created">PDF успешно создан</string>
     <string name="status_pdf_creation_error">Не удалось создать PDF</string>
     <string name="status_pdf_creation_permission_error">Не удалось получить доступ к выбранному файлу</string>
     <string name="status_pdf_creation_invalid_input">Не удалось создать PDF из выбранных изображений</string>
     <string name="status_pdf_creation_interrupted">Создание PDF было прервано</string>
+    <string name="status_pdf_generation_cancelled">Создание PDF отменено</string>
     <string name="status_pdf_open_app_not_found">Не найдено приложение для открытия PDF</string>
     <string name="status_pdf_open_error">Не удалось открыть PDF</string>
     <string name="status_pdf_share_error">Не удалось поделиться PDF</string>

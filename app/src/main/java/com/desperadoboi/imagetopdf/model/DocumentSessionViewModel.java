@@ -4,17 +4,29 @@ import android.net.Uri;
 
 import androidx.lifecycle.ViewModel;
 
+import com.desperadoboi.imagetopdf.pdf.CancellationToken;
+
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class DocumentSessionViewModel extends ViewModel {
     private final ArrayList<PageItem> pages = new ArrayList<>();
+    private final ArrayList<WeakReference<PdfGenerationStateObserver>> pdfGenerationStateObservers =
+            new ArrayList<>();
+    private final ExecutorService pdfExecutor = Executors.newSingleThreadExecutor();
 
+    private PdfGenerationState pdfGenerationState = PdfGenerationState.idle();
     private PdfResult lastPdfResult;
     private String transientStatusMessage;
     private String pendingSuggestedFileName;
-    private boolean generationInProgress;
     private boolean awaitingSaveLocation;
+    private long nextGenerationOperationId = PdfGenerationState.NO_OPERATION_ID + 1L;
+    private CancellationToken activeCancellationToken;
 
     public List<PageItem> getPages() {
         return pages;
@@ -38,7 +50,8 @@ public final class DocumentSessionViewModel extends ViewModel {
         lastPdfResult = null;
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
-        generationInProgress = false;
+        cancelActiveGeneration();
+        setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;
     }
 
@@ -82,7 +95,8 @@ public final class DocumentSessionViewModel extends ViewModel {
         lastPdfResult = null;
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
-        generationInProgress = false;
+        cancelActiveGeneration();
+        setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;
     }
 
@@ -115,11 +129,117 @@ public final class DocumentSessionViewModel extends ViewModel {
     }
 
     public boolean isGenerationInProgress() {
-        return generationInProgress;
+        return getPdfGenerationState().isRunning();
     }
 
-    public void setGenerationInProgress(boolean generationInProgress) {
-        this.generationInProgress = generationInProgress;
+    public void addPdfGenerationStateObserver(PdfGenerationStateObserver observer) {
+        if (observer == null) {
+            return;
+        }
+        pdfGenerationStateObservers.add(new WeakReference<>(observer));
+        observer.onPdfGenerationStateChanged(pdfGenerationState);
+    }
+
+    public void removePdfGenerationStateObserver(PdfGenerationStateObserver observer) {
+        if (observer == null) {
+            return;
+        }
+        Iterator<WeakReference<PdfGenerationStateObserver>> iterator =
+                pdfGenerationStateObservers.iterator();
+        while (iterator.hasNext()) {
+            PdfGenerationStateObserver existingObserver = iterator.next().get();
+            if (existingObserver == null || existingObserver == observer) {
+                iterator.remove();
+            }
+        }
+    }
+
+    public PdfGenerationState getPdfGenerationState() {
+        return pdfGenerationState;
+    }
+
+    public Executor getPdfExecutor() {
+        return pdfExecutor;
+    }
+
+    public GenerationOperation startGeneration(int totalPages) {
+        if (isGenerationInProgress()) {
+            return null;
+        }
+        if (totalPages <= 0) {
+            throw new IllegalArgumentException("totalPages must be positive");
+        }
+
+        long operationId = nextGenerationOperationId++;
+        activeCancellationToken = new CancellationToken();
+        lastPdfResult = null;
+        transientStatusMessage = null;
+        setPdfGenerationState(PdfGenerationState.running(operationId, totalPages));
+        return new GenerationOperation(operationId, activeCancellationToken);
+    }
+
+    public void requestCancelGeneration() {
+        PdfGenerationState state = getPdfGenerationState();
+        if (!state.isRunning()) {
+            return;
+        }
+        if (activeCancellationToken != null) {
+            activeCancellationToken.cancel();
+        }
+        setPdfGenerationState(state.withCancellationRequested(state.getOperationId()));
+    }
+
+    public void updateGenerationProgress(long operationId, int completedPages, int totalPages) {
+        setPdfGenerationState(
+                pdfGenerationState.withProgress(operationId, completedPages, totalPages)
+        );
+    }
+
+    public void completeGenerationSuccess(
+            long operationId,
+            Uri savedUri,
+            String fallbackDisplayName,
+            int pageCount
+    ) {
+        PdfGenerationState currentState = getPdfGenerationState();
+        PdfGenerationState nextState = currentState.succeeded(operationId, savedUri);
+        if (!nextState.isSucceeded() || nextState.getOperationId() != operationId) {
+            setPdfGenerationState(nextState);
+            return;
+        }
+        lastPdfResult = new PdfResult(
+                savedUri,
+                fallbackDisplayName,
+                PdfResult.UNKNOWN_SIZE_BYTES,
+                pageCount
+        );
+        clearActiveGeneration(operationId);
+        pendingSuggestedFileName = null;
+        setPdfGenerationState(nextState);
+    }
+
+    public void completeGenerationCancelled(long operationId) {
+        PdfGenerationState currentState = getPdfGenerationState();
+        PdfGenerationState nextState = currentState.cancelled(operationId);
+        if (!nextState.isCancelled() || nextState.getOperationId() != operationId) {
+            setPdfGenerationState(nextState);
+            return;
+        }
+        clearActiveGeneration(operationId);
+        pendingSuggestedFileName = null;
+        setPdfGenerationState(nextState);
+    }
+
+    public void completeGenerationError(long operationId, Exception exception) {
+        PdfGenerationState currentState = getPdfGenerationState();
+        PdfGenerationState nextState = currentState.failed(operationId, exception);
+        if (!nextState.isError() || nextState.getOperationId() != operationId) {
+            setPdfGenerationState(nextState);
+            return;
+        }
+        clearActiveGeneration(operationId);
+        pendingSuggestedFileName = null;
+        setPdfGenerationState(nextState);
     }
 
     public boolean isAwaitingSaveLocation() {
@@ -131,7 +251,14 @@ public final class DocumentSessionViewModel extends ViewModel {
     }
 
     public boolean canEditPages() {
-        return !generationInProgress && !awaitingSaveLocation;
+        return !isGenerationInProgress() && !awaitingSaveLocation;
+    }
+
+    @Override
+    protected void onCleared() {
+        cancelActiveGeneration();
+        pdfExecutor.shutdownNow();
+        super.onCleared();
     }
 
     private void appendPageItems(List<Uri> imageUris) {
@@ -146,6 +273,60 @@ public final class DocumentSessionViewModel extends ViewModel {
     private void validatePosition(int position) {
         if (position < 0 || position >= pages.size()) {
             throw new IndexOutOfBoundsException("position is out of bounds: " + position);
+        }
+    }
+
+    private void cancelActiveGeneration() {
+        if (activeCancellationToken != null) {
+            activeCancellationToken.cancel();
+            activeCancellationToken = null;
+        }
+    }
+
+    private void clearActiveGeneration(long operationId) {
+        PdfGenerationState state = getPdfGenerationState();
+        if (state.getOperationId() == operationId) {
+            activeCancellationToken = null;
+        }
+    }
+
+    private void setPdfGenerationState(PdfGenerationState state) {
+        pdfGenerationState = state;
+        notifyPdfGenerationStateObservers(state);
+    }
+
+    private void notifyPdfGenerationStateObservers(PdfGenerationState state) {
+        Iterator<WeakReference<PdfGenerationStateObserver>> iterator =
+                pdfGenerationStateObservers.iterator();
+        while (iterator.hasNext()) {
+            PdfGenerationStateObserver observer = iterator.next().get();
+            if (observer == null) {
+                iterator.remove();
+                continue;
+            }
+            observer.onPdfGenerationStateChanged(state);
+        }
+    }
+
+    public interface PdfGenerationStateObserver {
+        void onPdfGenerationStateChanged(PdfGenerationState state);
+    }
+
+    public static final class GenerationOperation {
+        private final long operationId;
+        private final CancellationToken cancellationToken;
+
+        private GenerationOperation(long operationId, CancellationToken cancellationToken) {
+            this.operationId = operationId;
+            this.cancellationToken = cancellationToken;
+        }
+
+        public long getOperationId() {
+            return operationId;
+        }
+
+        public CancellationToken getCancellationToken() {
+            return cancellationToken;
         }
     }
 }

@@ -22,7 +22,6 @@ import com.desperadoboi.imagetopdf.util.ImagePlacementCalculator;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Objects;
@@ -42,16 +41,22 @@ public class PdfGenerator {
             List<PageItem> pageItems,
             PdfOptions pdfOptions,
             Uri outputUri,
+            CancellationToken cancellationToken,
             Executor backgroundExecutor,
             Executor callbackExecutor,
             PdfGenerationCallback callback
     ) {
         Objects.requireNonNull(pdfOptions, "pdfOptions is required");
+        Objects.requireNonNull(cancellationToken, "cancellationToken is required");
         backgroundExecutor.execute(() -> {
             try {
-                generateInternal(pageItems, pdfOptions, outputUri);
+                generateInternal(pageItems, pdfOptions, outputUri, cancellationToken, callbackExecutor, callback);
                 callbackExecutor.execute(() -> callback.onSuccess(outputUri));
+            } catch (PdfGenerationCancelledException exception) {
+                deletePartialOutput(outputUri);
+                callbackExecutor.execute(callback::onCancelled);
             } catch (Exception exception) {
+                deletePartialOutput(outputUri);
                 callbackExecutor.execute(() -> callback.onError(exception));
             }
         });
@@ -60,8 +65,11 @@ public class PdfGenerator {
     private void generateInternal(
             List<PageItem> pageItems,
             PdfOptions pdfOptions,
-            Uri outputUri
-    ) throws IOException {
+            Uri outputUri,
+            CancellationToken cancellationToken,
+            Executor callbackExecutor,
+            PdfGenerationCallback callback
+    ) throws IOException, PdfGenerationCancelledException {
         if (pageItems == null || pageItems.isEmpty()) {
             throw new IllegalArgumentException("No images selected");
         }
@@ -72,10 +80,12 @@ public class PdfGenerator {
             throw new IllegalArgumentException("Output Uri is required");
         }
 
+        int totalPages = pageItems.size();
+        notifyProgress(callbackExecutor, callback, 0, totalPages);
         PdfDocument pdfDocument = new PdfDocument();
         try (OutputStream outputStream = openOutputStream(outputUri)) {
-            for (int index = 0; index < pageItems.size(); index++) {
-                throwIfInterrupted();
+            for (int index = 0; index < totalPages; index++) {
+                throwIfCancelled(cancellationToken);
 
                 PageItem pageItem = pageItems.get(index);
                 ImageBounds rawBounds = readImageBounds(pageItem.getImageUri());
@@ -106,11 +116,13 @@ public class PdfGenerator {
                                 : sampleTarget.getHeight()
                 );
                 try {
+                    throwIfCancelled(cancellationToken);
                     bitmap = ImageBitmapTransformer.applyTransform(bitmap, imageTransform);
                     bitmap = ImageBitmapTransformer.applyClockwiseRotation(
                             bitmap,
                             pageItem.getManualRotationDegrees()
                     );
+                    throwIfCancelled(cancellationToken);
                     PdfDocument.Page page = pdfDocument.startPage(
                             new PdfDocument.PageInfo.Builder(
                                     pageLayout.getPageWidth(),
@@ -123,6 +135,7 @@ public class PdfGenerator {
                     } finally {
                         pdfDocument.finishPage(page);
                     }
+                    notifyProgress(callbackExecutor, callback, index + 1, totalPages);
                 } finally {
                     if (!bitmap.isRecycled()) {
                         bitmap.recycle();
@@ -130,8 +143,9 @@ public class PdfGenerator {
                 }
             }
 
-            throwIfInterrupted();
+            throwIfCancelled(cancellationToken);
             pdfDocument.writeTo(outputStream);
+            throwIfCancelled(cancellationToken);
         } finally {
             pdfDocument.close();
         }
@@ -257,6 +271,27 @@ public class PdfGenerator {
         canvas.drawBitmap(bitmap, source, destination, bitmapPaint);
     }
 
+    private void notifyProgress(
+            Executor callbackExecutor,
+            PdfGenerationCallback callback,
+            int completedPages,
+            int totalPages
+    ) {
+        int safeCompletedPages = Math.max(0, Math.min(completedPages, totalPages));
+        callbackExecutor.execute(() -> callback.onProgress(safeCompletedPages, totalPages));
+    }
+
+    private void deletePartialOutput(Uri outputUri) {
+        if (outputUri == null) {
+            return;
+        }
+        try {
+            contentResolver.delete(outputUri, null, null);
+        } catch (RuntimeException exception) {
+            // Some document providers do not support deleting a just-created document.
+        }
+    }
+
     private int calculateInSampleSize(
             int sourceWidth,
             int sourceHeight,
@@ -275,9 +310,10 @@ public class PdfGenerator {
         return Math.max(1, sampleSize);
     }
 
-    private void throwIfInterrupted() throws InterruptedIOException {
-        if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedIOException("PDF generation interrupted");
+    private void throwIfCancelled(CancellationToken cancellationToken)
+            throws PdfGenerationCancelledException {
+        if (cancellationToken.isCancelled() || Thread.currentThread().isInterrupted()) {
+            throw new PdfGenerationCancelledException();
         }
     }
 

@@ -8,6 +8,9 @@
     <dimen name="pdf_options_label_width">124dp</dimen>
     <dimen name="pdf_options_row_spacing">8dp</dimen>
     <dimen name="pdf_result_block_padding">8dp</dimen>
+    <dimen name="pdf_generation_progress_text_spacing">8dp</dimen>
+    <dimen name="pdf_generation_cancel_button_spacing">8dp</dimen>
+    <dimen name="pdf_generation_cancel_button_min_height">48dp</dimen>
     <dimen name="pdf_result_details_spacing">4dp</dimen>
     <dimen name="pdf_result_actions_spacing">8dp</dimen>
     <dimen name="pdf_result_action_button_spacing">8dp</dimen>
