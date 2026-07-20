@@ -63,6 +63,12 @@
             android:layout_height="match_parent"
             android:contentDescription="@string/page_edit_image_content_description_generic" />
 
+        <com.desperadoboi.imagetopdf.ui.editor.RectCropOverlayView
+            android:id="@+id/overlay_rect_crop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
         <ProgressBar
             android:id="@+id/progress_page_edit"
             android:layout_width="wrap_content"

@@ -1,6 +1,7 @@
 package com.desperadoboi.imagetopdf.ui.editor;
 
 import android.graphics.Bitmap;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -41,6 +42,7 @@ public final class PageEditFragment extends Fragment {
     private DocumentSessionViewModel.PdfGenerationStateObserver generationStateObserver;
 
     private ZoomableImageView imageView;
+    private RectCropOverlayView rectCropOverlay;
     private TextView titleView;
     private TextView counterView;
     private TextView errorView;
@@ -126,6 +128,7 @@ public final class PageEditFragment extends Fragment {
         activeLoadKey = null;
         releaseCurrentBitmap();
         imageView = null;
+        rectCropOverlay = null;
         titleView = null;
         counterView = null;
         errorView = null;
@@ -163,6 +166,7 @@ public final class PageEditFragment extends Fragment {
 
     private void bindViews(View view) {
         imageView = view.findViewById(R.id.image_page_edit);
+        rectCropOverlay = view.findViewById(R.id.overlay_rect_crop);
         titleView = view.findViewById(R.id.text_page_edit_title);
         counterView = view.findViewById(R.id.text_page_edit_counter);
         errorView = view.findViewById(R.id.text_page_edit_error);
@@ -205,7 +209,7 @@ public final class PageEditFragment extends Fragment {
         documentButton.setOnClickListener(view -> setEditMode(EditMode.DOCUMENT));
         doneButton.setOnClickListener(view -> closeEditor());
         cancelButton.setOnClickListener(view -> setEditMode(EditMode.NORMAL));
-        applyButton.setOnClickListener(view -> setEditMode(EditMode.NORMAL));
+        applyButton.setOnClickListener(view -> applyCurrentMode());
     }
 
     private void renderCurrentPage() {
@@ -256,6 +260,7 @@ public final class PageEditFragment extends Fragment {
             return;
         }
         releaseCurrentBitmap();
+        rectCropOverlay.clearImageContentRect();
         progressBar.setVisibility(View.VISIBLE);
         int targetWidth = imageView.getWidth() * PREVIEW_ZOOM_RESERVE;
         int targetHeight = imageView.getHeight() * PREVIEW_ZOOM_RESERVE;
@@ -283,6 +288,7 @@ public final class PageEditFragment extends Fragment {
         Bitmap oldBitmap = currentBitmap;
         currentBitmap = bitmap;
         imageView.setImageBitmap(bitmap);
+        updateOverlayContentRect();
         recycle(oldBitmap);
     }
 
@@ -322,7 +328,14 @@ public final class PageEditFragment extends Fragment {
     }
 
     private void resetCurrentMode() {
-        if (editMode != EditMode.NORMAL || !sessionViewModel.canEditPages()) {
+        if (!sessionViewModel.canEditPages()) {
+            return;
+        }
+        if (editMode == EditMode.RECT_CROP) {
+            rectCropOverlay.setCropRect(com.desperadoboi.imagetopdf.model.CropRect.FULL);
+            return;
+        }
+        if (editMode != EditMode.NORMAL) {
             return;
         }
         sessionViewModel.resetPageEdits(currentPageId);
@@ -337,6 +350,12 @@ public final class PageEditFragment extends Fragment {
             return;
         }
         editMode = newMode;
+        if (newMode == EditMode.RECT_CROP) {
+            PageItem page = findCurrentPage();
+            if (page != null) {
+                rectCropOverlay.setCropRect(page.getEditSpec().getCropRect());
+            }
+        }
         imageView.resetZoom();
         updateModeViews();
         renderCurrentPage();
@@ -349,6 +368,9 @@ public final class PageEditFragment extends Fragment {
         pageStrip.setVisibility(normal ? View.VISIBLE : View.GONE);
         counterView.setVisibility(normal ? View.VISIBLE : View.GONE);
         imageView.setGesturesEnabled(normal);
+        rectCropOverlay.setVisibility(
+                editMode == EditMode.RECT_CROP ? View.VISIBLE : View.GONE
+        );
     }
 
     private void updateActionAvailability() {
@@ -368,6 +390,43 @@ public final class PageEditFragment extends Fragment {
         Bundle result = new Bundle();
         result.putLong(RESULT_KEY_PAGE_ID, currentPageId);
         getParentFragmentManager().setFragmentResult(RESULT_PAGE_EDITED, result);
+    }
+
+    private void applyCurrentMode() {
+        if (!sessionViewModel.canEditPages()) {
+            return;
+        }
+        if (editMode == EditMode.RECT_CROP) {
+            sessionViewModel.updatePageCrop(currentPageId, rectCropOverlay.getCropRect());
+            publishEditResult();
+            pageStripAdapter.notifyPageChanged(currentPageId);
+        }
+        setEditMode(EditMode.NORMAL);
+    }
+
+    private PageItem findCurrentPage() {
+        int position = PreviewPageNavigator.findPositionById(
+                sessionViewModel.getPages(),
+                currentPageId
+        );
+        if (position == PreviewPageNavigator.POSITION_NOT_FOUND) {
+            return null;
+        }
+        return sessionViewModel.getPages().get(position);
+    }
+
+    private void updateOverlayContentRect() {
+        imageView.post(() -> {
+            if (imageView == null || rectCropOverlay == null) {
+                return;
+            }
+            RectF contentRect = new RectF();
+            if (imageView.getImageContentRect(contentRect)) {
+                rectCropOverlay.setImageContentRect(contentRect);
+            } else {
+                rectCropOverlay.clearImageContentRect();
+            }
+        });
     }
 
     private void releaseCurrentBitmap() {

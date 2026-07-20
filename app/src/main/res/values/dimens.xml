@@ -37,4 +37,9 @@
     <dimen name="page_edit_strip_selected_stroke">2dp</dimen>
     <dimen name="page_edit_tool_spacing">4dp</dimen>
     <dimen name="page_edit_done_spacing">8dp</dimen>
+    <dimen name="crop_handle_radius">7dp</dimen>
+    <dimen name="crop_handle_touch_radius">24dp</dimen>
+    <dimen name="crop_border_stroke">2dp</dimen>
+    <dimen name="crop_grid_stroke">1dp</dimen>
+    <dimen name="crop_minimum_size">48dp</dimen>
 </resources>

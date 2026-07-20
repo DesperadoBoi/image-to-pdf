@@ -50,4 +50,17 @@ public class CropRectTest {
 
         assertEquals(original, rotated);
     }
+
+    @Test
+    public void rotationNinetyOneEightyAndTwoSeventyUsesRectifiedCoordinates() {
+        CropRect original = new CropRect(0.1f, 0.2f, 0.7f, 0.9f);
+
+        CropRect ninety = original.rotateClockwise();
+        CropRect oneEighty = ninety.rotateClockwise();
+        CropRect twoSeventy = oneEighty.rotateClockwise();
+
+        assertEquals(new CropRect(0.1f, 0.1f, 0.8f, 0.7f), ninety);
+        assertEquals(new CropRect(0.3f, 0.1f, 0.9f, 0.8f), oneEighty);
+        assertEquals(new CropRect(0.2f, 0.3f, 0.9f, 0.9f), twoSeventy);
+    }
 }
