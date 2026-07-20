@@ -162,6 +162,60 @@
         android:enabled="false"
         android:text="@string/action_create_pdf" />
 
+    <LinearLayout
+        android:id="@+id/layout_pdf_result"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_medium"
+        android:orientation="vertical"
+        android:padding="@dimen/pdf_result_block_padding"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/text_pdf_result_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            tools:text="ImageToPDF_20260720_120000.pdf" />
+
+        <TextView
+            android:id="@+id/text_pdf_result_details"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/pdf_result_details_spacing"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            tools:text="3 pages, 1.4 MB" />
+
+        <LinearLayout
+            android:id="@+id/layout_pdf_result_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/pdf_result_actions_spacing"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/button_open_pdf"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/action_open_pdf" />
+
+            <Button
+                android:id="@+id/button_share_pdf"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_result_action_button_spacing"
+                android:text="@string/action_share_pdf" />
+
+            <Button
+                android:id="@+id/button_new_document"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_result_action_button_spacing"
+                android:text="@string/action_new_document" />
+        </LinearLayout>
+    </LinearLayout>
+
     <ProgressBar
         android:id="@+id/progress_generation"
         android:layout_width="wrap_content"

@@ -4,6 +4,9 @@
     <string name="action_select_images">Выбрать изображения</string>
     <string name="action_add_images">Добавить изображения</string>
     <string name="action_create_pdf">Создать PDF</string>
+    <string name="action_open_pdf">Открыть PDF</string>
+    <string name="action_share_pdf">Поделиться</string>
+    <string name="action_new_document">Создать новый</string>
     <string name="pdf_settings_title">Настройки PDF</string>
     <string name="pdf_page_size_label">Размер страницы</string>
     <string name="pdf_image_placement_label">Размещение</string>
@@ -38,6 +41,12 @@
     <string name="status_pdf_creation_permission_error">Не удалось получить доступ к выбранному файлу</string>
     <string name="status_pdf_creation_invalid_input">Не удалось создать PDF из выбранных изображений</string>
     <string name="status_pdf_creation_interrupted">Создание PDF было прервано</string>
+    <string name="status_pdf_open_app_not_found">Не найдено приложение для открытия PDF</string>
+    <string name="status_pdf_open_error">Не удалось открыть PDF</string>
+    <string name="status_pdf_share_error">Не удалось поделиться PDF</string>
+    <string name="pdf_share_chooser_title">Поделиться PDF</string>
+    <string name="pdf_result_unknown_name">Созданный PDF</string>
+    <string name="pdf_result_details_with_size">%1$s, %2$s</string>
     <string name="pdf_file_name_template">ImageToPDF_%1$s.pdf</string>
 
     <plurals name="selected_images_count">
@@ -45,5 +54,12 @@
         <item quantity="few">Выбрано %1$d изображения</item>
         <item quantity="many">Выбрано %1$d изображений</item>
         <item quantity="other">Выбрано %1$d изображения</item>
+    </plurals>
+
+    <plurals name="pdf_result_pages_count">
+        <item quantity="one">%1$d страница</item>
+        <item quantity="few">%1$d страницы</item>
+        <item quantity="many">%1$d страниц</item>
+        <item quantity="other">%1$d страницы</item>
     </plurals>
 </resources>
