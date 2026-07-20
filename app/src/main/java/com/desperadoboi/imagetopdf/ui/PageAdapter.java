@@ -2,6 +2,7 @@ package com.desperadoboi.imagetopdf.ui;
 
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -69,9 +70,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         int pageNumber = position + 1;
         String thumbnailKey = pageItem.getThumbnailKey();
 
-        holder.pageNumberTextView.setText(
-                holder.itemView.getContext().getString(R.string.page_number_label, pageNumber)
-        );
+        holder.pageNumberTextView.setText(String.valueOf(pageNumber));
         holder.thumbnailImageView.setContentDescription(
                 holder.itemView.getContext().getString(R.string.page_thumbnail_content_description, pageNumber)
         );
@@ -87,13 +86,8 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
                         pageNumber
                 )
         );
-        holder.dragHandleButton.setContentDescription(
-                holder.itemView.getContext().getString(
-                        R.string.action_reorder_page_content_description,
-                        pageNumber
-                )
-        );
-        holder.dragHandleButton.setEnabled(actionsEnabled);
+        holder.itemView.setEnabled(actionsEnabled);
+        holder.thumbnailImageView.setEnabled(actionsEnabled);
         holder.rotateButton.setEnabled(actionsEnabled);
         holder.deleteButton.setEnabled(actionsEnabled);
 
@@ -138,14 +132,9 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
                 callback.onDelete(adapterPosition);
             }
         });
-        holder.dragHandleButton.setOnLongClickListener(view -> {
-            int adapterPosition = holder.getBindingAdapterPosition();
-            if (actionsEnabled && adapterPosition != RecyclerView.NO_POSITION) {
-                callback.onDragStart(holder);
-                return true;
-            }
-            return false;
-        });
+        View.OnLongClickListener dragStartListener = view -> startDragFromLongPress(holder, view);
+        holder.itemView.setOnLongClickListener(dragStartListener);
+        holder.thumbnailImageView.setOnLongClickListener(dragStartListener);
         configureMoveAccessibilityActions(holder);
     }
 
@@ -173,8 +162,18 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         boolean onMoveDown(int position);
     }
 
+    private boolean startDragFromLongPress(PageViewHolder holder, View sourceView) {
+        int adapterPosition = holder.getBindingAdapterPosition();
+        if (!actionsEnabled || adapterPosition == RecyclerView.NO_POSITION) {
+            return false;
+        }
+        sourceView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        callback.onDragStart(holder);
+        return true;
+    }
+
     private void configureMoveAccessibilityActions(PageViewHolder holder) {
-        ViewCompat.setAccessibilityDelegate(holder.dragHandleButton, new AccessibilityDelegateCompat() {
+        ViewCompat.setAccessibilityDelegate(holder.thumbnailImageView, new AccessibilityDelegateCompat() {
             @Override
             public void onInitializeAccessibilityNodeInfo(
                     @NonNull View host,
@@ -219,7 +218,6 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
     static final class PageViewHolder extends RecyclerView.ViewHolder {
         private final TextView pageNumberTextView;
         private final ImageView thumbnailImageView;
-        private final ImageButton dragHandleButton;
         private final ImageButton rotateButton;
         private final ImageButton deleteButton;
 
@@ -227,7 +225,6 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
             super(itemView);
             pageNumberTextView = itemView.findViewById(R.id.text_page_number);
             thumbnailImageView = itemView.findViewById(R.id.image_page_thumbnail);
-            dragHandleButton = itemView.findViewById(R.id.button_drag_page);
             rotateButton = itemView.findViewById(R.id.button_rotate_page);
             deleteButton = itemView.findViewById(R.id.button_delete_page);
         }

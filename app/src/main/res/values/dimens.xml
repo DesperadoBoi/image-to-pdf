@@ -10,8 +10,14 @@
     <dimen name="pdf_result_actions_spacing">8dp</dimen>
     <dimen name="pdf_result_action_button_spacing">8dp</dimen>
     <dimen name="page_item_spacing">12dp</dimen>
-    <dimen name="page_item_vertical_padding">8dp</dimen>
-    <dimen name="page_number_width">64dp</dimen>
+    <dimen name="page_item_card_vertical_margin">4dp</dimen>
+    <dimen name="page_item_content_padding">8dp</dimen>
+    <dimen name="page_item_card_corner_radius">8dp</dimen>
+    <dimen name="page_item_card_elevation">1dp</dimen>
+    <dimen name="page_item_drag_elevation">6dp</dimen>
+    <dimen name="page_item_card_stroke_width">1dp</dimen>
+    <dimen name="page_number_badge_size">28dp</dimen>
+    <dimen name="page_number_badge_corner_radius">8dp</dimen>
     <dimen name="page_thumbnail_size">72dp</dimen>
     <dimen name="page_action_button_size">48dp</dimen>
 </resources>
