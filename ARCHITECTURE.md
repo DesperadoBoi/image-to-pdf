@@ -42,6 +42,7 @@ com.desperadoboi.imagetopdf
 
 - одна `Activity` как контейнер;
 - отдельные `Fragment` для домашнего экрана и редактора страниц;
+- `PagePreviewFragment` открывается поверх редактора в существующем fragment-контейнере и использует stable ID страницы вместо передачи `Bitmap` через `Bundle`;
 - activity-scoped `DocumentSessionViewModel` для состояния пользовательской сессии;
 - `Fragment` читает состояние из `DocumentSessionViewModel` и применяет точечные обновления XML UI;
 - однонаправленный поток: `UI action -> ViewModel -> сервис/компонент -> новое состояние -> UI`;
@@ -72,6 +73,8 @@ com.desperadoboi.imagetopdf
 
 - не загружать все полноразмерные `Bitmap` одновременно;
 - хранить в состоянии `Uri` и небольшие миниатюры;
+- `PreviewImageLoader` декодирует изображение для полноэкранного просмотра на фоновой очереди через `ContentResolver`, bounds, `inSampleSize`, EXIF orientation и ручной поворот;
+- `ZoomableImageView` реализует fit-center, pinch-to-zoom и ограниченный pan через стандартные Android `Matrix` и gesture APIs без сторонней библиотеки;
 - `PageItem` хранит `PageSource`, чтобы отличать внешние изображения галереи от app-owned снимков камеры;
 - удалять app-owned camera-файлы при удалении соответствующей страницы и при создании новой сессии, не удаляя gallery `Uri`;
 - во время создания PDF обрабатывать изображения последовательно;

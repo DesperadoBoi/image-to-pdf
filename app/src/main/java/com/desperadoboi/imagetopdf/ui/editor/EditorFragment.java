@@ -134,6 +134,7 @@ public final class EditorFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
+        configurePreviewResultListener();
         configurePageList();
         configureClickListeners();
         pdfGenerationStateObserver = generationState -> {
@@ -203,6 +204,11 @@ public final class EditorFragment extends Fragment {
                     }
 
                     @Override
+                    public void onPreview(int position) {
+                        openPagePreview(position);
+                    }
+
+                    @Override
                     public void onDragStart(RecyclerView.ViewHolder viewHolder) {
                         startPageDrag(viewHolder);
                     }
@@ -222,6 +228,15 @@ public final class EditorFragment extends Fragment {
         pagesRecyclerView.setAdapter(pageAdapter);
         pageTouchHelper = new ItemTouchHelper(new PageMoveCallback());
         pageTouchHelper.attachToRecyclerView(pagesRecyclerView);
+    }
+
+    private void configurePreviewResultListener() {
+        getParentFragmentManager().setFragmentResultListener(
+                PagePreviewFragment.RESULT_PAGE_ROTATED,
+                getViewLifecycleOwner(),
+                (requestKey, result) ->
+                        notifyPreviewPageRotated(result.getLong(PagePreviewFragment.RESULT_KEY_PAGE_ID))
+        );
     }
 
     private void configureClickListeners() {
@@ -300,6 +315,25 @@ public final class EditorFragment extends Fragment {
             return;
         }
         startPdfGeneration(outputUri);
+    }
+
+    private void openPagePreview(int position) {
+        if (!sessionViewModel.canEditPages()
+                || position < 0
+                || position >= sessionViewModel.getPageCount()
+                || navigationCallback == null) {
+            return;
+        }
+        navigationCallback.onPagePreviewRequested(sessionViewModel.getPages().get(position).getId());
+    }
+
+    private void notifyPreviewPageRotated(long pageId) {
+        int position = PreviewPageNavigator.findPositionById(sessionViewModel.getPages(), pageId);
+        if (position == PreviewPageNavigator.POSITION_NOT_FOUND) {
+            return;
+        }
+        pageAdapter.notifyItemChanged(position, PageAdapter.PAYLOAD_ROTATION);
+        updateUiState();
     }
 
     private void rotatePage(int position) {
@@ -769,6 +803,8 @@ public final class EditorFragment extends Fragment {
 
     public interface NavigationCallback {
         void onReturnHomeRequested();
+
+        void onPagePreviewRequested(long pageId);
     }
 
     private static final class PdfMetadata {
