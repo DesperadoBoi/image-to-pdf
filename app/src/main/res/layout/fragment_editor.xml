@@ -95,11 +95,33 @@
 
         <ProgressBar
             android:id="@+id/progress_generation"
-            android:layout_width="wrap_content"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
             android:layout_marginTop="@dimen/content_spacing_small"
+            android:indeterminate="false"
             android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/text_generation_progress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/pdf_generation_progress_text_spacing"
+            android:gravity="center"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:visibility="gone"
+            tools:text="Создание PDF: 2 из 5"
+            tools:visibility="visible" />
+
+        <Button
+            android:id="@+id/button_cancel_generation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/pdf_generation_cancel_button_spacing"
+            android:minHeight="@dimen/pdf_generation_cancel_button_min_height"
+            android:text="@string/action_cancel_pdf_generation"
+            android:visibility="gone"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/text_operation_status"

@@ -66,6 +66,9 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void handleOnBackPressed() {
                 if (getSupportFragmentManager().findFragmentByTag(EditorFragment.TAG) != null) {
+                    if (sessionViewModel.isGenerationInProgress()) {
+                        return;
+                    }
                     showHome();
                     return;
                 }

@@ -32,6 +32,7 @@ import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.PageItem;
+import com.desperadoboi.imagetopdf.model.PdfGenerationState;
 import com.desperadoboi.imagetopdf.model.PdfOptions;
 import com.desperadoboi.imagetopdf.model.PdfResult;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
@@ -46,8 +47,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public final class EditorFragment extends Fragment {
     public static final String TAG = "EditorFragment";
@@ -70,16 +69,17 @@ public final class EditorFragment extends Fragment {
     private Button sharePdfButton;
     private Button newDocumentButton;
     private ProgressBar progressBar;
+    private TextView generationProgressTextView;
+    private Button cancelGenerationButton;
     private RecyclerView pagesRecyclerView;
     private MaterialButton backButton;
     private MaterialButton addImagesButton;
     private MaterialButton createPdfButton;
 
-    private ExecutorService pdfExecutor;
-    private PdfGenerator pdfGenerator;
     private ThumbnailLoader thumbnailLoader;
     private PageAdapter pageAdapter;
     private ItemTouchHelper pageTouchHelper;
+    private DocumentSessionViewModel.PdfGenerationStateObserver pdfGenerationStateObserver;
     private boolean fragmentDestroyed;
 
     @Override
@@ -97,8 +97,6 @@ public final class EditorFragment extends Fragment {
         super.onCreate(savedInstanceState);
         sessionViewModel = new ViewModelProvider(requireActivity())
                 .get(DocumentSessionViewModel.class);
-        pdfExecutor = Executors.newSingleThreadExecutor();
-        pdfGenerator = new PdfGenerator(requireContext().getApplicationContext().getContentResolver());
         thumbnailLoader = new ThumbnailLoader(
                 requireContext().getApplicationContext().getContentResolver(),
                 ContextCompat.getMainExecutor(requireContext())
@@ -129,24 +127,28 @@ public final class EditorFragment extends Fragment {
         bindViews(view);
         configurePageList();
         configureClickListeners();
+        pdfGenerationStateObserver = generationState -> {
+            refreshSuccessfulPdfMetadata(generationState);
+            updateUiState();
+        };
+        sessionViewModel.addPdfGenerationStateObserver(pdfGenerationStateObserver);
         updateUiState();
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (sessionViewModel != null && pdfGenerationStateObserver != null) {
+            sessionViewModel.removePdfGenerationStateObserver(pdfGenerationStateObserver);
+            pdfGenerationStateObserver = null;
+        }
+        super.onDestroyView();
     }
 
     @Override
     public void onDestroy() {
         fragmentDestroyed = true;
-        if (sessionViewModel != null && sessionViewModel.isGenerationInProgress()) {
-            sessionViewModel.setGenerationInProgress(false);
-            sessionViewModel.setPendingSuggestedFileName(null);
-            sessionViewModel.setTransientStatusMessage(
-                    getString(R.string.status_pdf_creation_interrupted)
-            );
-        }
         if (thumbnailLoader != null) {
             thumbnailLoader.shutdown();
-        }
-        if (pdfExecutor != null) {
-            pdfExecutor.shutdownNow();
         }
         super.onDestroy();
     }
@@ -168,6 +170,8 @@ public final class EditorFragment extends Fragment {
         sharePdfButton = view.findViewById(R.id.button_share_pdf);
         newDocumentButton = view.findViewById(R.id.button_new_document);
         progressBar = view.findViewById(R.id.progress_generation);
+        generationProgressTextView = view.findViewById(R.id.text_generation_progress);
+        cancelGenerationButton = view.findViewById(R.id.button_cancel_generation);
         pagesRecyclerView = view.findViewById(R.id.recycler_pages);
         backButton = view.findViewById(R.id.button_back);
         addImagesButton = view.findViewById(R.id.button_add_images);
@@ -222,6 +226,7 @@ public final class EditorFragment extends Fragment {
         openPdfButton.setOnClickListener(v -> openLastPdf());
         sharePdfButton.setOnClickListener(v -> shareLastPdf());
         newDocumentButton.setOnClickListener(v -> createNewDocument());
+        cancelGenerationButton.setOnClickListener(v -> cancelPdfGeneration());
     }
 
     private void launchAddImagesPicker() {
@@ -334,51 +339,65 @@ public final class EditorFragment extends Fragment {
     }
 
     private void startPdfGeneration(Uri outputUri) {
-        sessionViewModel.setGenerationInProgress(true);
-        sessionViewModel.setTransientStatusMessage(null);
         List<PageItem> pageSnapshot = sessionViewModel.getPagesSnapshot();
         PdfOptions pdfOptionsSnapshot = PdfOptions.defaults();
         String fallbackDisplayName = sessionViewModel.getPendingSuggestedFileName();
         int pageCount = pageSnapshot.size();
+        DocumentSessionViewModel.GenerationOperation generationOperation =
+                sessionViewModel.startGeneration(pageCount);
+        if (generationOperation == null) {
+            updateUiState();
+            return;
+        }
         updateUiState();
 
+        PdfGenerator pdfGenerator = new PdfGenerator(
+                requireContext().getApplicationContext().getContentResolver()
+        );
+        long operationId = generationOperation.getOperationId();
         pdfGenerator.generate(
                 pageSnapshot,
                 pdfOptionsSnapshot,
                 outputUri,
-                pdfExecutor,
-                ContextCompat.getMainExecutor(requireContext()),
+                generationOperation.getCancellationToken(),
+                sessionViewModel.getPdfExecutor(),
+                ContextCompat.getMainExecutor(requireContext().getApplicationContext()),
                 new PdfGenerationCallback() {
                     @Override
+                    public void onProgress(int completedPages, int totalPages) {
+                        sessionViewModel.updateGenerationProgress(
+                                operationId,
+                                completedPages,
+                                totalPages
+                        );
+                    }
+
+                    @Override
                     public void onSuccess(Uri savedUri) {
-                        if (!isUiSafe()) {
-                            return;
-                        }
-                        sessionViewModel.setGenerationInProgress(false);
-                        sessionViewModel.setPendingSuggestedFileName(null);
-                        sessionViewModel.setLastPdfResult(
-                                buildPdfResult(savedUri, fallbackDisplayName, pageCount)
+                        sessionViewModel.completeGenerationSuccess(
+                                operationId,
+                                savedUri,
+                                fallbackDisplayName,
+                                pageCount
                         );
-                        sessionViewModel.setTransientStatusMessage(
-                                getString(R.string.status_pdf_created)
-                        );
-                        updateUiState();
-                        showToast(sessionViewModel.getTransientStatusMessage());
+                    }
+
+                    @Override
+                    public void onCancelled() {
+                        sessionViewModel.completeGenerationCancelled(operationId);
                     }
 
                     @Override
                     public void onError(Exception exception) {
-                        if (!isUiSafe()) {
-                            return;
-                        }
-                        sessionViewModel.setGenerationInProgress(false);
-                        sessionViewModel.setPendingSuggestedFileName(null);
-                        sessionViewModel.setTransientStatusMessage(mapErrorMessage(exception));
-                        updateUiState();
-                        showToast(sessionViewModel.getTransientStatusMessage());
+                        sessionViewModel.completeGenerationError(operationId, exception);
                     }
                 }
         );
+    }
+
+    private void cancelPdfGeneration() {
+        sessionViewModel.requestCancelGeneration();
+        updateUiState();
     }
 
     private void openLastPdf() {
@@ -539,16 +558,39 @@ public final class EditorFragment extends Fragment {
     private void updateUiState() {
         boolean controlsEnabled = sessionViewModel.canEditPages();
         boolean hasPages = sessionViewModel.hasPages();
+        PdfGenerationState generationState = sessionViewModel.getPdfGenerationState();
 
+        backButton.setEnabled(controlsEnabled);
         addImagesButton.setEnabled(controlsEnabled);
         createPdfButton.setEnabled(controlsEnabled && hasPages);
-        progressBar.setVisibility(sessionViewModel.isGenerationInProgress() ? View.VISIBLE : View.GONE);
+        updateGenerationProgressState(generationState);
         pagesRecyclerView.setVisibility(hasPages ? View.VISIBLE : View.GONE);
         pageAdapter.setActionsEnabled(controlsEnabled);
         selectedImagesTextView.setText(buildSelectionStatusText());
         reorderHintTextView.setVisibility(sessionViewModel.getPageCount() >= 2 ? View.VISIBLE : View.GONE);
         operationStatusTextView.setText(buildOperationStatusText());
         updatePdfResultState(controlsEnabled);
+    }
+
+    private void updateGenerationProgressState(PdfGenerationState generationState) {
+        if (!generationState.isRunning()) {
+            progressBar.setVisibility(View.GONE);
+            generationProgressTextView.setVisibility(View.GONE);
+            cancelGenerationButton.setVisibility(View.GONE);
+            return;
+        }
+
+        int totalPages = generationState.getTotalPages();
+        int completedPages = generationState.getCompletedPages();
+        progressBar.setIndeterminate(false);
+        progressBar.setMax(totalPages);
+        progressBar.setProgress(completedPages);
+        progressBar.setVisibility(View.VISIBLE);
+        generationProgressTextView.setText(
+                getString(R.string.status_pdf_generation_progress, completedPages, totalPages)
+        );
+        generationProgressTextView.setVisibility(View.VISIBLE);
+        cancelGenerationButton.setVisibility(View.VISIBLE);
     }
 
     private void updatePdfResultState(boolean controlsEnabled) {
@@ -598,14 +640,41 @@ public final class EditorFragment extends Fragment {
     }
 
     private String buildOperationStatusText() {
-        if (sessionViewModel.isGenerationInProgress()) {
-            return getString(R.string.status_pdf_generating);
+        PdfGenerationState generationState = sessionViewModel.getPdfGenerationState();
+        if (generationState.isRunning()) {
+            return "";
+        }
+        if (generationState.isSucceeded()) {
+            return getString(R.string.status_pdf_created);
+        }
+        if (generationState.isCancelled()) {
+            return getString(R.string.status_pdf_generation_cancelled);
+        }
+        if (generationState.isError()) {
+            return mapErrorMessage(generationState.getError());
         }
         String transientStatusMessage = sessionViewModel.getTransientStatusMessage();
         if (transientStatusMessage == null || transientStatusMessage.isEmpty()) {
             return "";
         }
         return transientStatusMessage;
+    }
+
+    private void refreshSuccessfulPdfMetadata(PdfGenerationState generationState) {
+        if (!generationState.isSucceeded()) {
+            return;
+        }
+        PdfResult lastPdfResult = sessionViewModel.getLastPdfResult();
+        if (lastPdfResult == null || lastPdfResult.hasKnownSize()) {
+            return;
+        }
+        sessionViewModel.setLastPdfResult(
+                buildPdfResult(
+                        lastPdfResult.getUri(),
+                        lastPdfResult.getDisplayName(),
+                        lastPdfResult.getPageCount()
+                )
+        );
     }
 
     private void showToast(String message) {
