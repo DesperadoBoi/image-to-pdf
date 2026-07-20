@@ -10,6 +10,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -203,5 +204,117 @@ public class DocumentSessionViewModelTest {
         PdfGenerationState state = viewModel.getPdfGenerationState();
         assertTrue(state.isRunning());
         assertTrue(state.isCancellationRequested());
+    }
+
+    @Test
+    public void newDocumentImportReplacesPagesAndPreservesUriOrder() {
+        Uri oldUri = FakeUri.create("content://test/old");
+        Uri firstUri = FakeUri.create("content://test/first");
+        Uri secondUri = FakeUri.create("content://test/second");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(oldUri));
+
+        ImageImportResult result = viewModel.importImages(
+                new ImageImportRequest(
+                        ImageImportSource.FILES,
+                        ImageImportMode.NEW_DOCUMENT
+                ),
+                Arrays.asList(firstUri, secondUri)
+        );
+
+        assertTrue(result.hasChanges());
+        assertEquals(0, result.getFirstInsertedPosition());
+        assertEquals(2, result.getInsertedCount());
+        assertSame(firstUri, viewModel.getPages().get(0).getImageUri());
+        assertSame(secondUri, viewModel.getPages().get(1).getImageUri());
+        assertEquals(PageSource.FILES, viewModel.getPages().get(0).getSource());
+    }
+
+    @Test
+    public void appendImportAddsPagesAtEndAndKeepsPreviousResult() {
+        Uri oldUri = FakeUri.create("content://test/old");
+        Uri firstUri = FakeUri.create("content://test/first");
+        Uri secondUri = FakeUri.create("content://test/second");
+        Uri pdfUri = FakeUri.create("content://test/result.pdf");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(oldUri));
+        PdfResult previousResult = new PdfResult(pdfUri, "result.pdf", 1024L, 1);
+        viewModel.setLastPdfResult(previousResult);
+
+        ImageImportResult result = viewModel.importImages(
+                new ImageImportRequest(
+                        ImageImportSource.GALLERY,
+                        ImageImportMode.APPEND_TO_DOCUMENT
+                ),
+                Arrays.asList(firstUri, secondUri)
+        );
+
+        assertEquals(1, result.getFirstInsertedPosition());
+        assertEquals(3, viewModel.getPageCount());
+        assertSame(oldUri, viewModel.getPages().get(0).getImageUri());
+        assertSame(firstUri, viewModel.getPages().get(1).getImageUri());
+        assertSame(secondUri, viewModel.getPages().get(2).getImageUri());
+        assertSame(previousResult, viewModel.getLastPdfResult());
+    }
+
+    @Test
+    public void emptyImportIsNoOpAndKeepsPreviousResult() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        Uri pdfUri = FakeUri.create("content://test/result.pdf");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        PdfResult previousResult = new PdfResult(pdfUri, "result.pdf", 1024L, 1);
+        viewModel.setLastPdfResult(previousResult);
+
+        ImageImportResult result = viewModel.importImages(
+                new ImageImportRequest(
+                        ImageImportSource.FILES,
+                        ImageImportMode.NEW_DOCUMENT
+                ),
+                java.util.Collections.emptyList()
+        );
+
+        assertFalse(result.hasChanges());
+        assertEquals(1, viewModel.getPageCount());
+        assertSame(previousResult, viewModel.getLastPdfResult());
+    }
+
+    @Test
+    public void duplicateUrisReceiveDifferentStableIds() {
+        Uri repeatedUri = FakeUri.create("content://test/repeated");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+
+        viewModel.importImages(
+                new ImageImportRequest(
+                        ImageImportSource.GALLERY,
+                        ImageImportMode.NEW_DOCUMENT
+                ),
+                Arrays.asList(repeatedUri, repeatedUri)
+        );
+
+        assertNotEquals(
+                viewModel.getPages().get(0).getId(),
+                viewModel.getPages().get(1).getId()
+        );
+    }
+
+    @Test
+    public void reorderKeepsFilesSource() {
+        Uri galleryUri = FakeUri.create("content://test/gallery");
+        Uri filesUri = FakeUri.create("content://test/files");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(galleryUri));
+        viewModel.importImages(
+                new ImageImportRequest(
+                        ImageImportSource.FILES,
+                        ImageImportMode.APPEND_TO_DOCUMENT
+                ),
+                Arrays.asList(filesUri)
+        );
+
+        viewModel.movePage(1, 0);
+
+        assertEquals(PageSource.FILES, viewModel.getPages().get(0).getSource());
+        assertSame(filesUri, viewModel.getPages().get(0).getImageUri());
     }
 }

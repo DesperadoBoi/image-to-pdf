@@ -48,6 +48,28 @@ public final class PageItem {
         );
     }
 
+    public static PageItem gallery(Uri imageUri) {
+        return new PageItem(
+                NEXT_ID.getAndIncrement(),
+                imageUri,
+                0,
+                PageSource.GALLERY,
+                null,
+                PageEditSpec.DEFAULT
+        );
+    }
+
+    public static PageItem files(Uri imageUri) {
+        return new PageItem(
+                NEXT_ID.getAndIncrement(),
+                imageUri,
+                0,
+                PageSource.FILES,
+                null,
+                PageEditSpec.DEFAULT
+        );
+    }
+
     private PageItem(
             long id,
             Uri imageUri,
@@ -184,7 +206,7 @@ public final class PageItem {
     }
 
     private static String normalizeCapturedFileName(PageSource source, String capturedFileName) {
-        if (source == PageSource.GALLERY) {
+        if (source != PageSource.CAMERA) {
             return null;
         }
         if (capturedFileName == null || capturedFileName.trim().isEmpty()) {

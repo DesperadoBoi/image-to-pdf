@@ -11,4 +11,10 @@
     <color name="app_outline">#FF46536B</color>
     <color name="editor_preview_background">#FF070B12</color>
     <color name="editor_overlay_button_background">#E61B2538</color>
+    <color name="source_gallery_icon">#FFB5B1FF</color>
+    <color name="source_gallery_container">#FF343066</color>
+    <color name="source_camera_icon">#FF75D8F3</color>
+    <color name="source_camera_container">#FF153F4C</color>
+    <color name="source_files_icon">#FFFFB879</color>
+    <color name="source_files_container">#FF4A3020</color>
 </resources>

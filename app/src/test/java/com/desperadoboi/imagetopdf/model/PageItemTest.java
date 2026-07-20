@@ -41,6 +41,14 @@ public class PageItemTest {
     }
 
     @Test
+    public void filesPageUsesFilesSource() {
+        PageItem pageItem = PageItem.files(TEST_URI);
+
+        assertEquals(PageSource.FILES, pageItem.getSource());
+        assertFalse(pageItem.isAppOwnedCapture());
+    }
+
+    @Test
     public void clockwiseRotationCyclesThroughSupportedAngles() {
         assertEquals(90, PageItem.rotateClockwise(0));
         assertEquals(180, PageItem.rotateClockwise(90));
@@ -66,6 +74,18 @@ public class PageItemTest {
 
         assertEquals(PageSource.CAMERA, rotatedPageItem.getSource());
         assertEquals("capture_test.jpg", rotatedPageItem.getCapturedFileName());
+    }
+
+    @Test
+    public void filesSourceIsPreservedAfterRotationAndCrop() {
+        PageItem pageItem = PageItem.files(TEST_URI);
+
+        PageItem editedPageItem = pageItem
+                .rotateClockwise()
+                .withCropRect(new CropRect(0.1f, 0.1f, 0.9f, 0.9f));
+
+        assertEquals(PageSource.FILES, editedPageItem.getSource());
+        assertEquals(pageItem.getId(), editedPageItem.getId());
     }
 
     @Test

@@ -27,11 +27,13 @@ public class CapturedPageCleanupTest {
     @Test
     public void galleryUriIsNotMarkedForDeletion() {
         Uri galleryUri = FakeUri.create("content://test/gallery");
+        Uri filesUri = FakeUri.create("content://test/files");
 
         assertEquals(
                 0,
                 CapturedPageCleanup.collectCapturedFileNames(Arrays.asList(
-                        new PageItem(galleryUri)
+                        new PageItem(galleryUri),
+                        PageItem.files(filesUri)
                 )).size()
         );
     }

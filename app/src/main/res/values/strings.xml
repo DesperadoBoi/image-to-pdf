@@ -111,6 +111,17 @@
     <string name="add_page_source_title">Добавить страницу</string>
     <string name="add_page_source_gallery">Из галереи</string>
     <string name="add_page_source_camera">Сфотографировать</string>
+    <string name="image_source_title_new_document">Добавить изображения</string>
+    <string name="image_source_title_append">Добавить страницу</string>
+    <string name="image_source_gallery">Из галереи</string>
+    <string name="image_source_gallery_subtitle">Выберите изображения из галереи</string>
+    <string name="image_source_camera">Сфотографировать</string>
+    <string name="image_source_camera_subtitle">Сделайте фото камерой устройства</string>
+    <string name="image_source_files">Проводник</string>
+    <string name="image_source_files_subtitle">Найдите изображения в файлах и папках</string>
+    <string name="source_gallery_content_description">Выбрать изображения из галереи</string>
+    <string name="source_camera_content_description">Сфотографировать</string>
+    <string name="source_files_content_description">Открыть проводник</string>
     <string name="status_no_images_selected">Изображения не выбраны</string>
     <string name="status_camera_app_not_found">Не найдено приложение камеры</string>
     <string name="status_camera_destination_error">Не удалось подготовить файл для фотографии</string>

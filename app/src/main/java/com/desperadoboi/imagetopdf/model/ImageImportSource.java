@@ -1,6 +1,6 @@
 package com.desperadoboi.imagetopdf.model;
 
-public enum PageSource {
+public enum ImageImportSource {
     GALLERY,
     CAMERA,
     FILES

@@ -2,6 +2,7 @@ package com.desperadoboi.imagetopdf.ui.home;
 
 import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -22,6 +23,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
+import com.desperadoboi.imagetopdf.model.ImageImportMode;
+import com.desperadoboi.imagetopdf.model.ImageImportRequest;
+import com.desperadoboi.imagetopdf.model.ImageImportResult;
+import com.desperadoboi.imagetopdf.model.ImageImportSource;
+import com.desperadoboi.imagetopdf.ui.importer.ImageImportCoordinator;
+import com.desperadoboi.imagetopdf.ui.importer.ImagePickerLauncher;
+import com.desperadoboi.imagetopdf.ui.importer.ImageSourceSheet;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 import com.desperadoboi.imagetopdf.ui.tools.ToolCatalog;
 import com.desperadoboi.imagetopdf.ui.tools.ToolId;
@@ -37,7 +45,9 @@ public final class HomeFragment extends Fragment {
     private NavigationCallback navigationCallback;
     private ActivityResultLauncher<PickVisualMediaRequest> photoPickerLauncher;
     private ActivityResultLauncher<Uri> cameraLauncher;
+    private ActivityResultLauncher<String[]> filesLauncher;
     private CapturedImageStorage capturedImageStorage;
+    private ImagePickerLauncher imagePickerLauncher;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -63,6 +73,16 @@ public final class HomeFragment extends Fragment {
                 new ActivityResultContracts.TakePicture(),
                 this::handleCameraResult
         );
+        filesLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenMultipleDocuments(),
+                this::handleFilesSelection
+        );
+        imagePickerLauncher = new ImageImportCoordinator()
+                .register(ImageImportSource.GALLERY, request -> launchPhotoPicker())
+                .register(ImageImportSource.CAMERA, request -> launchCamera())
+                .register(ImageImportSource.FILES, request -> filesLauncher.launch(
+                        new String[]{"image/*"}
+                ));
     }
 
     @Nullable
@@ -86,6 +106,7 @@ public final class HomeFragment extends Fragment {
         ));
         toolsRecyclerView.setAdapter(adapter);
         adapter.submitList(ToolCatalog.getHomeTools());
+        configureImageSourceResult();
         configureCatalogToolResult();
     }
 
@@ -105,10 +126,13 @@ public final class HomeFragment extends Fragment {
     private void handleToolSelected(ToolId toolId) {
         switch (toolId) {
             case IMAGE_TO_PDF:
-                launchPhotoPicker();
+                showImageSourceSheet();
                 break;
             case CAMERA:
-                launchCamera();
+                imagePickerLauncher.launch(new ImageImportRequest(
+                        ImageImportSource.CAMERA,
+                        ImageImportMode.NEW_DOCUMENT
+                ));
                 break;
             case MORE:
                 if (navigationCallback != null) {
@@ -127,20 +151,51 @@ public final class HomeFragment extends Fragment {
                 (requestKey, result) -> {
                     String toolName = result.getString(AllToolsFragment.RESULT_TOOL_ID);
                     if (ToolId.IMAGE_TO_PDF.name().equals(toolName)) {
-                        launchPhotoPicker();
+                        showImageSourceSheet();
                     }
                 }
         );
     }
 
+    private void configureImageSourceResult() {
+        getParentFragmentManager().setFragmentResultListener(
+                ImageSourceSheet.RESULT_SOURCE_SELECTED,
+                getViewLifecycleOwner(),
+                (requestKey, result) -> imagePickerLauncher.launch(new ImageImportRequest(
+                        ImageImportSource.valueOf(result.getString(ImageSourceSheet.RESULT_SOURCE)),
+                        ImageImportMode.valueOf(result.getString(ImageSourceSheet.RESULT_MODE))
+                ))
+        );
+    }
+
+    private void showImageSourceSheet() {
+        if (getParentFragmentManager().findFragmentByTag(ImageSourceSheet.TAG) != null) {
+            return;
+        }
+        ImageSourceSheet.newInstance(ImageImportMode.NEW_DOCUMENT)
+                .show(getParentFragmentManager(), ImageSourceSheet.TAG);
+    }
+
     private void handleImageSelection(List<Uri> imageUris) {
+        handleImportedUris(
+                ImageImportSource.GALLERY,
+                ImageImportMode.NEW_DOCUMENT,
+                imageUris
+        );
+    }
+
+    private void handleFilesSelection(List<Uri> imageUris) {
         if (imageUris == null || imageUris.isEmpty()) {
             return;
         }
-        deleteCapturedFiles(sessionViewModel.replacePages(imageUris));
-        if (navigationCallback != null) {
-            navigationCallback.onImagesSelectedForEditing();
+        for (Uri imageUri : imageUris) {
+            takePersistableReadPermission(imageUri);
         }
+        handleImportedUris(
+                ImageImportSource.FILES,
+                ImageImportMode.NEW_DOCUMENT,
+                imageUris
+        );
     }
 
     private void launchCamera() {
@@ -187,12 +242,47 @@ public final class HomeFragment extends Fragment {
             return;
         }
 
-        deleteCapturedFiles(sessionViewModel.replacePagesWithCameraCapture(
+        ImageImportResult result = sessionViewModel.importCameraImage(
+                new ImageImportRequest(
+                        ImageImportSource.CAMERA,
+                        ImageImportMode.NEW_DOCUMENT
+                ),
                 pendingCapturedImage.getUri(),
                 pendingCapturedImage.getCapturedFileName()
-        ));
+        );
+        finishNewDocumentImport(result);
+    }
+
+    private void handleImportedUris(
+            ImageImportSource source,
+            ImageImportMode mode,
+            List<Uri> imageUris
+    ) {
+        ImageImportResult result = sessionViewModel.importImages(
+                new ImageImportRequest(source, mode),
+                imageUris
+        );
+        finishNewDocumentImport(result);
+    }
+
+    private void finishNewDocumentImport(ImageImportResult result) {
+        if (!result.hasChanges()) {
+            return;
+        }
+        deleteCapturedFiles(result.getCapturedFileNamesToDelete());
         if (navigationCallback != null) {
             navigationCallback.onImagesSelectedForEditing();
+        }
+    }
+
+    private void takePersistableReadPermission(Uri imageUri) {
+        try {
+            requireContext().getContentResolver().takePersistableUriPermission(
+                    imageUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
+        } catch (SecurityException exception) {
+            // Some document providers only grant access for the current session.
         }
     }
 
