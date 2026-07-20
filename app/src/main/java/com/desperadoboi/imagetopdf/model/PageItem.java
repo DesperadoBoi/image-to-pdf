@@ -3,19 +3,32 @@ package com.desperadoboi.imagetopdf.model;
 import android.net.Uri;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class PageItem {
+    private static final AtomicLong NEXT_ID = new AtomicLong(1L);
+
+    private final long id;
     private final Uri imageUri;
     private final int manualRotationDegrees;
 
     public PageItem(Uri imageUri) {
-        this(imageUri, 0);
+        this(NEXT_ID.getAndIncrement(), imageUri, 0);
     }
 
     public PageItem(Uri imageUri, int manualRotationDegrees) {
+        this(NEXT_ID.getAndIncrement(), imageUri, manualRotationDegrees);
+    }
+
+    private PageItem(long id, Uri imageUri, int manualRotationDegrees) {
         this.imageUri = Objects.requireNonNull(imageUri, "imageUri is required");
         validateRotation(manualRotationDegrees);
+        this.id = id;
         this.manualRotationDegrees = manualRotationDegrees;
+    }
+
+    public long getId() {
+        return id;
     }
 
     public Uri getImageUri() {
@@ -27,7 +40,7 @@ public final class PageItem {
     }
 
     public PageItem rotateClockwise() {
-        return new PageItem(imageUri, rotateClockwise(manualRotationDegrees));
+        return new PageItem(id, imageUri, rotateClockwise(manualRotationDegrees));
     }
 
     public boolean swapsDimensions() {
@@ -35,7 +48,7 @@ public final class PageItem {
     }
 
     public String getThumbnailKey() {
-        return imageUri + "#" + manualRotationDegrees;
+        return id + "#" + manualRotationDegrees;
     }
 
     public static int rotateClockwise(int rotationDegrees) {

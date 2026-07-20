@@ -2,8 +2,12 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layout_page_item"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingTop="@dimen/page_item_vertical_padding"
@@ -13,18 +17,11 @@
         android:id="@+id/text_page_number"
         android:layout_width="@dimen/page_number_width"
         android:layout_height="wrap_content"
+        android:gravity="center"
+        android:maxLines="1"
+        android:singleLine="true"
         android:textAppearance="?attr/textAppearanceBodyMedium"
-        tools:text="Страница 1" />
-
-    <ImageButton
-        android:id="@+id/button_drag_page"
-        android:layout_width="@dimen/page_action_button_size"
-        android:layout_height="@dimen/page_action_button_size"
-        android:layout_marginStart="@dimen/page_item_spacing"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/action_reorder_page_content_description_generic"
-        android:src="@drawable/ic_drag_handle_24"
-        app:tint="?attr/colorControlNormal" />
+        tools:text="123" />
 
     <ImageView
         android:id="@+id/image_page_thumbnail"
