@@ -1,5 +1,6 @@
 package com.desperadoboi.imagetopdf.ui.editor;
 
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.HapticFeedbackConstants;
@@ -7,7 +8,6 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -55,6 +55,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @NonNull
     @Override
     public PageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -221,37 +222,19 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
     }
 
     private boolean handleDragTouch(PageViewHolder holder, MotionEvent event) {
-        switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                return startDragFromHandle(holder);
-            case MotionEvent.ACTION_UP:
-                holder.dragHandleButton.performClick();
-                requestParentIntercept(holder, false);
-                return true;
-            case MotionEvent.ACTION_CANCEL:
-                requestParentIntercept(holder, false);
-                return true;
-            default:
-                return true;
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            startDragFromHandle(holder);
         }
+        return false;
     }
 
-    private boolean startDragFromHandle(PageViewHolder holder) {
+    private void startDragFromHandle(PageViewHolder holder) {
         int adapterPosition = holder.getBindingAdapterPosition();
         if (!actionsEnabled || adapterPosition == RecyclerView.NO_POSITION) {
-            return false;
+            return;
         }
         holder.dragHandleButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-        requestParentIntercept(holder, true);
         callback.onDragStart(holder);
-        return true;
-    }
-
-    private void requestParentIntercept(PageViewHolder holder, boolean disallowIntercept) {
-        ViewParent parent = holder.itemView.getParent();
-        if (parent != null) {
-            parent.requestDisallowInterceptTouchEvent(disallowIntercept);
-        }
     }
 
     private void configureMoveAccessibilityActions(PageViewHolder holder) {

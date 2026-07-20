@@ -11,7 +11,6 @@ import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -653,6 +652,11 @@ public final class EditorFragment extends Fragment {
         }
 
         @Override
+        public float getMoveThreshold(@NonNull RecyclerView.ViewHolder viewHolder) {
+            return 0.15f;
+        }
+
+        @Override
         public boolean onMove(
                 @NonNull RecyclerView recyclerView,
                 @NonNull RecyclerView.ViewHolder viewHolder,
@@ -678,6 +682,8 @@ public final class EditorFragment extends Fragment {
                 viewHolder.itemView.setElevation(
                         getResources().getDimensionPixelSize(R.dimen.page_drag_elevation)
                 );
+                viewHolder.itemView.setActivated(true);
+                viewHolder.itemView.setPressed(true);
             }
         }
 
@@ -689,10 +695,8 @@ public final class EditorFragment extends Fragment {
             super.clearView(recyclerView, viewHolder);
             viewHolder.itemView.setAlpha(1f);
             viewHolder.itemView.setElevation(0f);
-            ViewParent parent = recyclerView.getParent();
-            if (parent != null) {
-                parent.requestDisallowInterceptTouchEvent(false);
-            }
+            viewHolder.itemView.setActivated(false);
+            viewHolder.itemView.setPressed(false);
         }
     }
 }
