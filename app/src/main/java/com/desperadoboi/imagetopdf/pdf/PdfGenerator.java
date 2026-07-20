@@ -98,9 +98,13 @@ public class PdfGenerator {
                         finalBounds.getHeight()
                 );
                 ImagePlacementMode placementMode = resolvePlacementMode(pdfOptions);
-                ImageBounds sampleTarget = calculateSampleTarget(
-                        finalBounds,
-                        pageLayout,
+                RasterTarget rasterTarget = RasterTargetCalculator.calculate(
+                        finalBounds.getWidth(),
+                        finalBounds.getHeight(),
+                        pageLayout.getContentLeft(),
+                        pageLayout.getContentTop(),
+                        pageLayout.getContentWidth(),
+                        pageLayout.getContentHeight(),
                         placementMode
                 );
                 boolean totalTransformSwapsDimensions =
@@ -109,11 +113,11 @@ public class PdfGenerator {
                         pageItem.getImageUri(),
                         rawBounds,
                         totalTransformSwapsDimensions
-                                ? sampleTarget.getHeight()
-                                : sampleTarget.getWidth(),
+                                ? rasterTarget.getTargetHeightPixels()
+                                : rasterTarget.getTargetWidthPixels(),
                         totalTransformSwapsDimensions
-                                ? sampleTarget.getWidth()
-                                : sampleTarget.getHeight()
+                                ? rasterTarget.getTargetWidthPixels()
+                                : rasterTarget.getTargetHeightPixels()
                 );
                 try {
                     throwIfCancelled(cancellationToken);
@@ -122,6 +126,12 @@ public class PdfGenerator {
                     bitmap = ImageBitmapTransformer.applyClockwiseRotation(
                             bitmap,
                             pageItem.getManualRotationDegrees()
+                    );
+                    throwIfCancelled(cancellationToken);
+                    bitmap = ImageBitmapTransformer.scaleDownToFit(
+                            bitmap,
+                            rasterTarget.getTargetWidthPixels(),
+                            rasterTarget.getTargetHeightPixels()
                     );
                     throwIfCancelled(cancellationToken);
                     PdfDocument.Page page = pdfDocument.startPage(
@@ -157,28 +167,6 @@ public class PdfGenerator {
             return ImagePlacementMode.FIT;
         }
         return pdfOptions.getImagePlacementMode();
-    }
-
-    private ImageBounds calculateSampleTarget(
-            ImageBounds finalBounds,
-            PdfPageLayout pageLayout,
-            ImagePlacementMode placementMode
-    ) {
-        ImagePlacementCalculator.ImageDrawPlan drawPlan =
-                ImagePlacementCalculator.calculateDrawPlan(
-                        finalBounds.getWidth(),
-                        finalBounds.getHeight(),
-                        pageLayout.getContentLeft(),
-                        pageLayout.getContentTop(),
-                        pageLayout.getContentWidth(),
-                        pageLayout.getContentHeight(),
-                        placementMode
-                );
-        ImagePlacementCalculator.PlacementRect destination = drawPlan.getDestinationRect();
-        return new ImageBounds(
-                Math.max(1, (int) Math.ceil(destination.getWidth())),
-                Math.max(1, (int) Math.ceil(destination.getHeight()))
-        );
     }
 
     private OutputStream openOutputStream(Uri outputUri) throws IOException {
@@ -304,9 +292,13 @@ public class PdfGenerator {
         }
 
         int sampleSize = 1;
-        while ((sourceWidth / (sampleSize * 2)) >= targetWidth
-                && (sourceHeight / (sampleSize * 2)) >= targetHeight) {
-            sampleSize *= 2;
+        while (sampleSize <= Integer.MAX_VALUE / 2) {
+            int nextSampleSize = sampleSize * 2;
+            if ((sourceWidth / nextSampleSize) < targetWidth
+                    || (sourceHeight / nextSampleSize) < targetHeight) {
+                break;
+            }
+            sampleSize = nextSampleSize;
         }
         return Math.max(1, sampleSize);
     }
