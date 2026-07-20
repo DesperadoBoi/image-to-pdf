@@ -6,6 +6,7 @@ import android.net.Uri;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -29,6 +30,21 @@ public class DocumentSessionViewModelTest {
         assertEquals(firstPageId, movedPage.getId());
         assertSame(firstUri, movedPage.getImageUri());
         assertEquals(90, movedPage.getManualRotationDegrees());
+    }
+
+    @Test
+    public void moveKeepsSource() {
+        Uri firstUri = FakeUri.create("content://test/first");
+        Uri secondUri = FakeUri.create("content://test/second");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.appendCameraPage(firstUri, "capture_first.jpg");
+        viewModel.appendPages(Arrays.asList(secondUri));
+
+        viewModel.movePage(0, 1);
+
+        PageItem movedPage = viewModel.getPages().get(1);
+        assertEquals(PageSource.CAMERA, movedPage.getSource());
+        assertEquals("capture_first.jpg", movedPage.getCapturedFileName());
     }
 
     @Test
@@ -60,6 +76,40 @@ public class DocumentSessionViewModelTest {
         assertTrue(viewModel.getPages().isEmpty());
         assertNull(viewModel.getLastPdfResult());
         assertSame(pdfUri, result.getUri());
+    }
+
+    @Test
+    public void clearForNewDocumentReturnsOnlyCameraFileNames() {
+        Uri galleryUri = FakeUri.create("content://test/gallery");
+        Uri cameraUri = FakeUri.create("content://test/camera");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(galleryUri));
+        viewModel.appendCameraPage(cameraUri, "capture_camera.jpg");
+
+        assertEquals(
+                Arrays.asList("capture_camera.jpg"),
+                viewModel.clearForNewDocument()
+        );
+    }
+
+    @Test
+    public void snapshotKeepsUriRotationAndSourceForPdfGeneration() {
+        Uri galleryUri = FakeUri.create("content://test/gallery");
+        Uri cameraUri = FakeUri.create("content://test/camera");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(galleryUri));
+        viewModel.appendCameraPage(cameraUri, "capture_camera.jpg");
+        viewModel.rotatePage(0);
+        viewModel.rotatePage(1);
+
+        List<PageItem> snapshot = viewModel.getPagesSnapshot();
+
+        assertSame(galleryUri, snapshot.get(0).getImageUri());
+        assertEquals(90, snapshot.get(0).getManualRotationDegrees());
+        assertEquals(PageSource.GALLERY, snapshot.get(0).getSource());
+        assertSame(cameraUri, snapshot.get(1).getImageUri());
+        assertEquals(90, snapshot.get(1).getManualRotationDegrees());
+        assertEquals(PageSource.CAMERA, snapshot.get(1).getSource());
     }
 
     @Test

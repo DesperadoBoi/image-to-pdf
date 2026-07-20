@@ -21,6 +21,7 @@ import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -29,6 +30,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.R;
+import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.PageItem;
@@ -57,6 +59,7 @@ public final class EditorFragment extends Fragment {
     private DocumentSessionViewModel sessionViewModel;
     private NavigationCallback navigationCallback;
     private ActivityResultLauncher<PickVisualMediaRequest> addImagesLauncher;
+    private ActivityResultLauncher<Uri> cameraLauncher;
     private ActivityResultLauncher<String> createDocumentLauncher;
 
     private TextView selectedImagesTextView;
@@ -77,6 +80,7 @@ public final class EditorFragment extends Fragment {
     private MaterialButton createPdfButton;
 
     private ThumbnailLoader thumbnailLoader;
+    private CapturedImageStorage capturedImageStorage;
     private PageAdapter pageAdapter;
     private ItemTouchHelper pageTouchHelper;
     private DocumentSessionViewModel.PdfGenerationStateObserver pdfGenerationStateObserver;
@@ -101,9 +105,14 @@ public final class EditorFragment extends Fragment {
                 requireContext().getApplicationContext().getContentResolver(),
                 ContextCompat.getMainExecutor(requireContext())
         );
+        capturedImageStorage = new CapturedImageStorage(requireContext());
         addImagesLauncher = registerForActivityResult(
                 new ActivityResultContracts.PickMultipleVisualMedia(),
                 this::handleAdditionalImages
+        );
+        cameraLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicture(),
+                this::handleCameraResult
         );
         createDocumentLauncher = registerForActivityResult(
                 new ActivityResultContracts.CreateDocument(PDF_MIME_TYPE),
@@ -221,12 +230,33 @@ public final class EditorFragment extends Fragment {
                 navigationCallback.onReturnHomeRequested();
             }
         });
-        addImagesButton.setOnClickListener(v -> launchAddImagesPicker());
+        addImagesButton.setOnClickListener(v -> showAddPageSourceDialog());
         createPdfButton.setOnClickListener(v -> launchCreateDocument());
         openPdfButton.setOnClickListener(v -> openLastPdf());
         sharePdfButton.setOnClickListener(v -> shareLastPdf());
         newDocumentButton.setOnClickListener(v -> createNewDocument());
         cancelGenerationButton.setOnClickListener(v -> cancelPdfGeneration());
+    }
+
+    private void showAddPageSourceDialog() {
+        if (!sessionViewModel.canEditPages()) {
+            return;
+        }
+        String[] sourceLabels = new String[]{
+                getString(R.string.add_page_source_gallery),
+                getString(R.string.add_page_source_camera)
+        };
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.add_page_source_title)
+                .setItems(sourceLabels, (dialog, which) -> {
+                    if (which == 0) {
+                        launchAddImagesPicker();
+                    } else if (which == 1) {
+                        launchCamera();
+                    }
+                })
+                .setNegativeButton(R.string.action_cancel, null)
+                .show();
     }
 
     private void launchAddImagesPicker() {
@@ -290,8 +320,9 @@ public final class EditorFragment extends Fragment {
             return;
         }
         int oldPageCount = sessionViewModel.getPageCount();
-        sessionViewModel.deletePage(position);
+        PageItem removedPage = sessionViewModel.deletePage(position);
         pageAdapter.notifyItemRemoved(position);
+        deleteCapturedFileIfNeeded(removedPage);
         int changedPageCount = oldPageCount - position - 1;
         if (changedPageCount > 0) {
             pageAdapter.notifyItemRangeChanged(
@@ -300,6 +331,63 @@ public final class EditorFragment extends Fragment {
                     PageAdapter.PAYLOAD_PAGE_NUMBER
             );
         }
+        updateUiState();
+    }
+
+    private void launchCamera() {
+        if (!sessionViewModel.canEditPages()) {
+            return;
+        }
+
+        CapturedImageStorage.CapturedImage capturedImage;
+        try {
+            capturedImage = capturedImageStorage.createCapturedImage();
+        } catch (IOException | RuntimeException exception) {
+            showToast(getString(R.string.status_camera_destination_error));
+            return;
+        }
+
+        sessionViewModel.setPendingCapturedImage(
+                capturedImage.getUri(),
+                capturedImage.getFileName(),
+                DocumentSessionViewModel.CaptureTarget.EDITOR
+        );
+        try {
+            cameraLauncher.launch(capturedImage.getUri());
+        } catch (ActivityNotFoundException exception) {
+            cleanupPendingCapture();
+            showToast(getString(R.string.status_camera_app_not_found));
+        } catch (RuntimeException exception) {
+            cleanupPendingCapture();
+            showToast(getString(R.string.status_camera_destination_error));
+        }
+    }
+
+    private void handleCameraResult(Boolean isSuccessful) {
+        DocumentSessionViewModel.PendingCapturedImage pendingCapturedImage =
+                sessionViewModel.getPendingCapturedImage();
+        if (pendingCapturedImage == null
+                || pendingCapturedImage.getTarget() != DocumentSessionViewModel.CaptureTarget.EDITOR) {
+            return;
+        }
+
+        pendingCapturedImage = sessionViewModel.clearPendingCapturedImage();
+        if (!Boolean.TRUE.equals(isSuccessful)) {
+            capturedImageStorage.delete(pendingCapturedImage.getCapturedFileName());
+            return;
+        }
+        if (!capturedImageStorage.existsAndHasContent(pendingCapturedImage.getCapturedFileName())) {
+            capturedImageStorage.delete(pendingCapturedImage.getCapturedFileName());
+            showToast(getString(R.string.status_camera_empty_file));
+            return;
+        }
+
+        int insertedPosition = sessionViewModel.appendCameraPage(
+                pendingCapturedImage.getUri(),
+                pendingCapturedImage.getCapturedFileName()
+        );
+        pageAdapter.notifyItemInserted(insertedPosition);
+        pagesRecyclerView.scrollToPosition(insertedPosition);
         updateUiState();
     }
 
@@ -448,7 +536,7 @@ public final class EditorFragment extends Fragment {
         if (!sessionViewModel.canEditPages()) {
             return;
         }
-        sessionViewModel.clearForNewDocument();
+        deleteCapturedFiles(sessionViewModel.clearForNewDocument());
         if (navigationCallback != null) {
             navigationCallback.onReturnHomeRequested();
         }
@@ -652,6 +740,26 @@ public final class EditorFragment extends Fragment {
     private void showToast(String message) {
         if (isUiSafe()) {
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void cleanupPendingCapture() {
+        DocumentSessionViewModel.PendingCapturedImage pendingCapturedImage =
+                sessionViewModel.clearPendingCapturedImage();
+        if (pendingCapturedImage != null) {
+            capturedImageStorage.delete(pendingCapturedImage.getCapturedFileName());
+        }
+    }
+
+    private void deleteCapturedFileIfNeeded(PageItem pageItem) {
+        if (pageItem != null && pageItem.isAppOwnedCapture()) {
+            capturedImageStorage.delete(pageItem.getCapturedFileName());
+        }
+    }
+
+    private void deleteCapturedFiles(List<String> capturedFileNames) {
+        for (String capturedFileName : capturedFileNames) {
+            capturedImageStorage.delete(capturedFileName);
         }
     }
 

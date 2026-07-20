@@ -37,10 +37,24 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/content_spacing_large"
         android:text="@string/action_select_images"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/button_take_photo"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/text_description"
+        app:layout_constraintWidth_max="@dimen/home_primary_button_max_width"
+        tools:ignore="VisualLintButtonSize" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_take_photo"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_small"
+        android:text="@string/action_take_photo"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/button_select_images"
+        app:layout_constraintStart_toStartOf="@id/button_select_images"
+        app:layout_constraintTop_toBottomOf="@id/button_select_images"
         app:layout_constraintWidth_max="@dimen/home_primary_button_max_width"
         tools:ignore="VisualLintButtonSize" />
 

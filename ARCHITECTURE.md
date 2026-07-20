@@ -55,6 +55,9 @@ com.desperadoboi.imagetopdf
 ### Выбор изображений
 
 - использовать системный Android Photo Picker;
+- для съёмки новых страниц использовать системное приложение камеры через `ActivityResultContracts.TakePicture`;
+- destination `Uri` для камеры создавать заранее через `CapturedImageStorage` и `FileProvider`;
+- `FileProvider` ограничен каталогом `filesDir/captured_images`, не экспортируется и выдаёт только временные разрешения на `content://` Uri;
 - работать с `Uri`;
 - не пытаться получать абсолютные файловые пути.
 
@@ -63,11 +66,14 @@ com.desperadoboi.imagetopdf
 - использовать `ContentResolver`;
 - открывать данные через `InputStream`;
 - поддерживать изображения из галереи и `document providers`.
+- снимки камеры хранить в app-specific storage как app-owned файлы и также читать через `ContentResolver` по `content://` Uri.
 
 ### Обработка изображений
 
 - не загружать все полноразмерные `Bitmap` одновременно;
 - хранить в состоянии `Uri` и небольшие миниатюры;
+- `PageItem` хранит `PageSource`, чтобы отличать внешние изображения галереи от app-owned снимков камеры;
+- удалять app-owned camera-файлы при удалении соответствующей страницы и при создании новой сессии, не удаляя gallery `Uri`;
 - во время создания PDF обрабатывать изображения последовательно;
 - декодировать `Bitmap` с уменьшением под требуемый размер страницы;
 - учитывать `EXIF orientation`;
