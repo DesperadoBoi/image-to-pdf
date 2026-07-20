@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -59,9 +60,9 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
     public PageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_page, parent, false);
         PageViewHolder holder = new PageViewHolder(view);
-        View.OnLongClickListener longClickListener = clickedView -> startDragFromHolder(holder);
-        holder.itemView.setOnLongClickListener(longClickListener);
-        holder.thumbnailImageView.setOnLongClickListener(longClickListener);
+        holder.dragHandleButton.setOnTouchListener((touchedView, event) ->
+                handleDragTouch(holder, event)
+        );
         return holder;
     }
 
@@ -148,6 +149,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
     private void bindEnabledState(PageViewHolder holder) {
         holder.itemView.setEnabled(actionsEnabled);
         holder.thumbnailImageView.setEnabled(actionsEnabled);
+        holder.dragHandleButton.setEnabled(actionsEnabled);
         holder.rotateButton.setEnabled(actionsEnabled);
         holder.deleteButton.setEnabled(actionsEnabled);
     }
@@ -218,18 +220,38 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         });
     }
 
-    private boolean startDragFromHolder(PageViewHolder holder) {
+    private boolean handleDragTouch(PageViewHolder holder, MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                return startDragFromHandle(holder);
+            case MotionEvent.ACTION_UP:
+                holder.dragHandleButton.performClick();
+                requestParentIntercept(holder, false);
+                return true;
+            case MotionEvent.ACTION_CANCEL:
+                requestParentIntercept(holder, false);
+                return true;
+            default:
+                return true;
+        }
+    }
+
+    private boolean startDragFromHandle(PageViewHolder holder) {
         int adapterPosition = holder.getBindingAdapterPosition();
         if (!actionsEnabled || adapterPosition == RecyclerView.NO_POSITION) {
             return false;
         }
-        holder.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-        ViewParent parent = holder.itemView.getParent();
-        if (parent != null) {
-            parent.requestDisallowInterceptTouchEvent(true);
-        }
+        holder.dragHandleButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        requestParentIntercept(holder, true);
         callback.onDragStart(holder);
         return true;
+    }
+
+    private void requestParentIntercept(PageViewHolder holder, boolean disallowIntercept) {
+        ViewParent parent = holder.itemView.getParent();
+        if (parent != null) {
+            parent.requestDisallowInterceptTouchEvent(disallowIntercept);
+        }
     }
 
     private void configureMoveAccessibilityActions(PageViewHolder holder) {
@@ -290,6 +312,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
     static final class PageViewHolder extends RecyclerView.ViewHolder {
         private final TextView pageNumberTextView;
         private final ImageView thumbnailImageView;
+        private final ImageButton dragHandleButton;
         private final ImageButton rotateButton;
         private final ImageButton deleteButton;
         private String boundThumbnailKey;
@@ -298,6 +321,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
             super(itemView);
             pageNumberTextView = itemView.findViewById(R.id.text_page_number);
             thumbnailImageView = itemView.findViewById(R.id.image_page_thumbnail);
+            dragHandleButton = itemView.findViewById(R.id.button_drag_page);
             rotateButton = itemView.findViewById(R.id.button_rotate_page);
             deleteButton = itemView.findViewById(R.id.button_delete_page);
         }
