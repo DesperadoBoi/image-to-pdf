@@ -14,10 +14,6 @@ import com.desperadoboi.imagetopdf.model.PerspectiveQuad;
 import java.util.Objects;
 
 public final class PageBitmapProcessor {
-    private static final Paint BITMAP_PAINT = new Paint(
-            Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG
-    );
-
     private PageBitmapProcessor() {
     }
 
@@ -26,7 +22,7 @@ public final class PageBitmapProcessor {
             ImageTransform exifTransform,
             int manualRotationDegrees,
             PageEditSpec editSpec,
-            Mode mode
+            PageProcessingMode mode
     ) {
         Objects.requireNonNull(decodedBitmap, "decodedBitmap is required");
         Objects.requireNonNull(exifTransform, "exifTransform is required");
@@ -40,11 +36,11 @@ public final class PageBitmapProcessor {
                     current,
                     manualRotationDegrees
             );
-            if (mode == Mode.ORIENTED_ONLY) {
+            if (!mode.appliesPerspective()) {
                 return current;
             }
             current = applyPerspective(current, editSpec.getPerspectiveQuad());
-            if (mode == Mode.BEFORE_CROP) {
+            if (!mode.appliesCrop()) {
                 return current;
             }
             return applyCrop(current, editSpec.getCropRect());
@@ -83,7 +79,11 @@ public final class PageBitmapProcessor {
         try {
             Canvas canvas = new Canvas(transformed);
             canvas.drawColor(Color.TRANSPARENT);
-            canvas.drawBitmap(bitmap, matrix, BITMAP_PAINT);
+            canvas.drawBitmap(
+                    bitmap,
+                    matrix,
+                    new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG)
+            );
             completed = true;
         } finally {
             if (!completed) {
@@ -136,9 +136,4 @@ public final class PageBitmapProcessor {
         }
     }
 
-    public enum Mode {
-        FINAL,
-        BEFORE_CROP,
-        ORIENTED_ONLY
-    }
 }

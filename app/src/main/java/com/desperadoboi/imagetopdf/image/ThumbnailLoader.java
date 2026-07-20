@@ -49,20 +49,35 @@ public final class ThumbnailLoader {
     private Bitmap loadInternal(PageItem pageItem, int targetWidth, int targetHeight) throws IOException {
         ImageTransform exifTransform = imageOrientationReader.read(pageItem.getImageUri());
         boolean swapsDimensions = exifTransform.swapsDimensions() ^ pageItem.swapsDimensions();
+        ImageBounds rawBounds = readImageBounds(pageItem.getImageUri());
+        int orientedWidth = swapsDimensions ? rawBounds.height : rawBounds.width;
+        int orientedHeight = swapsDimensions ? rawBounds.width : rawBounds.height;
+        EditedImageGeometryCalculator.Dimensions sourceTarget =
+                SourceResolutionCalculator.calculateForFitTarget(
+                        orientedWidth,
+                        orientedHeight,
+                        pageItem.getEditSpec(),
+                        PageProcessingMode.FINAL,
+                        targetWidth,
+                        targetHeight
+                );
         Bitmap bitmap = decodeBitmap(
                 pageItem.getImageUri(),
-                swapsDimensions ? targetHeight : targetWidth,
-                swapsDimensions ? targetWidth : targetHeight
+                rawBounds,
+                swapsDimensions ? sourceTarget.getHeight() : sourceTarget.getWidth(),
+                swapsDimensions ? sourceTarget.getWidth() : sourceTarget.getHeight()
         );
-        bitmap = ImageBitmapTransformer.applyTransform(bitmap, exifTransform);
-        bitmap = ImageBitmapTransformer.applyClockwiseRotation(
+        bitmap = PageBitmapProcessor.process(
                 bitmap,
-                pageItem.getManualRotationDegrees()
+                exifTransform,
+                pageItem.getManualRotationDegrees(),
+                pageItem.getEditSpec(),
+                PageProcessingMode.FINAL
         );
-        return bitmap;
+        return ImageBitmapTransformer.scaleDownToFit(bitmap, targetWidth, targetHeight);
     }
 
-    private Bitmap decodeBitmap(Uri imageUri, int targetWidth, int targetHeight) throws IOException {
+    private ImageBounds readImageBounds(Uri imageUri) throws IOException {
         BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
         boundsOptions.inJustDecodeBounds = true;
 
@@ -73,11 +88,19 @@ public final class ThumbnailLoader {
         if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
             throw new IOException("Unable to read image bounds");
         }
+        return new ImageBounds(boundsOptions.outWidth, boundsOptions.outHeight);
+    }
 
+    private Bitmap decodeBitmap(
+            Uri imageUri,
+            ImageBounds bounds,
+            int targetWidth,
+            int targetHeight
+    ) throws IOException {
         BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-        decodeOptions.inSampleSize = calculateInSampleSize(
-                boundsOptions.outWidth,
-                boundsOptions.outHeight,
+        decodeOptions.inSampleSize = BitmapSampleSizeCalculator.calculate(
+                bounds.width,
+                bounds.height,
                 targetWidth,
                 targetHeight
         );
@@ -100,26 +123,19 @@ public final class ThumbnailLoader {
         return inputStream;
     }
 
-    private int calculateInSampleSize(
-            int sourceWidth,
-            int sourceHeight,
-            int targetWidth,
-            int targetHeight
-    ) {
-        if (sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0) {
-            throw new IllegalArgumentException("Invalid bitmap dimensions");
-        }
-
-        int sampleSize = 1;
-        while ((sourceWidth / sampleSize) > targetWidth || (sourceHeight / sampleSize) > targetHeight) {
-            sampleSize *= 2;
-        }
-        return Math.max(1, sampleSize);
-    }
-
     public interface Callback {
         void onLoaded(String key, Bitmap bitmap);
 
         void onError(String key);
+    }
+
+    private static final class ImageBounds {
+        private final int width;
+        private final int height;
+
+        private ImageBounds(int width, int height) {
+            this.width = width;
+            this.height = height;
+        }
     }
 }

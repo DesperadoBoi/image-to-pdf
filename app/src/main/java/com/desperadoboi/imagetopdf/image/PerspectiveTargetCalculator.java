@@ -18,6 +18,32 @@ public final class PerspectiveTargetCalculator {
         }
         Objects.requireNonNull(quad, "quad is required");
 
+        Geometry geometry = measureUnbounded(sourceWidth, sourceHeight, quad);
+        long targetWidth = safeCeil(geometry.getWidth());
+        long targetHeight = safeCeil(geometry.getHeight());
+        targetWidth = Math.min(targetWidth, MAX_TARGET_EDGE);
+        targetHeight = Math.min(targetHeight, MAX_TARGET_EDGE);
+
+        long sourcePixels = (long) sourceWidth * sourceHeight;
+        long allowedPixels = Math.max(1L, Math.min(sourcePixels, MAX_TARGET_PIXELS));
+        double targetPixels = targetWidth * (double) targetHeight;
+        if (targetPixels > allowedPixels) {
+            double scale = Math.sqrt(allowedPixels / targetPixels);
+            targetWidth = Math.max(1L, (long) Math.floor(targetWidth * scale));
+            targetHeight = Math.max(1L, (long) Math.floor(targetHeight * scale));
+        }
+        return new Target(safeInt(targetWidth), safeInt(targetHeight));
+    }
+
+    public static Geometry measureUnbounded(
+            int sourceWidth,
+            int sourceHeight,
+            PerspectiveQuad quad
+    ) {
+        if (sourceWidth <= 0 || sourceHeight <= 0) {
+            throw new IllegalArgumentException("Source dimensions must be positive");
+        }
+        Objects.requireNonNull(quad, "quad is required");
         double top = edgeLength(quad.getTopLeft(), quad.getTopRight(), sourceWidth, sourceHeight);
         double bottom = edgeLength(
                 quad.getBottomLeft(),
@@ -37,20 +63,7 @@ public final class PerspectiveTargetCalculator {
                 sourceWidth,
                 sourceHeight
         );
-        long targetWidth = safeCeil(Math.max(top, bottom));
-        long targetHeight = safeCeil(Math.max(left, right));
-        targetWidth = Math.min(targetWidth, MAX_TARGET_EDGE);
-        targetHeight = Math.min(targetHeight, MAX_TARGET_EDGE);
-
-        long sourcePixels = (long) sourceWidth * sourceHeight;
-        long allowedPixels = Math.max(1L, Math.min(sourcePixels, MAX_TARGET_PIXELS));
-        double targetPixels = targetWidth * (double) targetHeight;
-        if (targetPixels > allowedPixels) {
-            double scale = Math.sqrt(allowedPixels / targetPixels);
-            targetWidth = Math.max(1L, (long) Math.floor(targetWidth * scale));
-            targetHeight = Math.max(1L, (long) Math.floor(targetHeight * scale));
-        }
-        return new Target(safeInt(targetWidth), safeInt(targetHeight));
+        return new Geometry(Math.max(top, bottom), Math.max(left, right));
     }
 
     private static double edgeLength(
@@ -94,6 +107,30 @@ public final class PerspectiveTargetCalculator {
 
         public float[] getDestinationPoints() {
             return new float[]{0f, 0f, width, 0f, width, height, 0f, height};
+        }
+    }
+
+    public static final class Geometry {
+        private final double width;
+        private final double height;
+
+        private Geometry(double width, double height) {
+            if (!Double.isFinite(width)
+                    || !Double.isFinite(height)
+                    || width <= 0d
+                    || height <= 0d) {
+                throw new IllegalArgumentException("Perspective geometry must be positive");
+            }
+            this.width = width;
+            this.height = height;
+        }
+
+        public double getWidth() {
+            return width;
+        }
+
+        public double getHeight() {
+            return height;
         }
     }
 }

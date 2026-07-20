@@ -16,6 +16,7 @@
         android:layout_width="@dimen/page_edit_strip_thumbnail_size"
         android:layout_height="@dimen/page_edit_strip_thumbnail_size"
         android:background="?attr/colorSurfaceVariant"
+        android:importantForAccessibility="no"
         android:scaleType="fitCenter"
         tools:src="@drawable/ic_broken_image_24" />
 
@@ -25,6 +26,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/page_edit_strip_number_spacing"
         android:gravity="center"
+        android:importantForAccessibility="no"
         android:maxLines="1"
         android:textAppearance="?attr/textAppearanceLabelSmall"
         tools:text="2" />

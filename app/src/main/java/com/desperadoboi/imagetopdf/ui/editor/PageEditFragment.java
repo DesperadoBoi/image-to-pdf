@@ -19,7 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.R;
-import com.desperadoboi.imagetopdf.image.PageBitmapProcessor;
+import com.desperadoboi.imagetopdf.image.PageProcessingMode;
 import com.desperadoboi.imagetopdf.image.PreviewImageLoader;
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
 import com.desperadoboi.imagetopdf.model.CropRect;
@@ -272,7 +272,7 @@ public final class PageEditFragment extends Fragment {
         progressBar.setVisibility(View.VISIBLE);
         int targetWidth = imageView.getWidth() * PREVIEW_ZOOM_RESERVE;
         int targetHeight = imageView.getHeight() * PREVIEW_ZOOM_RESERVE;
-        PageBitmapProcessor.Mode processingMode = resolveProcessingMode();
+        PageProcessingMode processingMode = resolveProcessingMode();
         activeLoadKey = PreviewImageLoader.buildKey(
                 page,
                 targetWidth,
@@ -476,14 +476,14 @@ public final class PageEditFragment extends Fragment {
         });
     }
 
-    private PageBitmapProcessor.Mode resolveProcessingMode() {
+    private PageProcessingMode resolveProcessingMode() {
         if (editMode == EditMode.RECT_CROP) {
-            return PageBitmapProcessor.Mode.BEFORE_CROP;
+            return PageProcessingMode.BEFORE_CROP;
         }
         if (editMode == EditMode.DOCUMENT) {
-            return PageBitmapProcessor.Mode.ORIENTED_ONLY;
+            return PageProcessingMode.ORIENTED_ONLY;
         }
-        return PageBitmapProcessor.Mode.FINAL;
+        return PageProcessingMode.FINAL;
     }
 
     private void releaseCurrentBitmap() {

@@ -332,7 +332,7 @@ public final class EditorFragment extends Fragment {
         if (position == PreviewPageNavigator.POSITION_NOT_FOUND) {
             return;
         }
-        pageAdapter.notifyItemChanged(position, PageAdapter.PAYLOAD_ROTATION);
+        pageAdapter.notifyItemChanged(position, PageAdapter.PAYLOAD_IMAGE_EDITS);
         updateUiState();
     }
 
@@ -343,7 +343,7 @@ public final class EditorFragment extends Fragment {
             return;
         }
         sessionViewModel.rotatePage(position);
-        pageAdapter.notifyItemChanged(position, PageAdapter.PAYLOAD_ROTATION);
+        pageAdapter.notifyItemChanged(position, PageAdapter.PAYLOAD_IMAGE_EDITS);
         updateUiState();
     }
 

@@ -25,7 +25,7 @@ import com.desperadoboi.imagetopdf.model.PageItem;
 import java.util.List;
 
 public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageViewHolder> {
-    public static final String PAYLOAD_ROTATION = "payload_rotation";
+    public static final String PAYLOAD_IMAGE_EDITS = "payload_image_edits";
     public static final String PAYLOAD_PAGE_NUMBER = "payload_page_number";
     public static final String PAYLOAD_ENABLED_STATE = "payload_enabled_state";
 
@@ -87,7 +87,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         if (payloads.contains(PAYLOAD_PAGE_NUMBER)) {
             bindPageNumberAndDescriptions(holder, position);
         }
-        if (payloads.contains(PAYLOAD_ROTATION)) {
+        if (payloads.contains(PAYLOAD_IMAGE_EDITS)) {
             bindThumbnail(holder, pageItem);
         }
         if (payloads.contains(PAYLOAD_ENABLED_STATE)) {

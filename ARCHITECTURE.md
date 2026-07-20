@@ -42,7 +42,7 @@ com.desperadoboi.imagetopdf
 
 - одна `Activity` как контейнер;
 - отдельные `Fragment` для домашнего экрана и редактора страниц;
-- `PagePreviewFragment` открывается поверх редактора в существующем fragment-контейнере и использует stable ID страницы вместо передачи `Bitmap` через `Bundle`;
+- `PageEditFragment` открывается поверх редактора в существующем fragment-контейнере, использует stable ID страницы и общий `DocumentSessionViewModel`, а также содержит основной просмотр, горизонтальную ленту и режимы crop/document;
 - activity-scoped `DocumentSessionViewModel` для состояния пользовательской сессии;
 - `Fragment` читает состояние из `DocumentSessionViewModel` и применяет точечные обновления XML UI;
 - однонаправленный поток: `UI action -> ViewModel -> сервис/компонент -> новое состояние -> UI`;
@@ -75,6 +75,11 @@ com.desperadoboi.imagetopdf
 - хранить в состоянии `Uri` и небольшие миниатюры;
 - `PreviewImageLoader` декодирует изображение для полноэкранного просмотра на фоновой очереди через `ContentResolver`, bounds, `inSampleSize`, EXIF orientation и ручной поворот;
 - `ZoomableImageView` реализует fit-center, pinch-to-zoom и ограниченный pan через стандартные Android `Matrix` и gesture APIs без сторонней библиотеки;
+- `PageItem` хранит immutable `PageEditSpec`: `PerspectiveQuad` в координатах ориентированного изображения и `CropRect` в координатах rectified result;
+- `RectCropOverlayView` и `DocumentPerspectiveOverlayView` отвечают только за отрисовку и временную touch-геометрию; применённые параметры записывает `PageEditFragment` через `DocumentSessionViewModel`;
+- `PageBitmapProcessor` задаёт единый порядок EXIF, manual rotation, perspective и crop для `ThumbnailLoader`, `PreviewImageLoader` и `PdfGenerator`;
+- perspective correction использует стандартный `Matrix.setPolyToPoly` с четырьмя парами точек и отрисовку через `Canvas`, без OpenCV и постоянных обработанных файлов;
+- `SourceResolutionCalculator` учитывает долю perspective quad и crop при выборе sampled decode, чтобы сохранить целевые 144 DPI без декодирования всех исходников одновременно;
 - `PageItem` хранит `PageSource`, чтобы отличать внешние изображения галереи от app-owned снимков камеры;
 - удалять app-owned camera-файлы при удалении соответствующей страницы и при создании новой сессии, не удаляя gallery `Uri`;
 - во время создания PDF обрабатывать изображения последовательно;

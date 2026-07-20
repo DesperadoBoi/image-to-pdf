@@ -108,4 +108,21 @@ public class PageOrderManagerTest {
         assertEquals(PageSource.CAMERA, pages.get(1).getSource());
         assertEquals("capture_first.jpg", pages.get(1).getCapturedFileName());
     }
+
+    @Test
+    public void pageItemKeepsEditSpecAfterMove() {
+        Uri firstUri = FakeUri.create("content://test/first");
+        Uri secondUri = FakeUri.create("content://test/second");
+        PageEditSpec editSpec = PageEditSpec.DEFAULT.withCropRect(
+                new CropRect(0.1f, 0.2f, 0.8f, 0.9f)
+        );
+        PageItem firstPage = new PageItem(firstUri).withCropRect(editSpec.getCropRect());
+        PageItem secondPage = new PageItem(secondUri);
+        List<PageItem> pages = new ArrayList<>(Arrays.asList(firstPage, secondPage));
+
+        PageOrderManager.move(pages, 0, 1);
+
+        assertSame(firstPage, pages.get(1));
+        assertEquals(editSpec, pages.get(1).getEditSpec());
+    }
 }
