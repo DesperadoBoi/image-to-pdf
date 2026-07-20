@@ -17,4 +17,9 @@
     <color name="source_camera_container">#FF153F4C</color>
     <color name="source_files_icon">#FFFFB879</color>
     <color name="source_files_container">#FF4A3020</color>
+    <color name="destructive_icon">#FFFF91A1</color>
+    <color name="destructive_container">#FF46242D</color>
+    <color name="destructive_outline">#FF7C3D4B</color>
+    <color name="destructive_ripple">#40FF91A1</color>
+    <color name="primary_action_disabled">#FF293244</color>
 </resources>

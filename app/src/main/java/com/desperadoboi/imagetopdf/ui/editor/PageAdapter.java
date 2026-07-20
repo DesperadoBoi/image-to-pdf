@@ -133,6 +133,12 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
                         pageNumber
                 )
         );
+        holder.dragHandleButton.setContentDescription(
+                holder.itemView.getContext().getString(
+                        R.string.action_reorder_page_content_description,
+                        pageNumber
+                )
+        );
         holder.rotateButton.setContentDescription(
                 holder.itemView.getContext().getString(
                         R.string.action_rotate_page_content_description,

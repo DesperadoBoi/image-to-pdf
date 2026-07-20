@@ -8,20 +8,15 @@
     android:clickable="true"
     android:focusable="true">
 
-    <com.google.android.material.button.MaterialButton
+    <ImageButton
         android:id="@+id/button_page_edit_back"
-        style="?attr/materialButtonOutlinedStyle"
         android:layout_width="@dimen/touch_target"
         android:layout_height="@dimen/editor_toolbar_height"
+        android:background="@drawable/bg_icon_button_round"
         android:contentDescription="@string/action_page_edit_back_content_description"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:minWidth="@dimen/touch_target"
-        android:padding="0dp"
-        app:icon="@drawable/ic_arrow_back_24"
-        app:iconGravity="textStart"
-        app:iconPadding="0dp"
-        app:iconTint="?attr/colorOnSurface"
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_back_24"
+        app:tint="?attr/colorOnSurface"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -51,7 +46,7 @@
         android:insetBottom="0dp"
         android:minWidth="0dp"
         android:text="@string/action_reset"
-        app:icon="@drawable/ic_reset_24"
+        app:icon="@drawable/ic_action_reset_24"
         app:iconGravity="textStart"
         app:iconPadding="@dimen/page_edit_reset_icon_spacing"
         app:iconTint="?attr/colorOnSurfaceVariant"
@@ -92,8 +87,8 @@
             android:contentDescription="@string/action_rotate_left_content_description"
             android:elevation="@dimen/editor_overlay_button_elevation"
             android:padding="@dimen/editor_overlay_button_padding"
-            android:src="@drawable/ic_rotate_left_24"
-            app:tint="?attr/colorOnSurface" />
+            android:src="@drawable/ic_action_rotate_left_24"
+            app:tint="?attr/colorPrimary" />
 
         <ImageButton
             android:id="@+id/button_page_edit_rotate_right"
@@ -105,8 +100,8 @@
             android:contentDescription="@string/action_rotate_right_content_description"
             android:elevation="@dimen/editor_overlay_button_elevation"
             android:padding="@dimen/editor_overlay_button_padding"
-            android:src="@drawable/ic_rotate_right_24"
-            app:tint="?attr/colorOnSurface" />
+            android:src="@drawable/ic_action_rotate_right_24"
+            app:tint="?attr/colorPrimary" />
 
         <ProgressBar
             android:id="@+id/progress_page_edit"
@@ -184,7 +179,7 @@
                 android:insetBottom="0dp"
                 android:minWidth="0dp"
                 android:text="@string/action_crop"
-                app:icon="@drawable/ic_crop_24"
+                app:icon="@drawable/ic_action_crop_24"
                 app:iconGravity="textStart"
                 app:iconTint="?attr/colorPrimary" />
 
@@ -197,7 +192,10 @@
                 android:contentDescription="@string/action_done_content_description"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="@string/action_done" />
+                android:text="@string/action_done"
+                app:icon="@drawable/ic_action_done_24"
+                app:iconGravity="textStart"
+                app:iconTint="?attr/colorOnPrimary" />
         </LinearLayout>
 
         <LinearLayout

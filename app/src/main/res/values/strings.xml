@@ -37,7 +37,7 @@
     <string name="action_back">Назад</string>
     <string name="action_add">Добавить</string>
     <string name="action_editor_back_content_description">Вернуться на главный экран</string>
-    <string name="action_add_page_content_description">Добавить страницу</string>
+    <string name="action_add_page_content_description">Добавить изображения</string>
     <string name="action_cancel">Отмена</string>
     <string name="action_create_pdf">Создать PDF</string>
     <string name="action_cancel_pdf_generation">Отменить</string>
@@ -60,9 +60,9 @@
     <string name="action_crop_reset_content_description">Сбросить рамку обрезки</string>
     <string name="action_rotate_left_content_description">Повернуть страницу влево</string>
     <string name="action_rotate_right_content_description">Повернуть страницу вправо</string>
-    <string name="action_crop_content_description">Открыть прямоугольную обрезку</string>
+    <string name="action_crop_content_description">Обрезать страницу</string>
     <string name="action_document_content_description">Открыть коррекцию документа</string>
-    <string name="action_done_content_description">Завершить редактирование страницы</string>
+    <string name="action_done_content_description">Завершить редактирование</string>
     <string name="action_apply_content_description">Применить изменения</string>
     <string name="action_cancel_content_description">Отменить изменения</string>
     <string name="pdf_settings_title">Настройки PDF</string>
@@ -81,6 +81,7 @@
     <string name="pdf_margin_content_description">Выбор полей PDF</string>
     <string name="action_rotate_page_content_description">Повернуть страницу %1$d по часовой стрелке</string>
     <string name="action_delete_page_content_description">Удалить страницу %1$d</string>
+    <string name="action_reorder_page_content_description">Изменить порядок страницы %1$d</string>
     <string name="action_reorder_page_content_description_generic">Изменить порядок страницы</string>
     <string name="action_rotate_page_content_description_generic">Повернуть страницу по часовой стрелке</string>
     <string name="action_delete_page_content_description_generic">Удалить страницу</string>
@@ -114,6 +115,7 @@
     <string name="image_source_title_new_document">Добавить изображения</string>
     <string name="image_source_title_append">Добавить страницу</string>
     <string name="image_source_gallery">Из галереи</string>
+    <string name="action_add_from_gallery">Добавить из галереи</string>
     <string name="image_source_gallery_subtitle">Выберите изображения из галереи</string>
     <string name="image_source_camera">Сфотографировать</string>
     <string name="image_source_camera_subtitle">Сделайте фото камерой устройства</string>

@@ -42,8 +42,9 @@
     <dimen name="editor_top_button_min_width">72dp</dimen>
     <dimen name="editor_compact_icon_spacing">4dp</dimen>
     <dimen name="editor_hint_spacing">4dp</dimen>
-    <dimen name="editor_bottom_panel_padding">8dp</dimen>
-    <dimen name="editor_panel_corner_radius">12dp</dimen>
+    <dimen name="bottom_action_padding">12dp</dimen>
+    <dimen name="primary_button_height">60dp</dimen>
+    <dimen name="primary_button_corner_radius">18dp</dimen>
     <dimen name="pdf_options_label_width">124dp</dimen>
     <dimen name="pdf_options_row_spacing">8dp</dimen>
     <dimen name="pdf_result_block_padding">8dp</dimen>
@@ -56,8 +57,11 @@
     <dimen name="page_item_spacing">12dp</dimen>
     <dimen name="page_item_horizontal_padding">8dp</dimen>
     <dimen name="page_item_vertical_padding">8dp</dimen>
-    <dimen name="page_number_width">64dp</dimen>
-    <dimen name="page_thumbnail_size">72dp</dimen>
+    <dimen name="page_card_height">120dp</dimen>
+    <dimen name="page_number_width">36dp</dimen>
+    <dimen name="page_thumbnail_size">88dp</dimen>
+    <dimen name="page_thumbnail_corner_radius">12dp</dimen>
+    <dimen name="page_action_spacing">6dp</dimen>
     <dimen name="page_action_button_size">48dp</dimen>
     <dimen name="page_drag_elevation">8dp</dimen>
     <dimen name="preview_top_button_min_width">72dp</dimen>
@@ -70,7 +74,7 @@
     <dimen name="editor_rotate_overlay_margin">14dp</dimen>
     <dimen name="editor_overlay_button_padding">12dp</dimen>
     <dimen name="editor_overlay_button_elevation">4dp</dimen>
-    <dimen name="editor_bottom_button_height">52dp</dimen>
+    <dimen name="editor_bottom_button_height">56dp</dimen>
     <dimen name="page_edit_reset_icon_spacing">4dp</dimen>
     <dimen name="page_edit_counter_min_height">24dp</dimen>
     <dimen name="page_edit_strip_height">88dp</dimen>

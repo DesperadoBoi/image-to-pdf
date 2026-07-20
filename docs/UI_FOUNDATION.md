@@ -89,6 +89,13 @@ storage permissions и собственный MediaStore album browser не ис
 `PageEditFragment` сохраняет stable page ID, activity-scoped `DocumentSessionViewModel`,
 фоновые preview loads, zoom/pan и горизонтальную ленту.
 
+Editor и PageEdit используют единый 24×24 VectorDrawable-пакет для back, add, reorder,
+rotate, crop, done, delete, PDF и reset. Иконки tint-ятся semantic palette, действия имеют
+48dp touch target, а destructive delete отделён собственным цветом. Page cards используют
+фиксированную область номера, увеличенную миниатюру и точечные payload-обновления без
+`notifyDataSetChanged`. Основная кнопка создания PDF закреплена снизу без большого внешнего
+контейнера; progress, cancel, status и result появляются только в соответствующем состоянии.
+
 Обычный режим содержит:
 
 - toolbar с back, «Страница N» и компактным reset;

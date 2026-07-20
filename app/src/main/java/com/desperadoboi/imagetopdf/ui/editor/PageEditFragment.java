@@ -50,7 +50,7 @@ public final class PageEditFragment extends Fragment {
     private TextView counterView;
     private TextView errorView;
     private ProgressBar progressBar;
-    private MaterialButton backButton;
+    private ImageButton backButton;
     private MaterialButton resetButton;
     private ImageButton rotateLeftButton;
     private ImageButton rotateRightButton;

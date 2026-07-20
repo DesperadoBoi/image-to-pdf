@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -83,9 +84,9 @@ public final class EditorFragment extends Fragment {
     private TextView generationProgressTextView;
     private Button cancelGenerationButton;
     private RecyclerView pagesRecyclerView;
-    private MaterialButton backButton;
+    private ImageButton backButton;
     private MaterialButton addImagesButton;
-    private MaterialButton createPdfButton;
+    private Button createPdfButton;
 
     private ThumbnailLoader thumbnailLoader;
     private CapturedImageStorage capturedImageStorage;
@@ -732,7 +733,11 @@ public final class EditorFragment extends Fragment {
         pageAdapter.setActionsEnabled(controlsEnabled);
         selectedImagesTextView.setText(buildSelectionStatusText());
         reorderHintTextView.setVisibility(sessionViewModel.getPageCount() >= 2 ? View.VISIBLE : View.GONE);
-        operationStatusTextView.setText(buildOperationStatusText());
+        String operationStatus = buildOperationStatusText();
+        operationStatusTextView.setText(operationStatus);
+        operationStatusTextView.setVisibility(
+                operationStatus.isEmpty() ? View.GONE : View.VISIBLE
+        );
         updatePdfResultState(controlsEnabled);
     }
 

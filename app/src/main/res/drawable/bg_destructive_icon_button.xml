@@ -1,11 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="?attr/colorControlHighlight">
+    android:color="@color/destructive_ripple">
     <item>
         <shape android:shape="oval">
-            <solid android:color="@color/editor_overlay_button_background" />
+            <solid android:color="@color/destructive_container" />
             <stroke
                 android:width="@dimen/standard_outline_width"
-                android:color="?attr/colorOutline" />
+                android:color="@color/destructive_outline" />
         </shape>
     </item>
 </ripple>

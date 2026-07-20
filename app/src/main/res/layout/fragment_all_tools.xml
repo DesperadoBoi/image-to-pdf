@@ -16,7 +16,7 @@
         android:insetBottom="0dp"
         android:minWidth="@dimen/touch_target"
         android:padding="0dp"
-        app:icon="@drawable/ic_arrow_back_24"
+        app:icon="@drawable/ic_action_back_24"
         app:iconGravity="textStart"
         app:iconPadding="0dp"
         app:iconTint="?attr/colorOnSurface"
