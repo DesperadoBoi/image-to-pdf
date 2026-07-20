@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/home_tool_item_height"
+    android:layout_margin="@dimen/tool_grid_half_gap"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="top|center_horizontal"
+    android:orientation="vertical"
+    android:paddingTop="@dimen/tool_item_vertical_padding"
+    android:paddingBottom="@dimen/tool_item_vertical_padding">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/tool_icon_area_height">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/image_tool_icon"
+            android:layout_width="@dimen/tool_icon_size"
+            android:layout_height="@dimen/tool_icon_size"
+            android:layout_gravity="center"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter"
+            app:tint="@null"
+            tools:src="@drawable/ic_tool_image_to_pdf" />
+
+        <TextView
+            android:id="@+id/text_tool_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:background="@drawable/bg_tool_badge"
+            android:importantForAccessibility="no"
+            android:paddingStart="@dimen/tool_badge_horizontal_padding"
+            android:paddingTop="@dimen/tool_badge_vertical_padding"
+            android:paddingEnd="@dimen/tool_badge_horizontal_padding"
+            android:paddingBottom="@dimen/tool_badge_vertical_padding"
+            android:text="@string/tool_coming_soon"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:textSize="@dimen/tool_badge_text_size"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/text_tool_title"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/tool_title_spacing"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:gravity="top|center_horizontal"
+        android:importantForAccessibility="no"
+        android:maxLines="2"
+        android:textAppearance="?attr/textAppearanceLabelMedium"
+        android:textColor="?attr/colorOnSurface"
+        tools:text="Изображение в PDF" />
+
+</LinearLayout>

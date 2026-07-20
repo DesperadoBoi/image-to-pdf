@@ -14,6 +14,7 @@ import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.ui.editor.EditorFragment;
 import com.desperadoboi.imagetopdf.ui.editor.PageEditFragment;
 import com.desperadoboi.imagetopdf.ui.home.HomeFragment;
+import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 
 public class MainActivity extends AppCompatActivity
         implements HomeFragment.NavigationCallback, EditorFragment.NavigationCallback {
@@ -41,6 +42,11 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onImagesSelectedForEditing() {
         showEditor();
+    }
+
+    @Override
+    public void onAllToolsRequested() {
+        showAllTools();
     }
 
     @Override
@@ -89,6 +95,10 @@ public class MainActivity extends AppCompatActivity
                     pageEditFragment.handleBackPressed();
                     return;
                 }
+                if (getSupportFragmentManager().findFragmentByTag(AllToolsFragment.TAG) != null) {
+                    getSupportFragmentManager().popBackStack();
+                    return;
+                }
                 if (getSupportFragmentManager().findFragmentByTag(EditorFragment.TAG) != null) {
                     if (sessionViewModel.isGenerationInProgress()) {
                         return;
@@ -112,6 +122,14 @@ public class MainActivity extends AppCompatActivity
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragment_container, new EditorFragment(), EditorFragment.TAG)
+                .commit();
+    }
+
+    private void showAllTools() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, new AllToolsFragment(), AllToolsFragment.TAG)
+                .addToBackStack(AllToolsFragment.TAG)
                 .commit();
     }
 }

@@ -16,17 +16,22 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
-import com.google.android.material.button.MaterialButton;
+import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
+import com.desperadoboi.imagetopdf.ui.tools.ToolCatalog;
+import com.desperadoboi.imagetopdf.ui.tools.ToolId;
 
 import java.io.IOException;
 import java.util.List;
 
 public final class HomeFragment extends Fragment {
     public static final String TAG = "HomeFragment";
+    private static final int HOME_COLUMN_COUNT = 4;
 
     private DocumentSessionViewModel sessionViewModel;
     private NavigationCallback navigationCallback;
@@ -73,10 +78,15 @@ public final class HomeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        MaterialButton selectImagesButton = view.findViewById(R.id.button_select_images);
-        MaterialButton takePhotoButton = view.findViewById(R.id.button_take_photo);
-        selectImagesButton.setOnClickListener(v -> launchPhotoPicker());
-        takePhotoButton.setOnClickListener(v -> launchCamera());
+        HomeToolAdapter adapter = new HomeToolAdapter(this::handleToolSelected);
+        RecyclerView toolsRecyclerView = view.findViewById(R.id.recycler_home_tools);
+        toolsRecyclerView.setLayoutManager(new GridLayoutManager(
+                requireContext(),
+                HOME_COLUMN_COUNT
+        ));
+        toolsRecyclerView.setAdapter(adapter);
+        adapter.submitList(ToolCatalog.getHomeTools());
+        configureCatalogToolResult();
     }
 
     @Override
@@ -90,6 +100,37 @@ public final class HomeFragment extends Fragment {
                 .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
                 .build();
         photoPickerLauncher.launch(request);
+    }
+
+    private void handleToolSelected(ToolId toolId) {
+        switch (toolId) {
+            case IMAGE_TO_PDF:
+                launchPhotoPicker();
+                break;
+            case CAMERA:
+                launchCamera();
+                break;
+            case MORE:
+                if (navigationCallback != null) {
+                    navigationCallback.onAllToolsRequested();
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void configureCatalogToolResult() {
+        getParentFragmentManager().setFragmentResultListener(
+                AllToolsFragment.RESULT_TOOL_REQUEST,
+                getViewLifecycleOwner(),
+                (requestKey, result) -> {
+                    String toolName = result.getString(AllToolsFragment.RESULT_TOOL_ID);
+                    if (ToolId.IMAGE_TO_PDF.name().equals(toolName)) {
+                        launchPhotoPicker();
+                    }
+                }
+        );
     }
 
     private void handleImageSelection(List<Uri> imageUris) {
@@ -177,5 +218,7 @@ public final class HomeFragment extends Fragment {
 
     public interface NavigationCallback {
         void onImagesSelectedForEditing();
+
+        void onAllToolsRequested();
     }
 }
