@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private MaterialButton selectImagesButton;
     private MaterialButton createPdfButton;
     private TextView selectionStatusTextView;
+    private TextView pageDragHintTextView;
     private TextView operationStatusTextView;
     private View pdfResultLayout;
     private TextView pdfResultNameTextView;
@@ -149,6 +150,7 @@ public class MainActivity extends AppCompatActivity {
         selectImagesButton = findViewById(R.id.button_select_images);
         createPdfButton = findViewById(R.id.button_create_pdf);
         selectionStatusTextView = findViewById(R.id.text_selection_status);
+        pageDragHintTextView = findViewById(R.id.text_page_drag_hint);
         operationStatusTextView = findViewById(R.id.text_operation_status);
         pdfResultLayout = findViewById(R.id.layout_pdf_result);
         pdfResultNameTextView = findViewById(R.id.text_pdf_result_name);
@@ -579,6 +581,7 @@ public class MainActivity extends AppCompatActivity {
         updatePdfSettingsEnabledState(controlsEnabled);
         progressBar.setVisibility(generationInProgress ? View.VISIBLE : View.GONE);
         pagesRecyclerView.setVisibility(hasPages ? View.VISIBLE : View.GONE);
+        pageDragHintTextView.setVisibility(pageItems.size() >= 2 ? View.VISIBLE : View.GONE);
         if (submittedPagesVersion != pagesVersion) {
             pageAdapter.submitPages(pageItems);
             submittedPagesVersion = pagesVersion;
@@ -748,7 +751,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private final class PageMoveCallback extends ItemTouchHelper.SimpleCallback {
-        private static final float DRAG_ACTIVE_ALPHA = 0.85f;
+        private static final float DRAG_ACTIVE_ALPHA = 0.9f;
 
         PageMoveCallback() {
             super(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
@@ -787,6 +790,10 @@ public class MainActivity extends AppCompatActivity {
             super.onSelectedChanged(viewHolder, actionState);
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
                 viewHolder.itemView.setAlpha(DRAG_ACTIVE_ALPHA);
+                ViewCompat.setElevation(
+                        viewHolder.itemView,
+                        getResources().getDimension(R.dimen.page_item_drag_elevation)
+                );
             }
         }
 
@@ -794,6 +801,10 @@ public class MainActivity extends AppCompatActivity {
         public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
             super.clearView(recyclerView, viewHolder);
             viewHolder.itemView.setAlpha(1f);
+            ViewCompat.setElevation(
+                    viewHolder.itemView,
+                    getResources().getDimension(R.dimen.page_item_card_elevation)
+            );
         }
     }
 }

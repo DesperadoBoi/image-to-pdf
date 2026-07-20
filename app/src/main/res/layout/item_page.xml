@@ -1,63 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container_page_item"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingTop="@dimen/page_item_vertical_padding"
-    android:paddingBottom="@dimen/page_item_vertical_padding">
+    android:layout_marginTop="@dimen/page_item_card_vertical_margin"
+    android:layout_marginBottom="@dimen/page_item_card_vertical_margin"
+    android:clickable="true"
+    android:focusable="false"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="@dimen/page_item_card_corner_radius"
+    app:cardElevation="@dimen/page_item_card_elevation"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="@dimen/page_item_card_stroke_width">
 
-    <TextView
-        android:id="@+id/text_page_number"
-        android:layout_width="@dimen/page_number_width"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
-        tools:text="Страница 1" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/page_item_content_padding">
 
-    <ImageButton
-        android:id="@+id/button_drag_page"
-        android:layout_width="@dimen/page_action_button_size"
-        android:layout_height="@dimen/page_action_button_size"
-        android:layout_marginStart="@dimen/page_item_spacing"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/action_reorder_page_content_description_generic"
-        android:src="@drawable/ic_drag_handle_24"
-        app:tint="?attr/colorControlNormal" />
+        <FrameLayout
+            android:layout_width="@dimen/page_thumbnail_size"
+            android:layout_height="@dimen/page_thumbnail_size">
 
-    <ImageView
-        android:id="@+id/image_page_thumbnail"
-        android:layout_width="@dimen/page_thumbnail_size"
-        android:layout_height="@dimen/page_thumbnail_size"
-        android:layout_marginStart="@dimen/page_item_spacing"
-        android:adjustViewBounds="false"
-        android:background="?attr/colorSurfaceVariant"
-        android:contentDescription="@string/page_thumbnail_content_description_generic"
-        android:scaleType="fitCenter"
-        tools:src="@drawable/ic_broken_image_24" />
+            <ImageView
+                android:id="@+id/image_page_thumbnail"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:adjustViewBounds="false"
+                android:background="?attr/colorSurfaceVariant"
+                android:contentDescription="@string/page_thumbnail_content_description_generic"
+                android:scaleType="fitCenter"
+                tools:src="@drawable/ic_broken_image_24" />
 
-    <Space
-        android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:layout_weight="1" />
+            <TextView
+                android:id="@+id/text_page_number"
+                android:layout_width="@dimen/page_number_badge_size"
+                android:layout_height="@dimen/page_number_badge_size"
+                android:layout_gravity="top|start"
+                android:background="@drawable/bg_page_number_badge"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="?attr/colorOnSecondaryContainer"
+                tools:text="1" />
+        </FrameLayout>
 
-    <ImageButton
-        android:id="@+id/button_rotate_page"
-        android:layout_width="@dimen/page_action_button_size"
-        android:layout_height="@dimen/page_action_button_size"
-        android:layout_marginStart="@dimen/page_item_spacing"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/action_rotate_page_content_description_generic"
-        android:src="@drawable/ic_rotate_right_24"
-        app:tint="?attr/colorControlNormal" />
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
 
-    <ImageButton
-        android:id="@+id/button_delete_page"
-        android:layout_width="@dimen/page_action_button_size"
-        android:layout_height="@dimen/page_action_button_size"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/action_delete_page_content_description_generic"
-        android:src="@drawable/ic_delete_24"
-        app:tint="?attr/colorControlNormal" />
-</LinearLayout>
+        <ImageButton
+            android:id="@+id/button_rotate_page"
+            android:layout_width="@dimen/page_action_button_size"
+            android:layout_height="@dimen/page_action_button_size"
+            android:layout_marginStart="@dimen/page_item_spacing"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_rotate_page_content_description_generic"
+            android:src="@drawable/ic_rotate_right_24"
+            app:tint="?attr/colorControlNormal" />
+
+        <ImageButton
+            android:id="@+id/button_delete_page"
+            android:layout_width="@dimen/page_action_button_size"
+            android:layout_height="@dimen/page_action_button_size"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_delete_page_content_description_generic"
+            android:src="@drawable/ic_delete_24"
+            app:tint="?attr/colorControlNormal" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

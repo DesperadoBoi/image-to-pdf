@@ -44,6 +44,18 @@
         android:textAppearance="?attr/textAppearanceBodyMedium"
         tools:text="Изображения не выбраны" />
 
+    <TextView
+        android:id="@+id/text_page_drag_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_small"
+        android:gravity="center"
+        android:text="@string/page_drag_hint"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_pages"
         android:layout_width="match_parent"
