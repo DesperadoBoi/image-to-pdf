@@ -1,9 +1,11 @@
-package com.desperadoboi.imagetopdf.ui;
+package com.desperadoboi.imagetopdf.ui.editor;
 
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -20,33 +22,27 @@ import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
 import com.desperadoboi.imagetopdf.model.PageItem;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageViewHolder> {
+    public static final String PAYLOAD_ROTATION = "payload_rotation";
+    public static final String PAYLOAD_PAGE_NUMBER = "payload_page_number";
+    public static final String PAYLOAD_ENABLED_STATE = "payload_enabled_state";
+
+    private final List<PageItem> pageItems;
     private final ThumbnailLoader thumbnailLoader;
     private final PageActionCallback callback;
-    private final List<PageItem> pageItems = new ArrayList<>();
     private boolean actionsEnabled = true;
 
-    public PageAdapter(ThumbnailLoader thumbnailLoader, PageActionCallback callback) {
+    public PageAdapter(
+            List<PageItem> pageItems,
+            ThumbnailLoader thumbnailLoader,
+            PageActionCallback callback
+    ) {
+        this.pageItems = pageItems;
         this.thumbnailLoader = thumbnailLoader;
         this.callback = callback;
-    }
-
-    public void submitPages(List<PageItem> newPageItems) {
-        pageItems.clear();
-        pageItems.addAll(newPageItems);
-        notifyDataSetChanged();
-    }
-
-    public void submitMovedPages(List<PageItem> newPageItems, int fromPosition, int toPosition) {
-        pageItems.clear();
-        pageItems.addAll(newPageItems);
-        notifyItemMoved(fromPosition, toPosition);
-        int firstChangedPosition = Math.min(fromPosition, toPosition);
-        int changedItemCount = Math.abs(fromPosition - toPosition) + 1;
-        notifyItemRangeChanged(firstChangedPosition, changedItemCount);
+        setHasStableIds(true);
     }
 
     public void setActionsEnabled(boolean actionsEnabled) {
@@ -54,25 +50,88 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
             return;
         }
         this.actionsEnabled = actionsEnabled;
-        notifyDataSetChanged();
+        if (!pageItems.isEmpty()) {
+            notifyItemRangeChanged(0, pageItems.size(), PAYLOAD_ENABLED_STATE);
+        }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @NonNull
     @Override
     public PageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_page, parent, false);
-        return new PageViewHolder(view);
+        PageViewHolder holder = new PageViewHolder(view);
+        holder.dragHandleButton.setOnTouchListener((touchedView, event) ->
+                handleDragTouch(holder, event)
+        );
+        return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull PageViewHolder holder, int position) {
-        PageItem pageItem = pageItems.get(position);
-        int pageNumber = position + 1;
-        String thumbnailKey = pageItem.getThumbnailKey();
+        bindPage(holder, position);
+    }
 
-        holder.pageNumberTextView.setText(String.valueOf(pageNumber));
+    @Override
+    public void onBindViewHolder(
+            @NonNull PageViewHolder holder,
+            int position,
+            @NonNull List<Object> payloads
+    ) {
+        if (payloads.isEmpty()) {
+            bindPage(holder, position);
+            return;
+        }
+
+        PageItem pageItem = pageItems.get(position);
+        if (payloads.contains(PAYLOAD_PAGE_NUMBER)) {
+            bindPageNumberAndDescriptions(holder, position);
+        }
+        if (payloads.contains(PAYLOAD_ROTATION)) {
+            bindThumbnail(holder, pageItem);
+        }
+        if (payloads.contains(PAYLOAD_ENABLED_STATE)) {
+            bindEnabledState(holder);
+        }
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull PageViewHolder holder) {
+        holder.boundThumbnailKey = null;
+        holder.thumbnailImageView.setTag(null);
+        holder.thumbnailImageView.setImageDrawable(null);
+        super.onViewRecycled(holder);
+    }
+
+    @Override
+    public int getItemCount() {
+        return pageItems.size();
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return pageItems.get(position).getId();
+    }
+
+    private void bindPage(PageViewHolder holder, int position) {
+        PageItem pageItem = pageItems.get(position);
+        bindPageNumberAndDescriptions(holder, position);
+        bindEnabledState(holder);
+        bindThumbnail(holder, pageItem);
+        bindClickListeners(holder);
+        configureMoveAccessibilityActions(holder);
+    }
+
+    private void bindPageNumberAndDescriptions(PageViewHolder holder, int position) {
+        int pageNumber = position + 1;
+        holder.pageNumberTextView.setText(
+                holder.itemView.getContext().getString(R.string.page_number_label, pageNumber)
+        );
         holder.thumbnailImageView.setContentDescription(
-                holder.itemView.getContext().getString(R.string.page_thumbnail_content_description, pageNumber)
+                holder.itemView.getContext().getString(
+                        R.string.page_thumbnail_content_description,
+                        pageNumber
+                )
         );
         holder.rotateButton.setContentDescription(
                 holder.itemView.getContext().getString(
@@ -86,40 +145,68 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
                         pageNumber
                 )
         );
+    }
+
+    private void bindEnabledState(PageViewHolder holder) {
         holder.itemView.setEnabled(actionsEnabled);
         holder.thumbnailImageView.setEnabled(actionsEnabled);
+        holder.dragHandleButton.setEnabled(actionsEnabled);
         holder.rotateButton.setEnabled(actionsEnabled);
         holder.deleteButton.setEnabled(actionsEnabled);
+    }
 
-        Object previousThumbnailKey = holder.thumbnailImageView.getTag();
-        if (!thumbnailKey.equals(previousThumbnailKey)) {
-            holder.thumbnailImageView.setTag(thumbnailKey);
-            holder.thumbnailImageView.setImageDrawable(null);
-
-            int thumbnailSize = holder.itemView.getResources().getDimensionPixelSize(R.dimen.page_thumbnail_size);
-            thumbnailLoader.load(pageItem, thumbnailSize, thumbnailSize, new ThumbnailLoader.Callback() {
-                @Override
-                public void onLoaded(String key, Bitmap bitmap) {
-                    Object currentTag = holder.thumbnailImageView.getTag();
-                    if (!key.equals(currentTag)) {
-                        if (!bitmap.isRecycled()) {
-                            bitmap.recycle();
-                        }
-                        return;
-                    }
-                    holder.thumbnailImageView.setImageBitmap(bitmap);
-                }
-
-                @Override
-                public void onError(String key) {
-                    Object currentTag = holder.thumbnailImageView.getTag();
-                    if (key.equals(currentTag)) {
-                        holder.thumbnailImageView.setImageResource(R.drawable.ic_broken_image_24);
-                    }
-                }
-            });
+    private void bindThumbnail(PageViewHolder holder, PageItem pageItem) {
+        String thumbnailKey = pageItem.getThumbnailKey();
+        if (thumbnailKey.equals(holder.boundThumbnailKey)) {
+            return;
         }
 
+        String previousThumbnailKey = holder.boundThumbnailKey;
+        holder.boundThumbnailKey = thumbnailKey;
+        holder.thumbnailImageView.setTag(thumbnailKey);
+        if (!hasSamePageId(previousThumbnailKey, thumbnailKey)) {
+            holder.thumbnailImageView.setImageDrawable(null);
+        }
+
+        int thumbnailSize = holder.itemView.getResources()
+                .getDimensionPixelSize(R.dimen.page_thumbnail_size);
+        thumbnailLoader.load(pageItem, thumbnailSize, thumbnailSize, new ThumbnailLoader.Callback() {
+            @Override
+            public void onLoaded(String key, Bitmap bitmap) {
+                Object currentTag = holder.thumbnailImageView.getTag();
+                if (!key.equals(currentTag)) {
+                    if (!bitmap.isRecycled()) {
+                        bitmap.recycle();
+                    }
+                    return;
+                }
+                holder.thumbnailImageView.setImageBitmap(bitmap);
+            }
+
+            @Override
+            public void onError(String key) {
+                Object currentTag = holder.thumbnailImageView.getTag();
+                if (key.equals(currentTag)) {
+                    holder.thumbnailImageView.setImageResource(R.drawable.ic_broken_image_24);
+                }
+            }
+        });
+    }
+
+    private boolean hasSamePageId(String previousThumbnailKey, String thumbnailKey) {
+        if (previousThumbnailKey == null) {
+            return false;
+        }
+        int previousSeparator = previousThumbnailKey.indexOf('#');
+        int nextSeparator = thumbnailKey.indexOf('#');
+        if (previousSeparator < 0 || nextSeparator < 0) {
+            return false;
+        }
+        return previousThumbnailKey.substring(0, previousSeparator)
+                .equals(thumbnailKey.substring(0, nextSeparator));
+    }
+
+    private void bindClickListeners(PageViewHolder holder) {
         holder.rotateButton.setOnClickListener(view -> {
             int adapterPosition = holder.getBindingAdapterPosition();
             if (actionsEnabled && adapterPosition != RecyclerView.NO_POSITION) {
@@ -132,48 +219,26 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
                 callback.onDelete(adapterPosition);
             }
         });
-        View.OnLongClickListener dragStartListener = view -> startDragFromLongPress(holder, view);
-        holder.itemView.setOnLongClickListener(dragStartListener);
-        holder.thumbnailImageView.setOnLongClickListener(dragStartListener);
-        configureMoveAccessibilityActions(holder);
     }
 
-    @Override
-    public void onViewRecycled(@NonNull PageViewHolder holder) {
-        holder.thumbnailImageView.setTag(null);
-        holder.thumbnailImageView.setImageDrawable(null);
-        super.onViewRecycled(holder);
+    private boolean handleDragTouch(PageViewHolder holder, MotionEvent event) {
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            startDragFromHandle(holder);
+        }
+        return false;
     }
 
-    @Override
-    public int getItemCount() {
-        return pageItems.size();
-    }
-
-    public interface PageActionCallback {
-        void onRotate(int position);
-
-        void onDelete(int position);
-
-        void onDragStart(RecyclerView.ViewHolder viewHolder);
-
-        boolean onMoveUp(int position);
-
-        boolean onMoveDown(int position);
-    }
-
-    private boolean startDragFromLongPress(PageViewHolder holder, View sourceView) {
+    private void startDragFromHandle(PageViewHolder holder) {
         int adapterPosition = holder.getBindingAdapterPosition();
         if (!actionsEnabled || adapterPosition == RecyclerView.NO_POSITION) {
-            return false;
+            return;
         }
-        sourceView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        holder.dragHandleButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
         callback.onDragStart(holder);
-        return true;
     }
 
     private void configureMoveAccessibilityActions(PageViewHolder holder) {
-        ViewCompat.setAccessibilityDelegate(holder.thumbnailImageView, new AccessibilityDelegateCompat() {
+        ViewCompat.setAccessibilityDelegate(holder.itemView, new AccessibilityDelegateCompat() {
             @Override
             public void onInitializeAccessibilityNodeInfo(
                     @NonNull View host,
@@ -215,16 +280,31 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         });
     }
 
+    public interface PageActionCallback {
+        void onRotate(int position);
+
+        void onDelete(int position);
+
+        void onDragStart(RecyclerView.ViewHolder viewHolder);
+
+        boolean onMoveUp(int position);
+
+        boolean onMoveDown(int position);
+    }
+
     static final class PageViewHolder extends RecyclerView.ViewHolder {
         private final TextView pageNumberTextView;
         private final ImageView thumbnailImageView;
+        private final ImageButton dragHandleButton;
         private final ImageButton rotateButton;
         private final ImageButton deleteButton;
+        private String boundThumbnailKey;
 
         PageViewHolder(@NonNull View itemView) {
             super(itemView);
             pageNumberTextView = itemView.findViewById(R.id.text_page_number);
             thumbnailImageView = itemView.findViewById(R.id.image_page_thumbnail);
+            dragHandleButton = itemView.findViewById(R.id.button_drag_page);
             rotateButton = itemView.findViewById(R.id.button_rotate_page);
             deleteButton = itemView.findViewById(R.id.button_delete_page);
         }

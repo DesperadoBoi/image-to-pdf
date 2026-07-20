@@ -89,6 +89,7 @@ public class PageOrderManagerTest {
 
         assertSame(secondPage, pages.get(0));
         assertSame(firstPage, pages.get(1));
+        assertEquals(firstPage.getId(), pages.get(1).getId());
         assertSame(firstUri, pages.get(1).getImageUri());
         assertEquals(90, pages.get(1).getManualRotationDegrees());
     }

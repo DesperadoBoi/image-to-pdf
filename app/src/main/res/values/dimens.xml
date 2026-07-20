@@ -3,6 +3,8 @@
     <dimen name="content_spacing_small">12dp</dimen>
     <dimen name="content_spacing_medium">16dp</dimen>
     <dimen name="content_spacing_large">24dp</dimen>
+    <dimen name="home_primary_button_max_width">360dp</dimen>
+    <dimen name="editor_top_button_min_width">72dp</dimen>
     <dimen name="pdf_options_label_width">124dp</dimen>
     <dimen name="pdf_options_row_spacing">8dp</dimen>
     <dimen name="pdf_result_block_padding">8dp</dimen>
@@ -10,14 +12,9 @@
     <dimen name="pdf_result_actions_spacing">8dp</dimen>
     <dimen name="pdf_result_action_button_spacing">8dp</dimen>
     <dimen name="page_item_spacing">12dp</dimen>
-    <dimen name="page_item_card_vertical_margin">4dp</dimen>
-    <dimen name="page_item_content_padding">8dp</dimen>
-    <dimen name="page_item_card_corner_radius">8dp</dimen>
-    <dimen name="page_item_card_elevation">1dp</dimen>
-    <dimen name="page_item_drag_elevation">6dp</dimen>
-    <dimen name="page_item_card_stroke_width">1dp</dimen>
-    <dimen name="page_number_badge_size">28dp</dimen>
-    <dimen name="page_number_badge_corner_radius">8dp</dimen>
+    <dimen name="page_item_vertical_padding">8dp</dimen>
+    <dimen name="page_number_width">64dp</dimen>
     <dimen name="page_thumbnail_size">72dp</dimen>
     <dimen name="page_action_button_size">48dp</dimen>
+    <dimen name="page_drag_elevation">8dp</dimen>
 </resources>

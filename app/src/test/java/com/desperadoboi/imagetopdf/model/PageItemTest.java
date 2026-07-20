@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -35,7 +36,25 @@ public class PageItemTest {
         PageItem rotatedPageItem = pageItem.rotateClockwise();
 
         assertSame(TEST_URI, rotatedPageItem.getImageUri());
+        assertEquals(pageItem.getId(), rotatedPageItem.getId());
         assertEquals(0, rotatedPageItem.getManualRotationDegrees());
+    }
+
+    @Test
+    public void stableIdDoesNotChangeAfterRotation() {
+        PageItem pageItem = new PageItem(TEST_URI);
+
+        PageItem rotatedPageItem = pageItem.rotateClockwise();
+
+        assertEquals(pageItem.getId(), rotatedPageItem.getId());
+    }
+
+    @Test
+    public void sameUriPagesHaveDifferentStableIds() {
+        PageItem firstPage = new PageItem(TEST_URI);
+        PageItem secondPage = new PageItem(TEST_URI);
+
+        assertNotEquals(firstPage.getId(), secondPage.getId());
     }
 
     @Test
