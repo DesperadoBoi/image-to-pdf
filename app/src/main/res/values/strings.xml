@@ -2,9 +2,11 @@
     <string name="app_name">ImageToPDF</string>
     <string name="main_description">Выберите изображения и объедините их в один PDF</string>
     <string name="action_select_images">Выбрать изображения</string>
+    <string name="action_take_photo">Сфотографировать</string>
     <string name="action_add_images">Добавить изображения</string>
     <string name="action_back">Назад</string>
     <string name="action_add">Добавить</string>
+    <string name="action_cancel">Отмена</string>
     <string name="action_create_pdf">Создать PDF</string>
     <string name="action_cancel_pdf_generation">Отменить</string>
     <string name="action_open_pdf">Открыть PDF</string>
@@ -36,7 +38,13 @@
     <string name="page_number_label">%1$d</string>
     <string name="page_thumbnail_content_description">Миниатюра страницы %1$d</string>
     <string name="page_thumbnail_content_description_generic">Миниатюра страницы</string>
+    <string name="add_page_source_title">Добавить страницу</string>
+    <string name="add_page_source_gallery">Из галереи</string>
+    <string name="add_page_source_camera">Сфотографировать</string>
     <string name="status_no_images_selected">Изображения не выбраны</string>
+    <string name="status_camera_app_not_found">Не найдено приложение камеры</string>
+    <string name="status_camera_destination_error">Не удалось подготовить файл для фотографии</string>
+    <string name="status_camera_empty_file">Не удалось сохранить фотографию</string>
     <string name="status_save_location_cancelled">Сохранение отменено</string>
     <string name="status_pdf_generating">Создание PDF…</string>
     <string name="status_pdf_generation_progress">Создание PDF: %1$d из %2$d</string>

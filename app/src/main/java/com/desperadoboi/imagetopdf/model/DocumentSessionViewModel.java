@@ -10,6 +10,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,6 +25,7 @@ public final class DocumentSessionViewModel extends ViewModel {
     private PdfResult lastPdfResult;
     private String transientStatusMessage;
     private String pendingSuggestedFileName;
+    private PendingCapturedImage pendingCapturedImage;
     private boolean awaitingSaveLocation;
     private long nextGenerationOperationId = PdfGenerationState.NO_OPERATION_ID + 1L;
     private CancellationToken activeCancellationToken;
@@ -44,22 +46,39 @@ public final class DocumentSessionViewModel extends ViewModel {
         return pages.size();
     }
 
-    public void replacePages(List<Uri> imageUris) {
+    public List<String> replacePages(List<Uri> imageUris) {
+        List<String> capturedFileNames = collectCurrentCapturedFileNames();
         pages.clear();
         appendPageItems(imageUris);
-        lastPdfResult = null;
-        transientStatusMessage = null;
-        pendingSuggestedFileName = null;
-        cancelActiveGeneration();
-        setPdfGenerationState(PdfGenerationState.idle());
-        awaitingSaveLocation = false;
+        clearDocumentStateForReplacement();
+        return capturedFileNames;
+    }
+
+    public List<String> replacePagesWithCameraCapture(Uri imageUri, String capturedFileName) {
+        List<String> capturedFileNames = collectCurrentCapturedFileNames();
+        if (capturedFileName != null) {
+            capturedFileNames.removeIf(capturedFileName::equals);
+        }
+        pages.clear();
+        pages.add(PageItem.camera(imageUri, capturedFileName));
+        clearDocumentStateForReplacement();
+        return capturedFileNames;
     }
 
     public int appendPages(List<Uri> imageUris) {
         int firstInsertedPosition = pages.size();
         appendPageItems(imageUris);
         transientStatusMessage = null;
+        resetFinishedGenerationState();
         return firstInsertedPosition;
+    }
+
+    public int appendCameraPage(Uri imageUri, String capturedFileName) {
+        int insertedPosition = pages.size();
+        pages.add(PageItem.camera(imageUri, capturedFileName));
+        transientStatusMessage = null;
+        resetFinishedGenerationState();
+        return insertedPosition;
     }
 
     public PageItem rotatePage(int position) {
@@ -90,14 +109,17 @@ public final class DocumentSessionViewModel extends ViewModel {
         return moved;
     }
 
-    public void clearForNewDocument() {
+    public List<String> clearForNewDocument() {
+        List<String> capturedFileNames = collectCurrentCapturedFileNames();
         pages.clear();
         lastPdfResult = null;
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
+        pendingCapturedImage = null;
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;
+        return capturedFileNames;
     }
 
     public PdfResult getLastPdfResult() {
@@ -126,6 +148,24 @@ public final class DocumentSessionViewModel extends ViewModel {
 
     public void setPendingSuggestedFileName(String pendingSuggestedFileName) {
         this.pendingSuggestedFileName = pendingSuggestedFileName;
+    }
+
+    public PendingCapturedImage getPendingCapturedImage() {
+        return pendingCapturedImage;
+    }
+
+    public void setPendingCapturedImage(
+            Uri uri,
+            String capturedFileName,
+            CaptureTarget target
+    ) {
+        pendingCapturedImage = new PendingCapturedImage(uri, capturedFileName, target);
+    }
+
+    public PendingCapturedImage clearPendingCapturedImage() {
+        PendingCapturedImage capturedImage = pendingCapturedImage;
+        pendingCapturedImage = null;
+        return capturedImage;
     }
 
     public boolean isGenerationInProgress() {
@@ -269,6 +309,30 @@ public final class DocumentSessionViewModel extends ViewModel {
         }
     }
 
+    private List<String> collectCurrentCapturedFileNames() {
+        List<String> capturedFileNames = CapturedPageCleanup.collectCapturedFileNames(pages);
+        if (pendingCapturedImage != null) {
+            capturedFileNames.add(pendingCapturedImage.getCapturedFileName());
+        }
+        return capturedFileNames;
+    }
+
+    private void clearDocumentStateForReplacement() {
+        lastPdfResult = null;
+        transientStatusMessage = null;
+        pendingSuggestedFileName = null;
+        pendingCapturedImage = null;
+        cancelActiveGeneration();
+        setPdfGenerationState(PdfGenerationState.idle());
+        awaitingSaveLocation = false;
+    }
+
+    private void resetFinishedGenerationState() {
+        if (!pdfGenerationState.isRunning()) {
+            setPdfGenerationState(PdfGenerationState.idle());
+        }
+    }
+
     private void validatePosition(int position) {
         if (position < 0 || position >= pages.size()) {
             throw new IndexOutOfBoundsException("position is out of bounds: " + position);
@@ -309,6 +373,38 @@ public final class DocumentSessionViewModel extends ViewModel {
 
     public interface PdfGenerationStateObserver {
         void onPdfGenerationStateChanged(PdfGenerationState state);
+    }
+
+    public enum CaptureTarget {
+        HOME,
+        EDITOR
+    }
+
+    public static final class PendingCapturedImage {
+        private final Uri uri;
+        private final String capturedFileName;
+        private final CaptureTarget target;
+
+        private PendingCapturedImage(Uri uri, String capturedFileName, CaptureTarget target) {
+            this.uri = Objects.requireNonNull(uri, "uri is required");
+            if (capturedFileName == null || capturedFileName.trim().isEmpty()) {
+                throw new IllegalArgumentException("capturedFileName is required");
+            }
+            this.capturedFileName = capturedFileName.trim();
+            this.target = Objects.requireNonNull(target, "target is required");
+        }
+
+        public Uri getUri() {
+            return uri;
+        }
+
+        public String getCapturedFileName() {
+            return capturedFileName;
+        }
+
+        public CaptureTarget getTarget() {
+            return target;
+        }
     }
 
     public static final class GenerationOperation {

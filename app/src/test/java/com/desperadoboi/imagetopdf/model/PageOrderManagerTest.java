@@ -93,4 +93,19 @@ public class PageOrderManagerTest {
         assertSame(firstUri, pages.get(1).getImageUri());
         assertEquals(90, pages.get(1).getManualRotationDegrees());
     }
+
+    @Test
+    public void pageItemKeepsSourceAfterMove() {
+        Uri firstUri = FakeUri.create("content://test/first");
+        Uri secondUri = FakeUri.create("content://test/second");
+        PageItem firstPage = PageItem.camera(firstUri, "capture_first.jpg");
+        PageItem secondPage = new PageItem(secondUri);
+        List<PageItem> pages = new ArrayList<>(Arrays.asList(firstPage, secondPage));
+
+        PageOrderManager.move(pages, 0, 1);
+
+        assertSame(firstPage, pages.get(1));
+        assertEquals(PageSource.CAMERA, pages.get(1).getSource());
+        assertEquals("capture_first.jpg", pages.get(1).getCapturedFileName());
+    }
 }

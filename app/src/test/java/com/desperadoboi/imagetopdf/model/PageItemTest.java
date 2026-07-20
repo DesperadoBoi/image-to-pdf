@@ -23,6 +23,23 @@ public class PageItemTest {
     }
 
     @Test
+    public void galleryPageUsesGallerySourceByDefault() {
+        PageItem pageItem = new PageItem(TEST_URI);
+
+        assertEquals(PageSource.GALLERY, pageItem.getSource());
+        assertFalse(pageItem.isAppOwnedCapture());
+    }
+
+    @Test
+    public void cameraPageUsesCameraSource() {
+        PageItem pageItem = PageItem.camera(TEST_URI, "capture_test.jpg");
+
+        assertEquals(PageSource.CAMERA, pageItem.getSource());
+        assertTrue(pageItem.isAppOwnedCapture());
+        assertEquals("capture_test.jpg", pageItem.getCapturedFileName());
+    }
+
+    @Test
     public void clockwiseRotationCyclesThroughSupportedAngles() {
         assertEquals(90, PageItem.rotateClockwise(0));
         assertEquals(180, PageItem.rotateClockwise(90));
@@ -41,6 +58,16 @@ public class PageItemTest {
     }
 
     @Test
+    public void sourceIsPreservedAfterRotation() {
+        PageItem pageItem = PageItem.camera(TEST_URI, "capture_test.jpg");
+
+        PageItem rotatedPageItem = pageItem.rotateClockwise();
+
+        assertEquals(PageSource.CAMERA, rotatedPageItem.getSource());
+        assertEquals("capture_test.jpg", rotatedPageItem.getCapturedFileName());
+    }
+
+    @Test
     public void stableIdDoesNotChangeAfterRotation() {
         PageItem pageItem = new PageItem(TEST_URI);
 
@@ -53,6 +80,14 @@ public class PageItemTest {
     public void sameUriPagesHaveDifferentStableIds() {
         PageItem firstPage = new PageItem(TEST_URI);
         PageItem secondPage = new PageItem(TEST_URI);
+
+        assertNotEquals(firstPage.getId(), secondPage.getId());
+    }
+
+    @Test
+    public void cameraPagesHaveDifferentStableIds() {
+        PageItem firstPage = PageItem.camera(TEST_URI, "capture_first.jpg");
+        PageItem secondPage = PageItem.camera(TEST_URI, "capture_second.jpg");
 
         assertNotEquals(firstPage.getId(), secondPage.getId());
     }
