@@ -118,6 +118,7 @@ public class PdfGenerator {
                 try {
                     throwIfCancelled(cancellationToken);
                     bitmap = ImageBitmapTransformer.applyTransform(bitmap, imageTransform);
+                    throwIfCancelled(cancellationToken);
                     bitmap = ImageBitmapTransformer.applyClockwiseRotation(
                             bitmap,
                             pageItem.getManualRotationDegrees()

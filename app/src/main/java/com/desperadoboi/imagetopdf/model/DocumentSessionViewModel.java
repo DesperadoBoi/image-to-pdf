@@ -172,7 +172,6 @@ public final class DocumentSessionViewModel extends ViewModel {
 
         long operationId = nextGenerationOperationId++;
         activeCancellationToken = new CancellationToken();
-        lastPdfResult = null;
         transientStatusMessage = null;
         setPdfGenerationState(PdfGenerationState.running(operationId, totalPages));
         return new GenerationOperation(operationId, activeCancellationToken);
@@ -257,7 +256,7 @@ public final class DocumentSessionViewModel extends ViewModel {
     @Override
     protected void onCleared() {
         cancelActiveGeneration();
-        pdfExecutor.shutdownNow();
+        pdfExecutor.shutdown();
         super.onCleared();
     }
 

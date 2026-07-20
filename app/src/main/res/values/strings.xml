@@ -37,7 +37,6 @@
     <string name="page_thumbnail_content_description">Миниатюра страницы %1$d</string>
     <string name="page_thumbnail_content_description_generic">Миниатюра страницы</string>
     <string name="status_no_images_selected">Изображения не выбраны</string>
-    <string name="status_image_selection_cancelled">Выбор изображений отменён</string>
     <string name="status_save_location_cancelled">Сохранение отменено</string>
     <string name="status_pdf_generating">Создание PDF…</string>
     <string name="status_pdf_generation_progress">Создание PDF: %1$d из %2$d</string>

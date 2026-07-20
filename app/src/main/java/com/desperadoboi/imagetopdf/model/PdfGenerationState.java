@@ -6,7 +6,7 @@ public final class PdfGenerationState {
     public enum Status {
         IDLE,
         RUNNING,
-        SUCCEEDED,
+        SUCCESS,
         CANCELLED,
         ERROR
     }
@@ -124,7 +124,7 @@ public final class PdfGenerationState {
         }
         return new PdfGenerationState(
                 this.operationId,
-                Status.SUCCEEDED,
+                Status.SUCCESS,
                 totalPages,
                 totalPages,
                 false,
@@ -181,7 +181,7 @@ public final class PdfGenerationState {
     }
 
     public boolean isSucceeded() {
-        return status == Status.SUCCEEDED;
+        return status == Status.SUCCESS;
     }
 
     public boolean isCancelled() {
