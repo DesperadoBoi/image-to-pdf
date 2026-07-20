@@ -63,6 +63,49 @@ public class DocumentSessionViewModelTest {
     }
 
     @Test
+    public void idBasedEditsChangeOnlyTargetAndKeepIdentity() {
+        Uri firstUri = FakeUri.create("content://test/first");
+        Uri secondUri = FakeUri.create("content://test/second");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(firstUri, secondUri));
+        PageItem firstBefore = viewModel.getPages().get(0);
+        PageItem secondBefore = viewModel.getPages().get(1);
+        CropRect crop = new CropRect(0.1f, 0.2f, 0.8f, 0.9f);
+
+        PageItem updated = viewModel.updatePageCrop(firstBefore.getId(), crop);
+        updated = viewModel.rotatePageLeft(firstBefore.getId());
+
+        assertEquals(firstBefore.getId(), updated.getId());
+        assertSame(firstUri, updated.getImageUri());
+        assertEquals(PageSource.GALLERY, updated.getSource());
+        assertEquals(270, updated.getManualRotationDegrees());
+        assertEquals(crop.rotateCounterClockwise(), updated.getEditSpec().getCropRect());
+        assertSame(secondBefore, viewModel.getPages().get(1));
+    }
+
+    @Test
+    public void perspectiveUpdateResetsCropAndSnapshotKeepsEditSpec() {
+        Uri uri = FakeUri.create("content://test/page");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(uri));
+        long pageId = viewModel.getPages().get(0).getId();
+        viewModel.updatePageCrop(pageId, new CropRect(0.1f, 0.1f, 0.9f, 0.9f));
+        PerspectiveQuad quad = new PerspectiveQuad(
+                new NormalizedPoint(0.1f, 0.1f),
+                new NormalizedPoint(0.9f, 0.1f),
+                new NormalizedPoint(0.8f, 0.9f),
+                new NormalizedPoint(0.2f, 0.9f)
+        );
+
+        viewModel.updatePagePerspective(pageId, quad);
+        PageItem snapshot = viewModel.getPagesSnapshot().get(0);
+
+        assertSame(CropRect.FULL, snapshot.getEditSpec().getCropRect());
+        assertSame(quad, snapshot.getEditSpec().getPerspectiveQuad());
+        assertEquals(pageId, snapshot.getId());
+    }
+
+    @Test
     public void clearForNewDocumentRemovesPagesAndResultWithoutTouchingSavedUri() {
         Uri imageUri = FakeUri.create("content://test/image");
         Uri pdfUri = FakeUri.create("content://test/result.pdf");

@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.UnaryOperator;
 
 public final class DocumentSessionViewModel extends ViewModel {
     private final ArrayList<PageItem> pages = new ArrayList<>();
@@ -85,8 +86,38 @@ public final class DocumentSessionViewModel extends ViewModel {
         validatePosition(position);
         PageItem rotatedPage = pages.get(position).rotateClockwise();
         pages.set(position, rotatedPage);
-        transientStatusMessage = null;
+        markDocumentEdited();
         return rotatedPage;
+    }
+
+    public PageItem rotatePageLeft(long pageId) {
+        return updatePage(pageId, PageItem::rotateCounterClockwise);
+    }
+
+    public PageItem rotatePageRight(long pageId) {
+        return updatePage(pageId, PageItem::rotateClockwise);
+    }
+
+    public PageItem updatePageCrop(long pageId, CropRect cropRect) {
+        Objects.requireNonNull(cropRect, "cropRect is required");
+        return updatePage(pageId, pageItem -> pageItem.withCropRect(cropRect));
+    }
+
+    public PageItem updatePagePerspective(long pageId, PerspectiveQuad perspectiveQuad) {
+        Objects.requireNonNull(perspectiveQuad, "perspectiveQuad is required");
+        return updatePage(pageId, pageItem -> pageItem.withPerspectiveQuad(perspectiveQuad));
+    }
+
+    public PageItem resetPageCrop(long pageId) {
+        return updatePage(pageId, PageItem::resetCrop);
+    }
+
+    public PageItem resetPagePerspective(long pageId) {
+        return updatePage(pageId, PageItem::resetPerspective);
+    }
+
+    public PageItem resetPageEdits(long pageId) {
+        return updatePage(pageId, PageItem::resetEdits);
     }
 
     public PageItem deletePage(int position) {
@@ -337,6 +368,38 @@ public final class DocumentSessionViewModel extends ViewModel {
         if (position < 0 || position >= pages.size()) {
             throw new IndexOutOfBoundsException("position is out of bounds: " + position);
         }
+    }
+
+    private PageItem updatePage(long pageId, UnaryOperator<PageItem> update) {
+        int position = findPagePosition(pageId);
+        if (position < 0) {
+            throw new IllegalArgumentException("Unknown page ID: " + pageId);
+        }
+        PageItem currentPage = pages.get(position);
+        PageItem updatedPage = Objects.requireNonNull(
+                update.apply(currentPage),
+                "Updated page is required"
+        );
+        if (updatedPage != currentPage) {
+            pages.set(position, updatedPage);
+            markDocumentEdited();
+        }
+        return updatedPage;
+    }
+
+    private int findPagePosition(long pageId) {
+        for (int position = 0; position < pages.size(); position++) {
+            if (pages.get(position).getId() == pageId) {
+                return position;
+            }
+        }
+        return -1;
+    }
+
+    private void markDocumentEdited() {
+        transientStatusMessage = null;
+        lastPdfResult = null;
+        resetFinishedGenerationState();
     }
 
     private void cancelActiveGeneration() {

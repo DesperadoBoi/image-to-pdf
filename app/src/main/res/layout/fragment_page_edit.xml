@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:clickable="true"
+    android:focusable="true">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_page_edit_back"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/action_page_edit_back_content_description"
+        android:minWidth="@dimen/page_edit_top_button_min_width"
+        android:text="@string/action_back"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/text_page_edit_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/content_spacing_small"
+        android:layout_marginEnd="@dimen/content_spacing_small"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        app:layout_constraintBottom_toBottomOf="@id/button_page_edit_back"
+        app:layout_constraintEnd_toStartOf="@id/button_page_edit_reset"
+        app:layout_constraintStart_toEndOf="@id/button_page_edit_back"
+        app:layout_constraintTop_toTopOf="@id/button_page_edit_back"
+        tools:text="Страница 2" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_page_edit_reset"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/action_page_edit_reset_content_description"
+        android:minWidth="@dimen/page_edit_top_button_min_width"
+        android:text="@string/action_reset"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <FrameLayout
+        android:id="@+id/layout_page_edit_image"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/content_spacing_small"
+        android:layout_marginBottom="@dimen/content_spacing_small"
+        android:background="?attr/colorSurfaceVariant"
+        app:layout_constraintBottom_toTopOf="@id/text_page_edit_counter"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/button_page_edit_back">
+
+        <com.desperadoboi.imagetopdf.ui.editor.ZoomableImageView
+            android:id="@+id/image_page_edit"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/page_edit_image_content_description_generic" />
+
+        <ProgressBar
+            android:id="@+id/progress_page_edit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/text_page_edit_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="@dimen/page_edit_error_padding"
+            android:text="@string/status_page_edit_load_error"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/text_page_edit_counter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:minHeight="@dimen/page_edit_counter_min_height"
+        android:textAppearance="?attr/textAppearanceLabelLarge"
+        app:layout_constraintBottom_toTopOf="@id/recycler_page_edit_strip"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:text="2 / 6" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_page_edit_strip"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/page_edit_strip_height"
+        android:clipToPadding="false"
+        android:contentDescription="@string/page_edit_strip_content_description"
+        android:paddingStart="@dimen/page_edit_strip_edge_padding"
+        android:paddingEnd="@dimen/page_edit_strip_edge_padding"
+        app:layout_constraintBottom_toTopOf="@id/layout_page_edit_bottom"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:itemCount="5"
+        tools:listitem="@layout/item_page_edit_strip" />
+
+    <FrameLayout
+        android:id="@+id/layout_page_edit_bottom"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_small"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout
+            android:id="@+id/layout_page_edit_normal_tools"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_page_edit_rotate_left"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/action_rotate_left_content_description"
+                    android:minWidth="0dp"
+                    android:text="@string/action_rotate_left" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_page_edit_rotate_right"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/page_edit_tool_spacing"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/action_rotate_right_content_description"
+                    android:minWidth="0dp"
+                    android:text="@string/action_rotate_right" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_page_edit_crop"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/page_edit_tool_spacing"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/action_crop_content_description"
+                    android:minWidth="0dp"
+                    android:text="@string/action_crop" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_page_edit_document"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/page_edit_tool_spacing"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/action_document_content_description"
+                    android:minWidth="0dp"
+                    android:text="@string/action_document" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_page_edit_done"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/page_edit_done_spacing"
+                android:contentDescription="@string/action_done_content_description"
+                android:text="@string/action_done" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_page_edit_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_page_edit_cancel"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:contentDescription="@string/action_cancel_content_description"
+                android:text="@string/action_cancel" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_page_edit_apply"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/content_spacing_small"
+                android:layout_weight="1"
+                android:contentDescription="@string/action_apply_content_description"
+                android:text="@string/action_apply" />
+        </LinearLayout>
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

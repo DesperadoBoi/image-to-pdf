@@ -134,7 +134,7 @@ public final class EditorFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
-        configurePreviewResultListener();
+        configurePageEditResultListener();
         configurePageList();
         configureClickListeners();
         pdfGenerationStateObserver = generationState -> {
@@ -230,12 +230,12 @@ public final class EditorFragment extends Fragment {
         pageTouchHelper.attachToRecyclerView(pagesRecyclerView);
     }
 
-    private void configurePreviewResultListener() {
+    private void configurePageEditResultListener() {
         getParentFragmentManager().setFragmentResultListener(
-                PagePreviewFragment.RESULT_PAGE_ROTATED,
+                PageEditFragment.RESULT_PAGE_EDITED,
                 getViewLifecycleOwner(),
                 (requestKey, result) ->
-                        notifyPreviewPageRotated(result.getLong(PagePreviewFragment.RESULT_KEY_PAGE_ID))
+                        notifyPageEdited(result.getLong(PageEditFragment.RESULT_KEY_PAGE_ID))
         );
     }
 
@@ -324,10 +324,10 @@ public final class EditorFragment extends Fragment {
                 || navigationCallback == null) {
             return;
         }
-        navigationCallback.onPagePreviewRequested(sessionViewModel.getPages().get(position).getId());
+        navigationCallback.onPageEditRequested(sessionViewModel.getPages().get(position).getId());
     }
 
-    private void notifyPreviewPageRotated(long pageId) {
+    private void notifyPageEdited(long pageId) {
         int position = PreviewPageNavigator.findPositionById(sessionViewModel.getPages(), pageId);
         if (position == PreviewPageNavigator.POSITION_NOT_FOUND) {
             return;
@@ -804,7 +804,7 @@ public final class EditorFragment extends Fragment {
     public interface NavigationCallback {
         void onReturnHomeRequested();
 
-        void onPagePreviewRequested(long pageId);
+        void onPageEditRequested(long pageId);
     }
 
     private static final class PdfMetadata {

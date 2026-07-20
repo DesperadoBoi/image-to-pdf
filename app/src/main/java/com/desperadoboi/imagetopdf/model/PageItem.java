@@ -13,13 +13,28 @@ public final class PageItem {
     private final int manualRotationDegrees;
     private final PageSource source;
     private final String capturedFileName;
+    private final PageEditSpec editSpec;
 
     public PageItem(Uri imageUri) {
-        this(NEXT_ID.getAndIncrement(), imageUri, 0, PageSource.GALLERY, null);
+        this(
+                NEXT_ID.getAndIncrement(),
+                imageUri,
+                0,
+                PageSource.GALLERY,
+                null,
+                PageEditSpec.DEFAULT
+        );
     }
 
     public PageItem(Uri imageUri, int manualRotationDegrees) {
-        this(NEXT_ID.getAndIncrement(), imageUri, manualRotationDegrees, PageSource.GALLERY, null);
+        this(
+                NEXT_ID.getAndIncrement(),
+                imageUri,
+                manualRotationDegrees,
+                PageSource.GALLERY,
+                null,
+                PageEditSpec.DEFAULT
+        );
     }
 
     public static PageItem camera(Uri imageUri, String capturedFileName) {
@@ -28,7 +43,8 @@ public final class PageItem {
                 imageUri,
                 0,
                 PageSource.CAMERA,
-                capturedFileName
+                capturedFileName,
+                PageEditSpec.DEFAULT
         );
     }
 
@@ -37,7 +53,8 @@ public final class PageItem {
             Uri imageUri,
             int manualRotationDegrees,
             PageSource source,
-            String capturedFileName
+            String capturedFileName,
+            PageEditSpec editSpec
     ) {
         this.imageUri = Objects.requireNonNull(imageUri, "imageUri is required");
         validateRotation(manualRotationDegrees);
@@ -45,6 +62,7 @@ public final class PageItem {
         this.capturedFileName = normalizeCapturedFileName(source, capturedFileName);
         this.id = id;
         this.manualRotationDegrees = manualRotationDegrees;
+        this.editSpec = Objects.requireNonNull(editSpec, "editSpec is required");
     }
 
     public long getId() {
@@ -67,6 +85,10 @@ public final class PageItem {
         return capturedFileName;
     }
 
+    public PageEditSpec getEditSpec() {
+        return editSpec;
+    }
+
     public boolean isAppOwnedCapture() {
         return source == PageSource.CAMERA;
     }
@@ -77,7 +99,46 @@ public final class PageItem {
                 imageUri,
                 rotateClockwise(manualRotationDegrees),
                 source,
-                capturedFileName
+                capturedFileName,
+                editSpec.rotateClockwise()
+        );
+    }
+
+    public PageItem rotateCounterClockwise() {
+        return new PageItem(
+                id,
+                imageUri,
+                rotateCounterClockwise(manualRotationDegrees),
+                source,
+                capturedFileName,
+                editSpec.rotateCounterClockwise()
+        );
+    }
+
+    public PageItem withCropRect(CropRect cropRect) {
+        return withEditSpec(editSpec.withCropRect(cropRect));
+    }
+
+    public PageItem withPerspectiveQuad(PerspectiveQuad perspectiveQuad) {
+        return withEditSpec(editSpec.withPerspectiveQuad(perspectiveQuad));
+    }
+
+    public PageItem resetCrop() {
+        return withCropRect(CropRect.FULL);
+    }
+
+    public PageItem resetPerspective() {
+        return withEditSpec(new PageEditSpec(CropRect.FULL, PerspectiveQuad.FULL));
+    }
+
+    public PageItem resetEdits() {
+        return new PageItem(
+                id,
+                imageUri,
+                0,
+                source,
+                capturedFileName,
+                PageEditSpec.DEFAULT
         );
     }
 
@@ -86,12 +147,31 @@ public final class PageItem {
     }
 
     public String getThumbnailKey() {
-        return id + "#" + manualRotationDegrees;
+        return id + "#" + manualRotationDegrees + "#" + editSpec.toKey();
     }
 
     public static int rotateClockwise(int rotationDegrees) {
         validateRotation(rotationDegrees);
         return (rotationDegrees + 90) % 360;
+    }
+
+    public static int rotateCounterClockwise(int rotationDegrees) {
+        validateRotation(rotationDegrees);
+        return (rotationDegrees + 270) % 360;
+    }
+
+    private PageItem withEditSpec(PageEditSpec newEditSpec) {
+        if (editSpec.equals(newEditSpec)) {
+            return this;
+        }
+        return new PageItem(
+                id,
+                imageUri,
+                manualRotationDegrees,
+                source,
+                capturedFileName,
+                newEditSpec
+        );
     }
 
     private static void validateRotation(int rotationDegrees) {
