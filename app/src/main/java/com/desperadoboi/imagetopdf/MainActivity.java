@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.ui.editor.EditorFragment;
+import com.desperadoboi.imagetopdf.ui.editor.PagePreviewFragment;
 import com.desperadoboi.imagetopdf.ui.home.HomeFragment;
 
 public class MainActivity extends AppCompatActivity
@@ -47,6 +48,23 @@ public class MainActivity extends AppCompatActivity
         showHome();
     }
 
+    @Override
+    public void onPagePreviewRequested(long pageId) {
+        if (!sessionViewModel.canEditPages()
+                || getSupportFragmentManager().findFragmentByTag(PagePreviewFragment.TAG) != null) {
+            return;
+        }
+        getSupportFragmentManager()
+                .beginTransaction()
+                .add(
+                        R.id.fragment_container,
+                        PagePreviewFragment.newInstance(pageId),
+                        PagePreviewFragment.TAG
+                )
+                .addToBackStack(PagePreviewFragment.TAG)
+                .commit();
+    }
+
     private void configureWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (view, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -65,6 +83,10 @@ public class MainActivity extends AppCompatActivity
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
+                if (getSupportFragmentManager().findFragmentByTag(PagePreviewFragment.TAG) != null) {
+                    getSupportFragmentManager().popBackStack();
+                    return;
+                }
                 if (getSupportFragmentManager().findFragmentByTag(EditorFragment.TAG) != null) {
                     if (sessionViewModel.isGenerationInProgress()) {
                         return;

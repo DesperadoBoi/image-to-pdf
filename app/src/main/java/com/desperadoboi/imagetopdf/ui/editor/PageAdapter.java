@@ -213,6 +213,12 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
                 callback.onRotate(adapterPosition);
             }
         });
+        holder.thumbnailImageView.setOnClickListener(view -> {
+            int adapterPosition = holder.getBindingAdapterPosition();
+            if (actionsEnabled && adapterPosition != RecyclerView.NO_POSITION) {
+                callback.onPreview(adapterPosition);
+            }
+        });
         holder.deleteButton.setOnClickListener(view -> {
             int adapterPosition = holder.getBindingAdapterPosition();
             if (actionsEnabled && adapterPosition != RecyclerView.NO_POSITION) {
@@ -284,6 +290,8 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         void onRotate(int position);
 
         void onDelete(int position);
+
+        void onPreview(int position);
 
         void onDragStart(RecyclerView.ViewHolder viewHolder);
 
