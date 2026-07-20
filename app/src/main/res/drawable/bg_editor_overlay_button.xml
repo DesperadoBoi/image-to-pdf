@@ -1,0 +1,11 @@
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?attr/colorControlHighlight">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/editor_overlay_button_background" />
+            <stroke
+                android:width="1dp"
+                android:color="?attr/colorOutline" />
+        </shape>
+    </item>
+</ripple>

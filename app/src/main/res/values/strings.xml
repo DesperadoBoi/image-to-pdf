@@ -36,6 +36,8 @@
     <string name="action_add_images">Добавить изображения</string>
     <string name="action_back">Назад</string>
     <string name="action_add">Добавить</string>
+    <string name="action_editor_back_content_description">Вернуться на главный экран</string>
+    <string name="action_add_page_content_description">Добавить страницу</string>
     <string name="action_cancel">Отмена</string>
     <string name="action_create_pdf">Создать PDF</string>
     <string name="action_cancel_pdf_generation">Отменить</string>
@@ -54,6 +56,8 @@
     <string name="action_apply">Применить</string>
     <string name="action_page_edit_back_content_description">Вернуться к списку страниц</string>
     <string name="action_page_edit_reset_content_description">Сбросить изменения страницы</string>
+    <string name="action_crop_cancel_content_description">Отменить обрезку</string>
+    <string name="action_crop_reset_content_description">Сбросить рамку обрезки</string>
     <string name="action_rotate_left_content_description">Повернуть страницу влево</string>
     <string name="action_rotate_right_content_description">Повернуть страницу вправо</string>
     <string name="action_crop_content_description">Открыть прямоугольную обрезку</string>

@@ -1,6 +1,5 @@
 <resources>
     <style name="Theme.ImageToPDF" parent="Base.Theme.ImageToPDF">
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>

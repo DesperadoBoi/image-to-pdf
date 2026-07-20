@@ -4,44 +4,57 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="?android:attr/colorBackground"
     android:clickable="true"
     android:focusable="true">
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_page_edit_back"
         style="?attr/materialButtonOutlinedStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/editor_toolbar_height"
         android:contentDescription="@string/action_page_edit_back_content_description"
-        android:minWidth="@dimen/page_edit_top_button_min_width"
-        android:text="@string/action_back"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minWidth="@dimen/touch_target"
+        android:padding="0dp"
+        app:icon="@drawable/ic_arrow_back_24"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconTint="?attr/colorOnSurface"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/text_page_edit_title"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/editor_toolbar_height"
         android:layout_marginStart="@dimen/content_spacing_small"
         android:layout_marginEnd="@dimen/content_spacing_small"
         android:gravity="center"
         android:maxLines="1"
         android:textAppearance="?attr/textAppearanceTitleMedium"
-        app:layout_constraintBottom_toBottomOf="@id/button_page_edit_back"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@id/button_page_edit_reset"
         app:layout_constraintStart_toEndOf="@id/button_page_edit_back"
-        app:layout_constraintTop_toTopOf="@id/button_page_edit_back"
+        app:layout_constraintTop_toTopOf="parent"
         tools:text="Страница 2" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_page_edit_reset"
         style="?attr/materialButtonOutlinedStyle"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/editor_toolbar_height"
         android:contentDescription="@string/action_page_edit_reset_content_description"
-        android:minWidth="@dimen/page_edit_top_button_min_width"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minWidth="0dp"
         android:text="@string/action_reset"
+        app:icon="@drawable/ic_reset_24"
+        app:iconGravity="textStart"
+        app:iconPadding="@dimen/page_edit_reset_icon_spacing"
+        app:iconTint="?attr/colorOnSurfaceVariant"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -49,9 +62,9 @@
         android:id="@+id/layout_page_edit_image"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="@dimen/content_spacing_small"
-        android:layout_marginBottom="@dimen/content_spacing_small"
-        android:background="?attr/colorSurfaceVariant"
+        android:layout_marginTop="@dimen/editor_preview_margin"
+        android:layout_marginBottom="@dimen/editor_preview_margin"
+        android:background="@color/editor_preview_background"
         app:layout_constraintBottom_toTopOf="@id/text_page_edit_counter"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -69,11 +82,31 @@
             android:layout_height="match_parent"
             android:visibility="gone" />
 
-        <com.desperadoboi.imagetopdf.ui.editor.DocumentPerspectiveOverlayView
-            android:id="@+id/overlay_document_perspective"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
+        <ImageButton
+            android:id="@+id/button_page_edit_rotate_left"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="@dimen/editor_rotate_overlay_margin"
+            android:background="@drawable/bg_editor_overlay_button"
+            android:contentDescription="@string/action_rotate_left_content_description"
+            android:elevation="@dimen/editor_overlay_button_elevation"
+            android:padding="@dimen/editor_overlay_button_padding"
+            android:src="@drawable/ic_rotate_left_24"
+            app:tint="?attr/colorOnSurface" />
+
+        <ImageButton
+            android:id="@+id/button_page_edit_rotate_right"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/editor_rotate_overlay_margin"
+            android:background="@drawable/bg_editor_overlay_button"
+            android:contentDescription="@string/action_rotate_right_content_description"
+            android:elevation="@dimen/editor_overlay_button_elevation"
+            android:padding="@dimen/editor_overlay_button_padding"
+            android:src="@drawable/ic_rotate_right_24"
+            app:tint="?attr/colorOnSurface" />
 
         <ProgressBar
             android:id="@+id/progress_page_edit"
@@ -92,6 +125,7 @@
             android:padding="@dimen/page_edit_error_padding"
             android:text="@string/status_page_edit_load_error"
             android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/white"
             android:visibility="gone"
             tools:visibility="visible" />
     </FrameLayout>
@@ -99,10 +133,10 @@
     <TextView
         android:id="@+id/text_page_edit_counter"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/page_edit_counter_min_height"
         android:gravity="center"
-        android:minHeight="@dimen/page_edit_counter_min_height"
         android:textAppearance="?attr/textAppearanceLabelLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"
         app:layout_constraintBottom_toTopOf="@id/recycler_page_edit_strip"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -114,6 +148,7 @@
         android:layout_height="@dimen/page_edit_strip_height"
         android:clipToPadding="false"
         android:contentDescription="@string/page_edit_strip_content_description"
+        android:overScrollMode="never"
         android:paddingStart="@dimen/page_edit_strip_edge_padding"
         android:paddingEnd="@dimen/page_edit_strip_edge_padding"
         app:layout_constraintBottom_toTopOf="@id/layout_page_edit_bottom"
@@ -135,69 +170,33 @@
             android:id="@+id/layout_page_edit_normal_tools"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_page_edit_rotate_left"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:contentDescription="@string/action_rotate_left_content_description"
-                    android:minWidth="0dp"
-                    android:text="@string/action_rotate_left" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_page_edit_rotate_right"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/page_edit_tool_spacing"
-                    android:layout_weight="1"
-                    android:contentDescription="@string/action_rotate_right_content_description"
-                    android:minWidth="0dp"
-                    android:text="@string/action_rotate_right" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/page_edit_tool_row_spacing"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_page_edit_crop"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:contentDescription="@string/action_crop_content_description"
-                    android:minWidth="0dp"
-                    android:text="@string/action_crop" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_page_edit_document"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/page_edit_tool_spacing"
-                    android:layout_weight="1"
-                    android:contentDescription="@string/action_document_content_description"
-                    android:minWidth="0dp"
-                    android:text="@string/action_document" />
-            </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_page_edit_crop"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/editor_bottom_button_height"
+                android:layout_weight="1"
+                android:contentDescription="@string/action_crop_content_description"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:text="@string/action_crop"
+                app:icon="@drawable/ic_crop_24"
+                app:iconGravity="textStart"
+                app:iconTint="?attr/colorPrimary" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_page_edit_done"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/page_edit_done_spacing"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/editor_bottom_button_height"
+                android:layout_marginStart="@dimen/content_spacing_small"
+                android:layout_weight="2"
                 android:contentDescription="@string/action_done_content_description"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="@string/action_done" />
         </LinearLayout>
 
@@ -205,6 +204,7 @@
             android:id="@+id/layout_page_edit_actions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal"
             android:visibility="gone">
 
@@ -212,18 +212,22 @@
                 android:id="@+id/button_page_edit_cancel"
                 style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="@dimen/editor_bottom_button_height"
                 android:layout_weight="1"
                 android:contentDescription="@string/action_cancel_content_description"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="@string/action_cancel" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_page_edit_apply"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="@dimen/editor_bottom_button_height"
                 android:layout_marginStart="@dimen/content_spacing_small"
-                android:layout_weight="1"
+                android:layout_weight="2"
                 android:contentDescription="@string/action_apply_content_description"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="@string/action_apply" />
         </LinearLayout>
     </FrameLayout>

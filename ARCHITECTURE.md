@@ -36,13 +36,17 @@ com.desperadoboi.imagetopdf
 └── util
 ```
 
-`MainActivity` сейчас является контейнером экранов. `HomeFragment` отвечает за первичный выбор изображений, `EditorFragment` - за список страниц, редактирование порядка, поворот, удаление, создание PDF и действия с результатом.
+`MainActivity` сейчас является контейнером экранов. `HomeFragment` является dashboard и отвечает за запуск существующих сценариев выбора изображений и камеры, `AllToolsFragment` показывает секционный каталог инструментов, а `EditorFragment` отвечает за список страниц, редактирование порядка, поворот, удаление, создание PDF и действия с результатом.
 
 ## Целевая UI-архитектура
 
 - одна `Activity` как контейнер;
-- отдельные `Fragment` для домашнего экрана и редактора страниц;
-- `PageEditFragment` открывается поверх редактора в существующем fragment-контейнере, использует stable ID страницы и общий `DocumentSessionViewModel`, а также содержит основной просмотр, горизонтальную ленту и режимы crop/document;
+- отдельные `Fragment` для домашнего dashboard, полного каталога и редактора страниц;
+- `HomeFragment` показывает четыре колонки из восьми инструментов, не содержит фиктивной истории, поиска или настроек;
+- `AllToolsFragment` использует один секционный `RecyclerView` и существующий fragment-контейнер без новой Activity и Navigation Component;
+- immutable `ToolCatalog` является единственной точкой истины для `ToolId`, category, availability, title/icon resources и порядка Home/каталога;
+- `PageEditFragment` открывается поверх редактора в существующем fragment-контейнере, использует stable ID страницы и общий `DocumentSessionViewModel`, содержит основной просмотр, горизонтальную ленту и обычный прямоугольный crop;
+- обычный `PageEditFragment` не показывает perspective correction: rotate left/right расположены как overlay-кнопки в нижних углах preview, а нижняя панель содержит только crop и done;
 - activity-scoped `DocumentSessionViewModel` для состояния пользовательской сессии;
 - `Fragment` читает состояние из `DocumentSessionViewModel` и применяет точечные обновления XML UI;
 - однонаправленный поток: `UI action -> ViewModel -> сервис/компонент -> новое состояние -> UI`;
@@ -50,6 +54,16 @@ com.desperadoboi.imagetopdf
 - `Context` передаётся только компонентам, которым он действительно нужен;
 - DI-фреймворк на старте не добавляется;
 - зависимости передаются явно через конструкторы или простой `AppContainer`.
+
+### Будущий Smart Scan
+
+Perspective-модели, overlay, geometry, bitmap transform и интеграция с thumbnail/preview/PDF
+сохраняются как технический фундамент, но не имеют точки входа в обычном Image-to-PDF
+редакторе. `SmartScanFlowCoordinator` фиксирует будущий контракт навигации без пустого
+экрана в текущей версии.
+
+Целевой отдельный сценарий: `Home Smart Scan tile -> Camera -> Document perspective editor
+-> Result editor -> PDF`.
 
 ## Основные технические решения
 

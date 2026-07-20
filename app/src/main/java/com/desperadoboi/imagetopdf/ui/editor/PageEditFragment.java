@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -25,7 +26,6 @@ import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
 import com.desperadoboi.imagetopdf.model.CropRect;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.PageItem;
-import com.desperadoboi.imagetopdf.model.PerspectiveQuad;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
@@ -46,17 +46,15 @@ public final class PageEditFragment extends Fragment {
 
     private ZoomableImageView imageView;
     private RectCropOverlayView rectCropOverlay;
-    private DocumentPerspectiveOverlayView documentOverlay;
     private TextView titleView;
     private TextView counterView;
     private TextView errorView;
     private ProgressBar progressBar;
     private MaterialButton backButton;
     private MaterialButton resetButton;
-    private MaterialButton rotateLeftButton;
-    private MaterialButton rotateRightButton;
+    private ImageButton rotateLeftButton;
+    private ImageButton rotateRightButton;
     private MaterialButton cropButton;
-    private MaterialButton documentButton;
     private MaterialButton doneButton;
     private MaterialButton cancelButton;
     private MaterialButton applyButton;
@@ -69,7 +67,6 @@ public final class PageEditFragment extends Fragment {
     private EditMode editMode = EditMode.NORMAL;
     private String activeLoadKey;
     private Bitmap currentBitmap;
-    private boolean documentResetCrop;
 
     public static PageEditFragment newInstance(long pageId) {
         PageEditFragment fragment = new PageEditFragment();
@@ -134,7 +131,6 @@ public final class PageEditFragment extends Fragment {
         releaseCurrentBitmap();
         imageView = null;
         rectCropOverlay = null;
-        documentOverlay = null;
         titleView = null;
         counterView = null;
         errorView = null;
@@ -144,7 +140,6 @@ public final class PageEditFragment extends Fragment {
         rotateLeftButton = null;
         rotateRightButton = null;
         cropButton = null;
-        documentButton = null;
         doneButton = null;
         cancelButton = null;
         applyButton = null;
@@ -173,7 +168,6 @@ public final class PageEditFragment extends Fragment {
     private void bindViews(View view) {
         imageView = view.findViewById(R.id.image_page_edit);
         rectCropOverlay = view.findViewById(R.id.overlay_rect_crop);
-        documentOverlay = view.findViewById(R.id.overlay_document_perspective);
         titleView = view.findViewById(R.id.text_page_edit_title);
         counterView = view.findViewById(R.id.text_page_edit_counter);
         errorView = view.findViewById(R.id.text_page_edit_error);
@@ -183,7 +177,6 @@ public final class PageEditFragment extends Fragment {
         rotateLeftButton = view.findViewById(R.id.button_page_edit_rotate_left);
         rotateRightButton = view.findViewById(R.id.button_page_edit_rotate_right);
         cropButton = view.findViewById(R.id.button_page_edit_crop);
-        documentButton = view.findViewById(R.id.button_page_edit_document);
         doneButton = view.findViewById(R.id.button_page_edit_done);
         cancelButton = view.findViewById(R.id.button_page_edit_cancel);
         applyButton = view.findViewById(R.id.button_page_edit_apply);
@@ -213,7 +206,6 @@ public final class PageEditFragment extends Fragment {
         rotateLeftButton.setOnClickListener(view -> rotateCurrentPage(false));
         rotateRightButton.setOnClickListener(view -> rotateCurrentPage(true));
         cropButton.setOnClickListener(view -> setEditMode(EditMode.RECT_CROP));
-        documentButton.setOnClickListener(view -> setEditMode(EditMode.DOCUMENT));
         doneButton.setOnClickListener(view -> closeEditor());
         cancelButton.setOnClickListener(view -> setEditMode(EditMode.NORMAL));
         applyButton.setOnClickListener(view -> applyCurrentMode());
@@ -244,9 +236,6 @@ public final class PageEditFragment extends Fragment {
         if (editMode == EditMode.RECT_CROP) {
             return getString(R.string.page_edit_crop_title);
         }
-        if (editMode == EditMode.DOCUMENT) {
-            return getString(R.string.page_edit_document_title);
-        }
         return getString(R.string.page_edit_title, pageNumber);
     }
 
@@ -268,7 +257,6 @@ public final class PageEditFragment extends Fragment {
         }
         releaseCurrentBitmap();
         rectCropOverlay.clearImageContentRect();
-        documentOverlay.clearImageContentRect();
         progressBar.setVisibility(View.VISIBLE);
         int targetWidth = imageView.getWidth() * PREVIEW_ZOOM_RESERVE;
         int targetHeight = imageView.getHeight() * PREVIEW_ZOOM_RESERVE;
@@ -354,11 +342,6 @@ public final class PageEditFragment extends Fragment {
             rectCropOverlay.setCropRect(CropRect.FULL);
             return;
         }
-        if (editMode == EditMode.DOCUMENT) {
-            documentOverlay.setPerspectiveQuad(PerspectiveQuad.FULL);
-            documentResetCrop = true;
-            return;
-        }
         if (editMode != EditMode.NORMAL) {
             return;
         }
@@ -379,14 +362,6 @@ public final class PageEditFragment extends Fragment {
             if (page != null) {
                 rectCropOverlay.setCropRect(page.getEditSpec().getCropRect());
             }
-        } else if (newMode == EditMode.DOCUMENT) {
-            PageItem page = findCurrentPage();
-            if (page != null) {
-                documentOverlay.setPerspectiveQuad(
-                        page.getEditSpec().getPerspectiveQuad()
-                );
-            }
-            documentResetCrop = false;
         }
         imageView.resetZoom();
         updateModeViews();
@@ -399,13 +374,18 @@ public final class PageEditFragment extends Fragment {
         editActions.setVisibility(normal ? View.GONE : View.VISIBLE);
         pageStrip.setVisibility(normal ? View.VISIBLE : View.GONE);
         counterView.setVisibility(normal ? View.VISIBLE : View.GONE);
+        rotateLeftButton.setVisibility(normal ? View.VISIBLE : View.GONE);
+        rotateRightButton.setVisibility(normal ? View.VISIBLE : View.GONE);
         imageView.setGesturesEnabled(normal);
         rectCropOverlay.setVisibility(
                 editMode == EditMode.RECT_CROP ? View.VISIBLE : View.GONE
         );
-        documentOverlay.setVisibility(
-                editMode == EditMode.DOCUMENT ? View.VISIBLE : View.GONE
-        );
+        backButton.setContentDescription(getString(normal
+                ? R.string.action_page_edit_back_content_description
+                : R.string.action_crop_cancel_content_description));
+        resetButton.setContentDescription(getString(normal
+                ? R.string.action_page_edit_reset_content_description
+                : R.string.action_crop_reset_content_description));
     }
 
     private void updateActionAvailability() {
@@ -416,7 +396,6 @@ public final class PageEditFragment extends Fragment {
         rotateLeftButton.setEnabled(enabled);
         rotateRightButton.setEnabled(enabled);
         cropButton.setEnabled(enabled);
-        documentButton.setEnabled(enabled);
         resetButton.setEnabled(enabled);
         applyButton.setEnabled(enabled);
     }
@@ -433,16 +412,6 @@ public final class PageEditFragment extends Fragment {
         }
         if (editMode == EditMode.RECT_CROP) {
             sessionViewModel.updatePageCrop(currentPageId, rectCropOverlay.getCropRect());
-            publishEditResult();
-            pageStripAdapter.notifyPageChanged(currentPageId);
-        } else if (editMode == EditMode.DOCUMENT) {
-            sessionViewModel.updatePagePerspective(
-                    currentPageId,
-                    documentOverlay.getPerspectiveQuad()
-            );
-            if (documentResetCrop) {
-                sessionViewModel.resetPageCrop(currentPageId);
-            }
             publishEditResult();
             pageStripAdapter.notifyPageChanged(currentPageId);
         }
@@ -468,10 +437,8 @@ public final class PageEditFragment extends Fragment {
             RectF contentRect = new RectF();
             if (imageView.getImageContentRect(contentRect)) {
                 rectCropOverlay.setImageContentRect(contentRect);
-                documentOverlay.setImageContentRect(contentRect);
             } else {
                 rectCropOverlay.clearImageContentRect();
-                documentOverlay.clearImageContentRect();
             }
         });
     }
@@ -479,9 +446,6 @@ public final class PageEditFragment extends Fragment {
     private PageProcessingMode resolveProcessingMode() {
         if (editMode == EditMode.RECT_CROP) {
             return PageProcessingMode.BEFORE_CROP;
-        }
-        if (editMode == EditMode.DOCUMENT) {
-            return PageProcessingMode.ORIENTED_ONLY;
         }
         return PageProcessingMode.FINAL;
     }
@@ -511,7 +475,6 @@ public final class PageEditFragment extends Fragment {
 
     private enum EditMode {
         NORMAL,
-        RECT_CROP,
-        DOCUMENT
+        RECT_CROP
     }
 }

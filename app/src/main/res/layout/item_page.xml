@@ -5,12 +5,15 @@
     android:id="@+id/layout_page_item"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?attr/selectableItemBackground"
+    android:layout_marginBottom="@dimen/page_item_spacing"
+    android:background="@drawable/bg_page_item"
     android:clickable="true"
     android:focusable="true"
     android:gravity="center_vertical"
     android:orientation="horizontal"
+    android:paddingStart="@dimen/page_item_horizontal_padding"
     android:paddingTop="@dimen/page_item_vertical_padding"
+    android:paddingEnd="@dimen/page_item_horizontal_padding"
     android:paddingBottom="@dimen/page_item_vertical_padding">
 
     <TextView
