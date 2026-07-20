@@ -1,9 +1,15 @@
 package com.desperadoboi.imagetopdf;
 
+import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -29,11 +35,15 @@ import com.desperadoboi.imagetopdf.model.PageSizeMode;
 import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.model.PageOrderManager;
 import com.desperadoboi.imagetopdf.model.PdfOptions;
+import com.desperadoboi.imagetopdf.model.PdfResult;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerator;
 import com.desperadoboi.imagetopdf.ui.PageAdapter;
+import com.desperadoboi.imagetopdf.util.FileSizeFormatter;
 import com.google.android.material.button.MaterialButton;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -44,10 +54,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String PDF_MIME_TYPE = "application/pdf";
+    private static final String STATE_PDF_RESULT_URI = "pdf_result_uri";
+    private static final String STATE_PDF_RESULT_DISPLAY_NAME = "pdf_result_display_name";
+    private static final String STATE_PDF_RESULT_SIZE_BYTES = "pdf_result_size_bytes";
+    private static final String STATE_PDF_RESULT_PAGE_COUNT = "pdf_result_page_count";
+
     private MaterialButton selectImagesButton;
     private MaterialButton createPdfButton;
     private TextView selectionStatusTextView;
     private TextView operationStatusTextView;
+    private View pdfResultLayout;
+    private TextView pdfResultNameTextView;
+    private TextView pdfResultDetailsTextView;
+    private Button openPdfButton;
+    private Button sharePdfButton;
+    private Button newDocumentButton;
     private ProgressBar progressBar;
     private RecyclerView pagesRecyclerView;
     private Spinner pageSizeSpinner;
@@ -59,6 +81,7 @@ public class MainActivity extends AppCompatActivity {
 
     private final List<PageItem> pageItems = new ArrayList<>();
     private PdfOptions pdfOptions = PdfOptions.defaults();
+    private PdfResult lastPdfResult;
 
     private ExecutorService pdfExecutor;
     private PdfGenerator pdfGenerator;
@@ -70,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean generationInProgress;
     private boolean activityDestroyed;
     private String transientStatusMessage;
+    private String pendingSuggestedFileName;
     private int pagesVersion;
     private int submittedPagesVersion = -1;
 
@@ -92,7 +116,21 @@ public class MainActivity extends AppCompatActivity {
         registerActivityResultLaunchers();
         configureWindowInsets();
         configureClickListeners();
+        restoreSavedState(savedInstanceState);
         updateUiState();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (lastPdfResult == null) {
+            return;
+        }
+
+        outState.putString(STATE_PDF_RESULT_URI, lastPdfResult.getUri().toString());
+        outState.putString(STATE_PDF_RESULT_DISPLAY_NAME, lastPdfResult.getDisplayName());
+        outState.putLong(STATE_PDF_RESULT_SIZE_BYTES, lastPdfResult.getSizeBytes());
+        outState.putInt(STATE_PDF_RESULT_PAGE_COUNT, lastPdfResult.getPageCount());
     }
 
     @Override
@@ -112,6 +150,12 @@ public class MainActivity extends AppCompatActivity {
         createPdfButton = findViewById(R.id.button_create_pdf);
         selectionStatusTextView = findViewById(R.id.text_selection_status);
         operationStatusTextView = findViewById(R.id.text_operation_status);
+        pdfResultLayout = findViewById(R.id.layout_pdf_result);
+        pdfResultNameTextView = findViewById(R.id.text_pdf_result_name);
+        pdfResultDetailsTextView = findViewById(R.id.text_pdf_result_details);
+        openPdfButton = findViewById(R.id.button_open_pdf);
+        sharePdfButton = findViewById(R.id.button_share_pdf);
+        newDocumentButton = findViewById(R.id.button_new_document);
         progressBar = findViewById(R.id.progress_generation);
         pagesRecyclerView = findViewById(R.id.recycler_pages);
         pageSizeSpinner = findViewById(R.id.spinner_pdf_page_size);
@@ -198,10 +242,11 @@ public class MainActivity extends AppCompatActivity {
         );
 
         createDocumentLauncher = registerForActivityResult(
-                new ActivityResultContracts.CreateDocument("application/pdf"),
+                new ActivityResultContracts.CreateDocument(PDF_MIME_TYPE),
                 outputUri -> {
                     awaitingSaveLocation = false;
                     if (outputUri == null) {
+                        pendingSuggestedFileName = null;
                         transientStatusMessage = getString(R.string.status_save_location_cancelled);
                         updateUiState();
                         return;
@@ -227,6 +272,9 @@ public class MainActivity extends AppCompatActivity {
     private void configureClickListeners() {
         selectImagesButton.setOnClickListener(v -> launchPhotoPicker());
         createPdfButton.setOnClickListener(v -> launchCreateDocument());
+        openPdfButton.setOnClickListener(v -> openLastPdf());
+        sharePdfButton.setOnClickListener(v -> shareLastPdf());
+        newDocumentButton.setOnClickListener(v -> createNewDocument());
     }
 
     private void launchPhotoPicker() {
@@ -246,8 +294,9 @@ public class MainActivity extends AppCompatActivity {
         }
         awaitingSaveLocation = true;
         transientStatusMessage = null;
+        pendingSuggestedFileName = buildSuggestedFileName();
         updateUiState();
-        createDocumentLauncher.launch(buildSuggestedFileName());
+        createDocumentLauncher.launch(pendingSuggestedFileName);
     }
 
     private void rotatePage(int position) {
@@ -307,6 +356,8 @@ public class MainActivity extends AppCompatActivity {
         transientStatusMessage = null;
         List<PageItem> pageSnapshot = new ArrayList<>(pageItems);
         PdfOptions pdfOptionsSnapshot = pdfOptions;
+        String fallbackDisplayName = pendingSuggestedFileName;
+        int pageCount = pageSnapshot.size();
         updateUiState();
 
         pdfGenerator.generate(
@@ -322,6 +373,8 @@ public class MainActivity extends AppCompatActivity {
                             return;
                         }
                         generationInProgress = false;
+                        pendingSuggestedFileName = null;
+                        lastPdfResult = buildPdfResult(savedUri, fallbackDisplayName, pageCount);
                         transientStatusMessage = getString(R.string.status_pdf_created);
                         updateUiState();
                         showToast(transientStatusMessage);
@@ -333,12 +386,168 @@ public class MainActivity extends AppCompatActivity {
                             return;
                         }
                         generationInProgress = false;
+                        pendingSuggestedFileName = null;
                         transientStatusMessage = mapErrorMessage(exception);
                         updateUiState();
                         showToast(transientStatusMessage);
                     }
                 }
         );
+    }
+
+    private void openLastPdf() {
+        if (lastPdfResult == null || generationInProgress) {
+            return;
+        }
+        if (!canReadPdfResult(lastPdfResult, R.string.status_pdf_open_error)) {
+            return;
+        }
+
+        Intent viewIntent = new Intent(Intent.ACTION_VIEW);
+        viewIntent.setDataAndType(lastPdfResult.getUri(), PDF_MIME_TYPE);
+        grantReadPermission(viewIntent, lastPdfResult);
+        try {
+            startActivity(viewIntent);
+        } catch (ActivityNotFoundException exception) {
+            showToast(getString(R.string.status_pdf_open_app_not_found));
+        } catch (SecurityException exception) {
+            showToast(getString(R.string.status_pdf_open_error));
+        }
+    }
+
+    private void shareLastPdf() {
+        if (lastPdfResult == null || generationInProgress) {
+            return;
+        }
+        if (!canReadPdfResult(lastPdfResult, R.string.status_pdf_share_error)) {
+            return;
+        }
+
+        Intent sendIntent = new Intent(Intent.ACTION_SEND);
+        sendIntent.setType(PDF_MIME_TYPE);
+        sendIntent.putExtra(Intent.EXTRA_STREAM, lastPdfResult.getUri());
+        grantReadPermission(sendIntent, lastPdfResult);
+
+        Intent chooserIntent = Intent.createChooser(
+                sendIntent,
+                getString(R.string.pdf_share_chooser_title)
+        );
+        chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        chooserIntent.setClipData(sendIntent.getClipData());
+        try {
+            startActivity(chooserIntent);
+        } catch (ActivityNotFoundException | SecurityException exception) {
+            showToast(getString(R.string.status_pdf_share_error));
+        }
+    }
+
+    private boolean canReadPdfResult(PdfResult result, int errorStringResId) {
+        try (InputStream inputStream = getContentResolver().openInputStream(result.getUri())) {
+            if (inputStream == null) {
+                showToast(getString(errorStringResId));
+                return false;
+            }
+            return true;
+        } catch (IOException | SecurityException exception) {
+            showToast(getString(errorStringResId));
+            return false;
+        }
+    }
+
+    private void grantReadPermission(Intent intent, PdfResult result) {
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.setClipData(ClipData.newUri(
+                getContentResolver(),
+                result.getDisplayName(),
+                result.getUri()
+        ));
+    }
+
+    private void createNewDocument() {
+        if (generationInProgress || awaitingSaveLocation) {
+            return;
+        }
+
+        pageItems.clear();
+        pagesVersion++;
+        lastPdfResult = null;
+        transientStatusMessage = null;
+        pendingSuggestedFileName = null;
+        updateUiState();
+    }
+
+    private PdfResult buildPdfResult(Uri savedUri, String fallbackDisplayName, int pageCount) {
+        String displayName = normalizeFallbackDisplayName(fallbackDisplayName);
+        long sizeBytes = PdfResult.UNKNOWN_SIZE_BYTES;
+
+        PdfMetadata metadata = queryPdfMetadata(savedUri);
+        if (metadata.displayName != null && !metadata.displayName.trim().isEmpty()) {
+            displayName = metadata.displayName.trim();
+        }
+        if (metadata.sizeBytes != PdfResult.UNKNOWN_SIZE_BYTES) {
+            sizeBytes = metadata.sizeBytes;
+        }
+
+        return new PdfResult(savedUri, displayName, sizeBytes, pageCount);
+    }
+
+    private PdfMetadata queryPdfMetadata(Uri savedUri) {
+        try (Cursor cursor = getContentResolver().query(
+                savedUri,
+                new String[]{OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE},
+                null,
+                null,
+                null
+        )) {
+            if (cursor == null || !cursor.moveToFirst()) {
+                return PdfMetadata.unknown();
+            }
+
+            String displayName = null;
+            long sizeBytes = PdfResult.UNKNOWN_SIZE_BYTES;
+            int displayNameColumnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            if (displayNameColumnIndex >= 0 && !cursor.isNull(displayNameColumnIndex)) {
+                displayName = cursor.getString(displayNameColumnIndex);
+            }
+
+            int sizeColumnIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+            if (sizeColumnIndex >= 0 && !cursor.isNull(sizeColumnIndex)) {
+                long cursorSize = cursor.getLong(sizeColumnIndex);
+                if (cursorSize >= 0L) {
+                    sizeBytes = cursorSize;
+                }
+            }
+            return new PdfMetadata(displayName, sizeBytes);
+        } catch (RuntimeException exception) {
+            return PdfMetadata.unknown();
+        }
+    }
+
+    private String normalizeFallbackDisplayName(String fallbackDisplayName) {
+        if (fallbackDisplayName == null || fallbackDisplayName.trim().isEmpty()) {
+            return getString(R.string.pdf_result_unknown_name);
+        }
+        return fallbackDisplayName.trim();
+    }
+
+    private void restoreSavedState(Bundle savedInstanceState) {
+        if (savedInstanceState == null || !savedInstanceState.containsKey(STATE_PDF_RESULT_URI)) {
+            return;
+        }
+
+        String uriValue = savedInstanceState.getString(STATE_PDF_RESULT_URI);
+        if (uriValue == null || uriValue.isEmpty()) {
+            return;
+        }
+
+        Uri uri = Uri.parse(uriValue);
+        String displayName = savedInstanceState.getString(STATE_PDF_RESULT_DISPLAY_NAME, "");
+        long sizeBytes = savedInstanceState.getLong(
+                STATE_PDF_RESULT_SIZE_BYTES,
+                PdfResult.UNKNOWN_SIZE_BYTES
+        );
+        int pageCount = savedInstanceState.getInt(STATE_PDF_RESULT_PAGE_COUNT, 0);
+        lastPdfResult = new PdfResult(uri, displayName, sizeBytes, pageCount);
     }
 
     private String buildSuggestedFileName() {
@@ -377,6 +586,44 @@ public class MainActivity extends AppCompatActivity {
         pageAdapter.setActionsEnabled(controlsEnabled);
         selectionStatusTextView.setText(buildSelectionStatusText());
         operationStatusTextView.setText(buildOperationStatusText());
+        updatePdfResultState(controlsEnabled);
+    }
+
+    private void updatePdfResultState(boolean controlsEnabled) {
+        if (lastPdfResult == null) {
+            pdfResultLayout.setVisibility(View.GONE);
+            openPdfButton.setEnabled(false);
+            sharePdfButton.setEnabled(false);
+            newDocumentButton.setEnabled(false);
+            return;
+        }
+
+        pdfResultLayout.setVisibility(View.VISIBLE);
+        pdfResultNameTextView.setText(buildPdfResultNameText(lastPdfResult));
+        pdfResultDetailsTextView.setText(buildPdfResultDetailsText(lastPdfResult));
+        openPdfButton.setEnabled(controlsEnabled);
+        sharePdfButton.setEnabled(controlsEnabled);
+        newDocumentButton.setEnabled(controlsEnabled);
+    }
+
+    private String buildPdfResultNameText(PdfResult pdfResult) {
+        if (pdfResult.getDisplayName().isEmpty()) {
+            return getString(R.string.pdf_result_unknown_name);
+        }
+        return pdfResult.getDisplayName();
+    }
+
+    private String buildPdfResultDetailsText(PdfResult pdfResult) {
+        String pagesText = getResources().getQuantityString(
+                R.plurals.pdf_result_pages_count,
+                pdfResult.getPageCount(),
+                pdfResult.getPageCount()
+        );
+        if (!pdfResult.hasKnownSize()) {
+            return pagesText;
+        }
+        String sizeText = FileSizeFormatter.format(pdfResult.getSizeBytes(), Locale.getDefault());
+        return getString(R.string.pdf_result_details_with_size, pagesText, sizeText);
     }
 
     private String buildSelectionStatusText() {
@@ -484,6 +731,20 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isUiSafe() {
         return !activityDestroyed && !isFinishing() && !isDestroyed();
+    }
+
+    private static final class PdfMetadata {
+        private final String displayName;
+        private final long sizeBytes;
+
+        private PdfMetadata(String displayName, long sizeBytes) {
+            this.displayName = displayName;
+            this.sizeBytes = sizeBytes;
+        }
+
+        private static PdfMetadata unknown() {
+            return new PdfMetadata(null, PdfResult.UNKNOWN_SIZE_BYTES);
+        }
     }
 
     private final class PageMoveCallback extends ItemTouchHelper.SimpleCallback {
