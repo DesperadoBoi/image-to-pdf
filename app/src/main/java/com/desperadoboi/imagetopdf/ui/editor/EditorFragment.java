@@ -233,7 +233,6 @@ public final class EditorFragment extends Fragment {
         if (!sessionViewModel.canEditPages()) {
             return;
         }
-        sessionViewModel.setTransientStatusMessage(null);
         PickVisualMediaRequest request = new PickVisualMediaRequest.Builder()
                 .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
                 .build();
@@ -242,10 +241,6 @@ public final class EditorFragment extends Fragment {
 
     private void handleAdditionalImages(List<Uri> imageUris) {
         if (imageUris == null || imageUris.isEmpty()) {
-            sessionViewModel.setTransientStatusMessage(
-                    getString(R.string.status_image_selection_cancelled)
-            );
-            updateUiState();
             return;
         }
         int firstInsertedPosition = sessionViewModel.appendPages(imageUris);
@@ -355,6 +350,7 @@ public final class EditorFragment extends Fragment {
                 requireContext().getApplicationContext().getContentResolver()
         );
         long operationId = generationOperation.getOperationId();
+        DocumentSessionViewModel viewModel = sessionViewModel;
         pdfGenerator.generate(
                 pageSnapshot,
                 pdfOptionsSnapshot,
@@ -362,36 +358,12 @@ public final class EditorFragment extends Fragment {
                 generationOperation.getCancellationToken(),
                 sessionViewModel.getPdfExecutor(),
                 ContextCompat.getMainExecutor(requireContext().getApplicationContext()),
-                new PdfGenerationCallback() {
-                    @Override
-                    public void onProgress(int completedPages, int totalPages) {
-                        sessionViewModel.updateGenerationProgress(
-                                operationId,
-                                completedPages,
-                                totalPages
-                        );
-                    }
-
-                    @Override
-                    public void onSuccess(Uri savedUri) {
-                        sessionViewModel.completeGenerationSuccess(
-                                operationId,
-                                savedUri,
-                                fallbackDisplayName,
-                                pageCount
-                        );
-                    }
-
-                    @Override
-                    public void onCancelled() {
-                        sessionViewModel.completeGenerationCancelled(operationId);
-                    }
-
-                    @Override
-                    public void onError(Exception exception) {
-                        sessionViewModel.completeGenerationError(operationId, exception);
-                    }
-                }
+                new ViewModelPdfGenerationCallback(
+                        viewModel,
+                        operationId,
+                        fallbackDisplayName,
+                        pageCount
+                )
         );
     }
 
@@ -702,6 +674,50 @@ public final class EditorFragment extends Fragment {
 
         private static PdfMetadata unknown() {
             return new PdfMetadata(null, PdfResult.UNKNOWN_SIZE_BYTES);
+        }
+    }
+
+    private static final class ViewModelPdfGenerationCallback implements PdfGenerationCallback {
+        private final DocumentSessionViewModel sessionViewModel;
+        private final long operationId;
+        private final String fallbackDisplayName;
+        private final int pageCount;
+
+        private ViewModelPdfGenerationCallback(
+                DocumentSessionViewModel sessionViewModel,
+                long operationId,
+                String fallbackDisplayName,
+                int pageCount
+        ) {
+            this.sessionViewModel = sessionViewModel;
+            this.operationId = operationId;
+            this.fallbackDisplayName = fallbackDisplayName;
+            this.pageCount = pageCount;
+        }
+
+        @Override
+        public void onProgress(int completedPages, int totalPages) {
+            sessionViewModel.updateGenerationProgress(operationId, completedPages, totalPages);
+        }
+
+        @Override
+        public void onSuccess(Uri savedUri) {
+            sessionViewModel.completeGenerationSuccess(
+                    operationId,
+                    savedUri,
+                    fallbackDisplayName,
+                    pageCount
+            );
+        }
+
+        @Override
+        public void onCancelled() {
+            sessionViewModel.completeGenerationCancelled(operationId);
+        }
+
+        @Override
+        public void onError(Exception exception) {
+            sessionViewModel.completeGenerationError(operationId, exception);
         }
     }
 

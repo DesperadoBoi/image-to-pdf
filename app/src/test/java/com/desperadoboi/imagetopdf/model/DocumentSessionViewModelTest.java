@@ -8,6 +8,7 @@ import org.junit.Test;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -59,5 +60,55 @@ public class DocumentSessionViewModelTest {
         assertTrue(viewModel.getPages().isEmpty());
         assertNull(viewModel.getLastPdfResult());
         assertSame(pdfUri, result.getUri());
+    }
+
+    @Test
+    public void cancelledGenerationKeepsPreviousSuccessfulResult() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        Uri pdfUri = FakeUri.create("content://test/result.pdf");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        PdfResult previousResult = new PdfResult(pdfUri, "result.pdf", 1024L, 1);
+        viewModel.setLastPdfResult(previousResult);
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+
+        viewModel.requestCancelGeneration();
+        viewModel.completeGenerationCancelled(operation.getOperationId());
+
+        assertSame(previousResult, viewModel.getLastPdfResult());
+        assertTrue(viewModel.getPdfGenerationState().isCancelled());
+        assertFalse(viewModel.getPdfGenerationState().isSucceeded());
+    }
+
+    @Test
+    public void oldOperationCallbackDoesNotChangeNewGenerationState() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        DocumentSessionViewModel.GenerationOperation firstOperation = viewModel.startGeneration(1);
+        viewModel.completeGenerationCancelled(firstOperation.getOperationId());
+        DocumentSessionViewModel.GenerationOperation secondOperation = viewModel.startGeneration(1);
+
+        viewModel.updateGenerationProgress(firstOperation.getOperationId(), 1, 1);
+
+        PdfGenerationState state = viewModel.getPdfGenerationState();
+        assertTrue(state.isRunning());
+        assertEquals(secondOperation.getOperationId(), state.getOperationId());
+        assertEquals(0, state.getCompletedPages());
+    }
+
+    @Test
+    public void repeatedCancelRequestForOneOperationIsSafe() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        viewModel.startGeneration(1);
+
+        viewModel.requestCancelGeneration();
+        viewModel.requestCancelGeneration();
+
+        PdfGenerationState state = viewModel.getPdfGenerationState();
+        assertTrue(state.isRunning());
+        assertTrue(state.isCancellationRequested());
     }
 }

@@ -13,6 +13,16 @@ import static org.junit.Assert.assertTrue;
 
 public class PdfGenerationStateTest {
     @Test
+    public void idleStateHasNoOperationOrPages() {
+        PdfGenerationState state = PdfGenerationState.idle();
+
+        assertEquals(PdfGenerationState.NO_OPERATION_ID, state.getOperationId());
+        assertEquals(0, state.getCompletedPages());
+        assertEquals(0, state.getTotalPages());
+        assertFalse(state.isRunning());
+    }
+
+    @Test
     public void runningStateStartsWithZeroCompletedPages() {
         PdfGenerationState state = PdfGenerationState.running(1L, 3);
 
@@ -82,6 +92,19 @@ public class PdfGenerationStateTest {
         assertTrue(state.isError());
         assertFalse(state.isSucceeded());
         assertSame(error, state.getError());
+    }
+
+    @Test
+    public void successCompletesAllPages() {
+        Uri savedUri = FakeUri.create("content://test/result.pdf");
+        PdfGenerationState state = PdfGenerationState.running(1L, 3)
+                .withProgress(1L, 2, 3)
+                .succeeded(1L, savedUri);
+
+        assertTrue(state.isSucceeded());
+        assertEquals(3, state.getCompletedPages());
+        assertEquals(3, state.getTotalPages());
+        assertSame(savedUri, state.getSavedUri());
     }
 
     @Test
