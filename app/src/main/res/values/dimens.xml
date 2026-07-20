@@ -42,4 +42,8 @@
     <dimen name="crop_border_stroke">2dp</dimen>
     <dimen name="crop_grid_stroke">1dp</dimen>
     <dimen name="crop_minimum_size">48dp</dimen>
+    <dimen name="document_handle_radius">7dp</dimen>
+    <dimen name="document_handle_touch_radius">24dp</dimen>
+    <dimen name="document_border_stroke">2dp</dimen>
+    <dimen name="document_grid_stroke">1dp</dimen>
 </resources>

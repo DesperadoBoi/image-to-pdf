@@ -33,11 +33,21 @@ public final class PreviewImageLoader {
             int targetHeight,
             Callback callback
     ) {
-        String key = buildKey(pageItem, targetWidth, targetHeight);
+        load(pageItem, targetWidth, targetHeight, PageBitmapProcessor.Mode.FINAL, callback);
+    }
+
+    public void load(
+            PageItem pageItem,
+            int targetWidth,
+            int targetHeight,
+            PageBitmapProcessor.Mode mode,
+            Callback callback
+    ) {
+        String key = buildKey(pageItem, targetWidth, targetHeight, mode);
         previewExecutor.execute(() -> {
             Bitmap bitmap = null;
             try {
-                bitmap = loadInternal(pageItem, targetWidth, targetHeight);
+                bitmap = loadInternal(pageItem, targetWidth, targetHeight, mode);
                 Bitmap loadedBitmap = bitmap;
                 mainExecutor.execute(() -> callback.onLoaded(key, loadedBitmap));
             } catch (IOException | RuntimeException exception) {
@@ -54,10 +64,31 @@ public final class PreviewImageLoader {
     }
 
     public static String buildKey(PageItem pageItem, int targetWidth, int targetHeight) {
-        return pageItem.getThumbnailKey() + "@" + targetWidth + "x" + targetHeight;
+        return buildKey(
+                pageItem,
+                targetWidth,
+                targetHeight,
+                PageBitmapProcessor.Mode.FINAL
+        );
     }
 
-    private Bitmap loadInternal(PageItem pageItem, int targetWidth, int targetHeight) throws IOException {
+    public static String buildKey(
+            PageItem pageItem,
+            int targetWidth,
+            int targetHeight,
+            PageBitmapProcessor.Mode mode
+    ) {
+        return pageItem.getThumbnailKey()
+                + "@" + targetWidth + "x" + targetHeight
+                + "@" + mode.name();
+    }
+
+    private Bitmap loadInternal(
+            PageItem pageItem,
+            int targetWidth,
+            int targetHeight,
+            PageBitmapProcessor.Mode mode
+    ) throws IOException {
         int boundedTargetWidth = clampTargetDimension(targetWidth);
         int boundedTargetHeight = clampTargetDimension(targetHeight);
         ImageTransform exifTransform = imageOrientationReader.read(pageItem.getImageUri());
@@ -67,10 +98,12 @@ public final class PreviewImageLoader {
                 swapsDimensions ? boundedTargetHeight : boundedTargetWidth,
                 swapsDimensions ? boundedTargetWidth : boundedTargetHeight
         );
-        bitmap = ImageBitmapTransformer.applyTransform(bitmap, exifTransform);
-        bitmap = ImageBitmapTransformer.applyClockwiseRotation(
+        bitmap = PageBitmapProcessor.process(
                 bitmap,
-                pageItem.getManualRotationDegrees()
+                exifTransform,
+                pageItem.getManualRotationDegrees(),
+                pageItem.getEditSpec(),
+                mode
         );
         return ImageBitmapTransformer.scaleDownToFit(bitmap, boundedTargetWidth, boundedTargetHeight);
     }

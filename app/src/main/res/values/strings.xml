@@ -73,6 +73,7 @@
     <string name="page_edit_strip_content_description">Страницы документа</string>
     <string name="page_edit_thumbnail_content_description">Перейти к странице %1$d</string>
     <string name="crop_overlay_content_description">Область прямоугольной обрезки с восемью управляющими точками</string>
+    <string name="document_overlay_content_description">Контур документа с четырьмя углами и четырьмя точками рёбер</string>
     <string name="add_page_source_title">Добавить страницу</string>
     <string name="add_page_source_gallery">Из галереи</string>
     <string name="add_page_source_camera">Сфотографировать</string>

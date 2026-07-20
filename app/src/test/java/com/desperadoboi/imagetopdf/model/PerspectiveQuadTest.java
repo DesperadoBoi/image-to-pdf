@@ -57,6 +57,22 @@ public class PerspectiveQuadTest {
         assertEquals(original, rotated);
     }
 
+    @Test
+    public void rotationNinetyOneEightyAndTwoSeventyPreservesCornerOrder() {
+        PerspectiveQuad original = trapezoid();
+
+        PerspectiveQuad ninety = original.rotateClockwise();
+        PerspectiveQuad oneEighty = ninety.rotateClockwise();
+        PerspectiveQuad twoSeventy = oneEighty.rotateClockwise();
+
+        assertEquals(original.getBottomLeft().rotateClockwise(), ninety.getTopLeft());
+        assertEquals(original.getTopLeft().rotateClockwise(), ninety.getTopRight());
+        assertEquals(original.getTopRight().rotateClockwise(), ninety.getBottomRight());
+        assertEquals(original.getBottomRight().rotateClockwise(), ninety.getBottomLeft());
+        assertTrue(PerspectiveQuadValidator.signedArea(oneEighty) > 0f);
+        assertTrue(PerspectiveQuadValidator.signedArea(twoSeventy) > 0f);
+    }
+
     private PerspectiveQuad trapezoid() {
         return new PerspectiveQuad(
                 point(0.2f, 0.1f),

@@ -1,7 +1,7 @@
 package com.desperadoboi.imagetopdf.model;
 
 public final class PerspectiveQuadValidator {
-    public static final float MIN_AREA = 0.0001f;
+    public static final float MIN_AREA = 0.0025f;
 
     private static final float MIN_EDGE_LENGTH_SQUARED = 0.00000001f;
 

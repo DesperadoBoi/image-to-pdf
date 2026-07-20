@@ -19,10 +19,13 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.R;
+import com.desperadoboi.imagetopdf.image.PageBitmapProcessor;
 import com.desperadoboi.imagetopdf.image.PreviewImageLoader;
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
+import com.desperadoboi.imagetopdf.model.CropRect;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.PageItem;
+import com.desperadoboi.imagetopdf.model.PerspectiveQuad;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
@@ -43,6 +46,7 @@ public final class PageEditFragment extends Fragment {
 
     private ZoomableImageView imageView;
     private RectCropOverlayView rectCropOverlay;
+    private DocumentPerspectiveOverlayView documentOverlay;
     private TextView titleView;
     private TextView counterView;
     private TextView errorView;
@@ -65,6 +69,7 @@ public final class PageEditFragment extends Fragment {
     private EditMode editMode = EditMode.NORMAL;
     private String activeLoadKey;
     private Bitmap currentBitmap;
+    private boolean documentResetCrop;
 
     public static PageEditFragment newInstance(long pageId) {
         PageEditFragment fragment = new PageEditFragment();
@@ -129,6 +134,7 @@ public final class PageEditFragment extends Fragment {
         releaseCurrentBitmap();
         imageView = null;
         rectCropOverlay = null;
+        documentOverlay = null;
         titleView = null;
         counterView = null;
         errorView = null;
@@ -167,6 +173,7 @@ public final class PageEditFragment extends Fragment {
     private void bindViews(View view) {
         imageView = view.findViewById(R.id.image_page_edit);
         rectCropOverlay = view.findViewById(R.id.overlay_rect_crop);
+        documentOverlay = view.findViewById(R.id.overlay_document_perspective);
         titleView = view.findViewById(R.id.text_page_edit_title);
         counterView = view.findViewById(R.id.text_page_edit_counter);
         errorView = view.findViewById(R.id.text_page_edit_error);
@@ -261,11 +268,23 @@ public final class PageEditFragment extends Fragment {
         }
         releaseCurrentBitmap();
         rectCropOverlay.clearImageContentRect();
+        documentOverlay.clearImageContentRect();
         progressBar.setVisibility(View.VISIBLE);
         int targetWidth = imageView.getWidth() * PREVIEW_ZOOM_RESERVE;
         int targetHeight = imageView.getHeight() * PREVIEW_ZOOM_RESERVE;
-        activeLoadKey = PreviewImageLoader.buildKey(page, targetWidth, targetHeight);
-        previewImageLoader.load(page, targetWidth, targetHeight, new PreviewImageLoader.Callback() {
+        PageBitmapProcessor.Mode processingMode = resolveProcessingMode();
+        activeLoadKey = PreviewImageLoader.buildKey(
+                page,
+                targetWidth,
+                targetHeight,
+                processingMode
+        );
+        previewImageLoader.load(
+                page,
+                targetWidth,
+                targetHeight,
+                processingMode,
+                new PreviewImageLoader.Callback() {
             @Override
             public void onLoaded(String key, Bitmap bitmap) {
                 handlePreviewLoaded(key, bitmap);
@@ -332,7 +351,12 @@ public final class PageEditFragment extends Fragment {
             return;
         }
         if (editMode == EditMode.RECT_CROP) {
-            rectCropOverlay.setCropRect(com.desperadoboi.imagetopdf.model.CropRect.FULL);
+            rectCropOverlay.setCropRect(CropRect.FULL);
+            return;
+        }
+        if (editMode == EditMode.DOCUMENT) {
+            documentOverlay.setPerspectiveQuad(PerspectiveQuad.FULL);
+            documentResetCrop = true;
             return;
         }
         if (editMode != EditMode.NORMAL) {
@@ -355,6 +379,14 @@ public final class PageEditFragment extends Fragment {
             if (page != null) {
                 rectCropOverlay.setCropRect(page.getEditSpec().getCropRect());
             }
+        } else if (newMode == EditMode.DOCUMENT) {
+            PageItem page = findCurrentPage();
+            if (page != null) {
+                documentOverlay.setPerspectiveQuad(
+                        page.getEditSpec().getPerspectiveQuad()
+                );
+            }
+            documentResetCrop = false;
         }
         imageView.resetZoom();
         updateModeViews();
@@ -370,6 +402,9 @@ public final class PageEditFragment extends Fragment {
         imageView.setGesturesEnabled(normal);
         rectCropOverlay.setVisibility(
                 editMode == EditMode.RECT_CROP ? View.VISIBLE : View.GONE
+        );
+        documentOverlay.setVisibility(
+                editMode == EditMode.DOCUMENT ? View.VISIBLE : View.GONE
         );
     }
 
@@ -400,6 +435,16 @@ public final class PageEditFragment extends Fragment {
             sessionViewModel.updatePageCrop(currentPageId, rectCropOverlay.getCropRect());
             publishEditResult();
             pageStripAdapter.notifyPageChanged(currentPageId);
+        } else if (editMode == EditMode.DOCUMENT) {
+            sessionViewModel.updatePagePerspective(
+                    currentPageId,
+                    documentOverlay.getPerspectiveQuad()
+            );
+            if (documentResetCrop) {
+                sessionViewModel.resetPageCrop(currentPageId);
+            }
+            publishEditResult();
+            pageStripAdapter.notifyPageChanged(currentPageId);
         }
         setEditMode(EditMode.NORMAL);
     }
@@ -423,10 +468,22 @@ public final class PageEditFragment extends Fragment {
             RectF contentRect = new RectF();
             if (imageView.getImageContentRect(contentRect)) {
                 rectCropOverlay.setImageContentRect(contentRect);
+                documentOverlay.setImageContentRect(contentRect);
             } else {
                 rectCropOverlay.clearImageContentRect();
+                documentOverlay.clearImageContentRect();
             }
         });
+    }
+
+    private PageBitmapProcessor.Mode resolveProcessingMode() {
+        if (editMode == EditMode.RECT_CROP) {
+            return PageBitmapProcessor.Mode.BEFORE_CROP;
+        }
+        if (editMode == EditMode.DOCUMENT) {
+            return PageBitmapProcessor.Mode.ORIENTED_ONLY;
+        }
+        return PageBitmapProcessor.Mode.FINAL;
     }
 
     private void releaseCurrentBitmap() {

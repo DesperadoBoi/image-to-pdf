@@ -69,6 +69,12 @@
             android:layout_height="match_parent"
             android:visibility="gone" />
 
+        <com.desperadoboi.imagetopdf.ui.editor.DocumentPerspectiveOverlayView
+            android:id="@+id/overlay_document_perspective"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
         <ProgressBar
             android:id="@+id/progress_page_edit"
             android:layout_width="wrap_content"
