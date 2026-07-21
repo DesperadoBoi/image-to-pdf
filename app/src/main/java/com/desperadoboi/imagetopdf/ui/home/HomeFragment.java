@@ -110,6 +110,11 @@ public final class HomeFragment extends Fragment {
                         ImageImportMode.NEW_DOCUMENT
                 ));
                 break;
+            case SMART_SCAN:
+                if (navigationCallback != null) {
+                    navigationCallback.onSmartScanRequested();
+                }
+                break;
             case MORE:
                 if (navigationCallback != null) {
                     navigationCallback.onAllToolsRequested();
@@ -128,6 +133,9 @@ public final class HomeFragment extends Fragment {
                     String toolName = result.getString(AllToolsFragment.RESULT_TOOL_ID);
                     if (ToolId.IMAGE_TO_PDF.name().equals(toolName)) {
                         openImagePicker();
+                    } else if (ToolId.SMART_SCAN.name().equals(toolName)
+                            && navigationCallback != null) {
+                        navigationCallback.onSmartScanRequested();
                     }
                 }
         );
@@ -230,5 +238,7 @@ public final class HomeFragment extends Fragment {
         void onAllToolsRequested();
 
         void onImagePickerRequested(ImageImportMode mode);
+
+        void onSmartScanRequested();
     }
 }

@@ -34,7 +34,7 @@ Both models use values in `0..1`. `FULL` is explicit; absence of an edit is neve
 
 Rectangular crop has four corner handles and four side midpoint handles. Corners move two bounds, side midpoints move one bound, and dragging inside the crop moves the whole rectangle without changing its size.
 
-`DocumentPerspectiveOverlayView` remains available for the future Smart Scan flow. It has four independent corner handles and four edge midpoint handles. An edge midpoint applies the same two-dimensional delta to the two adjacent corners. The validator rejects non-clockwise, concave, self-intersecting, zero-edge and too-small quadrilaterals. This overlay is not attached to the ordinary `PageEditFragment` layout.
+`DocumentPerspectiveOverlayView` is reused by the separate Smart Scan review. It supports four independent corner handles and optional edge midpoint handles; Scan Review exposes only the four corners. An edge midpoint applies the same two-dimensional delta to the two adjacent corners when enabled. The validator rejects non-clockwise, concave, self-intersecting, zero-edge and too-small quadrilaterals. This overlay is not attached to the ordinary `PageEditFragment` layout.
 
 ## Reset behavior
 
@@ -42,7 +42,7 @@ Rectangular crop has four corner handles and four side midpoint handles. Corners
 - crop reset changes only the temporary crop to `FULL`;
 - applying a changed perspective always resets the stored crop.
 
-Perspective reset/apply behavior remains part of the model and future Smart Scan contract,
+Perspective reset/apply behavior remains part of the model and Smart Scan contract,
 not the ordinary Image-to-PDF editor UI.
 
 ## Output integration
@@ -61,12 +61,12 @@ gate prevents the two entry paths from starting one gesture twice. Moves use
 `PageOrderManager`, `notifyItemMoved` and a page-number payload, so Uri, stable ID, source,
 rotation, crop and perspective stay attached to the page without reloading thumbnails.
 
-## Future Smart Scan flow
+## Smart Scan flow
 
 The ordinary Image-to-PDF editor does not show a Document action or perspective quad.
-Perspective correction is reserved for a separate future flow:
+Perspective correction is reserved for a separate implemented flow:
 
-`Home Smart Scan tile -> Camera -> Document perspective editor -> Result editor -> PDF`.
+`Home Smart Scan tile -> CameraX -> manual perspective review -> Editor -> PDF`.
 
-`SmartScanFlowCoordinator` declares the future capture/editor entry points without exposing
-an unfinished screen.
+The first version uses a default rectangular quad and does not implement automatic edge
+detection or auto-capture. See [SMART_SCAN.md](SMART_SCAN.md).

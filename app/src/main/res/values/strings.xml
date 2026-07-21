@@ -6,7 +6,9 @@
     <string name="tool_coming_soon">Скоро</string>
     <string name="tool_coming_soon_content_description">%1$s, скоро появится</string>
     <string name="tool_image_to_pdf">Изображение в PDF</string>
-    <string name="tool_smart_scan">Умное сканирование</string>
+    <string name="tool_smart_scan">Сканировать документ</string>
+    <string name="tool_smart_scan_description">Сфотографируйте страницы и создайте PDF</string>
+    <string name="tool_title_with_description">%1$s. %2$s</string>
     <string name="tool_import_pdf">Импорт PDF</string>
     <string name="tool_compress_pdf">Сжать PDF</string>
     <string name="tool_pdf_to_jpg">PDF в JPG</string>
@@ -240,6 +242,45 @@
     <string name="pdf_success_banner_title">PDF готов</string>
     <string name="pdf_success_banner_content_description">PDF успешно создан</string>
     <string name="pdf_success_banner_announcement">PDF успешно создан. %1$s</string>
+
+    <string name="smart_scan_title">Сканировать документ</string>
+    <string name="smart_scan_mode_document">Документ</string>
+    <string name="smart_scan_frame_hint">Поместите документ в рамку</string>
+    <string name="smart_scan_local_hint">Сканирование выполняется на устройстве</string>
+    <string name="smart_scan_permission_message">Для сканирования нужен доступ к камере.</string>
+    <string name="smart_scan_permission_rationale">Камера нужна только для съёмки страниц. Изображения остаются на устройстве.</string>
+    <string name="smart_scan_permission_allow">Разрешить</string>
+    <string name="smart_scan_gallery">Галерея</string>
+    <string name="smart_scan_open_settings">Открыть настройки</string>
+    <string name="smart_scan_page_count">Страниц: %1$d</string>
+    <string name="smart_scan_done">Готово (%1$d)</string>
+    <string name="smart_scan_capture_content_description">Сфотографировать страницу</string>
+    <string name="smart_scan_back_content_description">Вернуться на главный экран</string>
+    <string name="smart_scan_torch_content_description">Фонарик</string>
+    <string name="smart_scan_grid_content_description">Сетка</string>
+    <string name="smart_scan_more_content_description">Дополнительные действия</string>
+    <string name="smart_scan_exit_title">Отменить сканирование?</string>
+    <string name="smart_scan_exit_message">Сделанные снимки будут удалены</string>
+    <string name="smart_scan_exit_confirm">Отменить сканирование</string>
+    <string name="smart_scan_exit_keep">Продолжить</string>
+    <string name="smart_scan_no_camera">Камера недоступна</string>
+    <string name="smart_scan_camera_bind_error">Не удалось запустить камеру</string>
+    <string name="smart_scan_capture_error">Не удалось сделать снимок</string>
+    <string name="smart_scan_temp_file_error">Не удалось подготовить снимок</string>
+    <string name="smart_scan_removed_page">Один из временных снимков больше недоступен</string>
+    <string name="smart_scan_flash_unavailable">Фонарик недоступен</string>
+
+    <string name="scan_review_title">Страница %1$d</string>
+    <string name="scan_review_back_content_description">Вернуться к камере</string>
+    <string name="scan_review_delete_content_description">Удалить текущий снимок</string>
+    <string name="scan_review_image_content_description">Настройка перспективы страницы %1$d</string>
+    <string name="scan_review_retake">Переснять</string>
+    <string name="scan_review_rotate">Повернуть</string>
+    <string name="scan_review_auto">Авто</string>
+    <string name="scan_review_original">Оригинал</string>
+    <string name="scan_review_add_page">Добавить страницу</string>
+    <string name="scan_review_load_error">Не удалось открыть снимок</string>
+    <string name="scan_review_corner_overlay_content_description">Ручная рамка перспективы с четырьмя углами</string>
 
     <plurals name="gallery_album_image_count">
         <item quantity="one">%1$d изображение</item>

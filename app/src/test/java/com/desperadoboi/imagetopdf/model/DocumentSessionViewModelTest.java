@@ -503,4 +503,30 @@ public class DocumentSessionViewModelTest {
         assertSame(filesUri, viewModel.getPages().get(2).getImageUri());
         assertEquals(PageSource.FILES, viewModel.getPages().get(2).getSource());
     }
+
+    @Test
+    public void preparedScanPagesKeepPerspectiveRotationAndOwnership() {
+        Uri uri = FakeUri.create("content://test/scan");
+        PerspectiveQuad quad = new PerspectiveQuad(
+                new NormalizedPoint(0.1f, 0.1f),
+                new NormalizedPoint(0.9f, 0.08f),
+                new NormalizedPoint(0.88f, 0.92f),
+                new NormalizedPoint(0.12f, 0.9f)
+        );
+        PageItem scanned = PageItem.camera(uri, "capture_scan.jpg")
+                .rotateClockwise()
+                .withPerspectiveQuad(quad);
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+
+        ImageImportResult result = viewModel.importPreparedPages(
+                ImageImportMode.NEW_DOCUMENT,
+                Arrays.asList(scanned)
+        );
+
+        assertEquals(1, result.getInsertedCount());
+        assertSame(scanned, viewModel.getPages().get(0));
+        assertEquals(90, viewModel.getPages().get(0).getManualRotationDegrees());
+        assertSame(quad, viewModel.getPages().get(0).getEditSpec().getPerspectiveQuad());
+        assertTrue(viewModel.getPages().get(0).isAppOwnedCapture());
+    }
 }

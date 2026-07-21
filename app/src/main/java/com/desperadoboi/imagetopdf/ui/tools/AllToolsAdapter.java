@@ -84,8 +84,17 @@ public final class AllToolsAdapter
         holder.title.setAlpha(available ? AVAILABLE_ALPHA : COMING_SOON_ALPHA);
         holder.itemView.setEnabled(available);
         holder.itemView.setClickable(available);
+        CharSequence availableDescription = definition.getId() == ToolId.SMART_SCAN
+                ? holder.itemView.getContext().getString(
+                        R.string.tool_title_with_description,
+                        title,
+                        holder.itemView.getContext().getString(
+                                R.string.tool_smart_scan_description
+                        )
+                )
+                : title;
         holder.itemView.setContentDescription(available
-                ? title
+                ? availableDescription
                 : holder.itemView.getContext().getString(
                         R.string.tool_coming_soon_content_description,
                         title

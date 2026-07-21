@@ -33,7 +33,8 @@ public final class CapturedImageStorage {
                 if (file.createNewFile()) {
                     return new CapturedImage(
                             fileName,
-                            FileProvider.getUriForFile(applicationContext, getAuthority(), file)
+                            FileProvider.getUriForFile(applicationContext, getAuthority(), file),
+                            file
                     );
                 }
             } catch (IOException exception) {
@@ -90,10 +91,12 @@ public final class CapturedImageStorage {
     public static final class CapturedImage {
         private final String fileName;
         private final Uri uri;
+        private final File file;
 
-        private CapturedImage(String fileName, Uri uri) {
+        private CapturedImage(String fileName, Uri uri, File file) {
             this.fileName = fileName;
             this.uri = uri;
+            this.file = file;
         }
 
         public String getFileName() {
@@ -102,6 +105,10 @@ public final class CapturedImageStorage {
 
         public Uri getUri() {
             return uri;
+        }
+
+        public File getFile() {
+            return file;
         }
     }
 }

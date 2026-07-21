@@ -25,4 +25,8 @@
     <color name="destructive_ripple">#33C0364A</color>
     <color name="primary_action_disabled">#FFE1E4EA</color>
     <color name="drag_handle_ripple">#335B5CE2</color>
+    <color name="semantic_success">#FF168A50</color>
+    <color name="scan_camera_surface">#FF07101F</color>
+    <color name="scan_camera_panel">#F2111929</color>
+    <color name="scan_camera_secondary_text">#FFC5CDDA</color>
 </resources>

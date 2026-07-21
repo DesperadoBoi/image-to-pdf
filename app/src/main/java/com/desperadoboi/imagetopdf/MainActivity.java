@@ -14,19 +14,30 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.ImageImportMode;
+import com.desperadoboi.imagetopdf.model.ImageImportResult;
+import com.desperadoboi.imagetopdf.model.PageItem;
+import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.ui.editor.EditorFragment;
 import com.desperadoboi.imagetopdf.ui.editor.PageEditFragment;
 import com.desperadoboi.imagetopdf.ui.gallery.ImagePickerFragment;
 import com.desperadoboi.imagetopdf.ui.home.HomeFragment;
 import com.desperadoboi.imagetopdf.ui.result.PdfResultFragment;
+import com.desperadoboi.imagetopdf.ui.smartscan.ScanReviewFragment;
+import com.desperadoboi.imagetopdf.ui.smartscan.ScanSessionViewModel;
+import com.desperadoboi.imagetopdf.ui.smartscan.SmartScanFragment;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 
 public class MainActivity extends AppCompatActivity
         implements HomeFragment.NavigationCallback,
         EditorFragment.NavigationCallback,
         ImagePickerFragment.NavigationCallback,
-        PdfResultFragment.NavigationCallback {
+        PdfResultFragment.NavigationCallback,
+        SmartScanFragment.NavigationCallback,
+        ScanReviewFragment.NavigationCallback {
     private DocumentSessionViewModel sessionViewModel;
+    private ScanSessionViewModel scanSessionViewModel;
+    private CapturedImageStorage capturedImageStorage;
+    private boolean scanReviewNavigationPending;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +46,8 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         sessionViewModel = new ViewModelProvider(this).get(DocumentSessionViewModel.class);
+        scanSessionViewModel = new ViewModelProvider(this).get(ScanSessionViewModel.class);
+        capturedImageStorage = new CapturedImageStorage(this);
         configureWindowInsets();
         configureBackNavigation();
 
@@ -74,6 +87,75 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onAllToolsRequested() {
         showAllTools();
+    }
+
+    @Override
+    public void onSmartScanRequested() {
+        deleteCapturedFiles(scanSessionViewModel.startNewSession());
+        showSmartScan();
+    }
+
+    @Override
+    public void onScanReviewRequested() {
+        if (scanSessionViewModel.getState().getCurrentReviewPage() == null
+                || getSupportFragmentManager().findFragmentByTag(ScanReviewFragment.TAG) != null
+                || scanReviewNavigationPending
+                || getSupportFragmentManager().isStateSaved()) {
+            return;
+        }
+        scanReviewNavigationPending = true;
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(
+                        R.id.fragment_container,
+                        new ScanReviewFragment(),
+                        ScanReviewFragment.TAG
+                )
+                .addToBackStack(ScanReviewFragment.TAG)
+                .commit();
+    }
+
+    @Override
+    public void onScanReviewClosed() {
+        scanReviewNavigationPending = false;
+        getSupportFragmentManager().popBackStackImmediate(
+                ScanReviewFragment.TAG,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
+    }
+
+    @Override
+    public void onScanFinished() {
+        scanReviewNavigationPending = false;
+        java.util.List<PageItem> pages = scanSessionViewModel.finishPages();
+        if (pages.isEmpty()) {
+            return;
+        }
+        ImageImportResult result = sessionViewModel.importPreparedPages(
+                ImageImportMode.NEW_DOCUMENT,
+                pages
+        );
+        deleteCapturedFiles(result.getCapturedFileNamesToDelete());
+        scanSessionViewModel.completeTransfer();
+        getSupportFragmentManager().popBackStackImmediate(
+                SmartScanFragment.TAG,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
+        showEditor();
+    }
+
+    @Override
+    public void onScanCancelled() {
+        scanReviewNavigationPending = false;
+        deleteCapturedFiles(scanSessionViewModel.cancelSession());
+        boolean popped = getSupportFragmentManager().popBackStackImmediate(
+                SmartScanFragment.TAG,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
+        if (!popped) {
+            showHome();
+        }
     }
 
     @Override
@@ -159,6 +241,18 @@ public class MainActivity extends AppCompatActivity
                 PageEditFragment pageEditFragment = findVisibleFragment(PageEditFragment.TAG);
                 if (pageEditFragment != null) {
                     pageEditFragment.handleBackPressed();
+                    return;
+                }
+                ScanReviewFragment scanReviewFragment = findVisibleFragment(
+                        ScanReviewFragment.TAG
+                );
+                if (scanReviewFragment != null) {
+                    scanReviewFragment.handleBackPressed();
+                    return;
+                }
+                SmartScanFragment smartScanFragment = findVisibleFragment(SmartScanFragment.TAG);
+                if (smartScanFragment != null) {
+                    smartScanFragment.handleBackPressed();
                     return;
                 }
                 if (getSupportFragmentManager().findFragmentByTag(AllToolsFragment.TAG) != null) {
@@ -249,6 +343,25 @@ public class MainActivity extends AppCompatActivity
                 .replace(R.id.fragment_container, new AllToolsFragment(), AllToolsFragment.TAG)
                 .addToBackStack(AllToolsFragment.TAG)
                 .commit();
+    }
+
+    private void showSmartScan() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(
+                        R.id.fragment_container,
+                        new SmartScanFragment(),
+                        SmartScanFragment.TAG
+                )
+                .addToBackStack(SmartScanFragment.TAG)
+                .commit();
+    }
+
+    private void deleteCapturedFiles(java.util.List<String> fileNames) {
+        for (String fileName : fileNames) {
+            capturedImageStorage.delete(fileName);
+        }
     }
 
     @SuppressWarnings("unchecked")
