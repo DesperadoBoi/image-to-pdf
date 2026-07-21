@@ -4,6 +4,7 @@ import com.desperadoboi.imagetopdf.model.ImagePlacementMode;
 import com.desperadoboi.imagetopdf.model.MarginPreset;
 import com.desperadoboi.imagetopdf.model.PageSizeMode;
 import com.desperadoboi.imagetopdf.model.PdfOptions;
+import com.desperadoboi.imagetopdf.model.PdfOrientationMode;
 
 import org.junit.Test;
 
@@ -15,11 +16,34 @@ public class PdfPageLayoutCalculatorTest {
     private static final float DELTA = 0.0001f;
 
     @Test
-    public void a4AlwaysUsesFixedPortraitPage() {
+    public void a4AutoUsesImageOrientation() {
         PdfPageLayout layout = calculate(PageSizeMode.A4, MarginPreset.STANDARD, 3000, 2000);
 
-        assertEquals(595, layout.getPageWidth());
-        assertEquals(842, layout.getPageHeight());
+        assertEquals(842, layout.getPageWidth());
+        assertEquals(595, layout.getPageHeight());
+    }
+
+    @Test
+    public void explicitA4OrientationOverridesImage() {
+        PdfPageLayout portrait = calculate(
+                PageSizeMode.A4,
+                MarginPreset.NONE,
+                PdfOrientationMode.PORTRAIT,
+                3000,
+                2000
+        );
+        PdfPageLayout landscape = calculate(
+                PageSizeMode.A4,
+                MarginPreset.NONE,
+                PdfOrientationMode.LANDSCAPE,
+                2000,
+                3000
+        );
+
+        assertEquals(595, portrait.getPageWidth());
+        assertEquals(842, portrait.getPageHeight());
+        assertEquals(842, landscape.getPageWidth());
+        assertEquals(595, landscape.getPageHeight());
     }
 
     @Test
@@ -112,6 +136,26 @@ public class PdfPageLayoutCalculatorTest {
     ) {
         return PdfPageLayoutCalculator.calculate(
                 new PdfOptions(pageSizeMode, ImagePlacementMode.FIT, marginPreset),
+                imageWidth,
+                imageHeight
+        );
+    }
+
+    private PdfPageLayout calculate(
+            PageSizeMode pageSizeMode,
+            MarginPreset marginPreset,
+            PdfOrientationMode orientationMode,
+            int imageWidth,
+            int imageHeight
+    ) {
+        return PdfPageLayoutCalculator.calculate(
+                new PdfOptions(
+                        pageSizeMode,
+                        ImagePlacementMode.FIT,
+                        marginPreset,
+                        com.desperadoboi.imagetopdf.model.PdfQualityProfile.BALANCED,
+                        orientationMode
+                ),
                 imageWidth,
                 imageHeight
         );

@@ -27,6 +27,8 @@ public final class DocumentSessionViewModel extends ViewModel {
     private String transientStatusMessage;
     private String pendingSuggestedFileName;
     private PendingCapturedImage pendingCapturedImage;
+    private PdfExportDraft pdfExportDraft;
+    private PdfOutputSelectionMode pendingPdfOutputSelectionMode;
     private boolean awaitingSaveLocation;
     private int pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
     private long nextGenerationOperationId = PdfGenerationState.NO_OPERATION_ID + 1L;
@@ -213,6 +215,8 @@ public final class DocumentSessionViewModel extends ViewModel {
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
         pendingCapturedImage = null;
+        pdfExportDraft = null;
+        pendingPdfOutputSelectionMode = null;
         pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
@@ -300,6 +304,22 @@ public final class DocumentSessionViewModel extends ViewModel {
         return pdfExecutor;
     }
 
+    public PdfExportDraft getPdfExportDraft() {
+        return pdfExportDraft;
+    }
+
+    public void setPdfExportDraft(PdfExportDraft pdfExportDraft) {
+        this.pdfExportDraft = pdfExportDraft;
+    }
+
+    public PdfOutputSelectionMode getPendingPdfOutputSelectionMode() {
+        return pendingPdfOutputSelectionMode;
+    }
+
+    public void setPendingPdfOutputSelectionMode(PdfOutputSelectionMode mode) {
+        pendingPdfOutputSelectionMode = mode;
+    }
+
     public GenerationOperation startGeneration(int totalPages) {
         if (isGenerationInProgress()) {
             return null;
@@ -351,6 +371,7 @@ public final class DocumentSessionViewModel extends ViewModel {
                 pageCount
         );
         clearActiveGeneration(operationId);
+        clearDraftOutput();
         pendingSuggestedFileName = null;
         setPdfGenerationState(nextState);
     }
@@ -363,6 +384,7 @@ public final class DocumentSessionViewModel extends ViewModel {
             return;
         }
         clearActiveGeneration(operationId);
+        clearDraftOutput();
         pendingSuggestedFileName = null;
         setPdfGenerationState(nextState);
     }
@@ -375,6 +397,7 @@ public final class DocumentSessionViewModel extends ViewModel {
             return;
         }
         clearActiveGeneration(operationId);
+        clearDraftOutput();
         pendingSuggestedFileName = null;
         setPdfGenerationState(nextState);
     }
@@ -466,6 +489,8 @@ public final class DocumentSessionViewModel extends ViewModel {
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
         pendingCapturedImage = null;
+        pdfExportDraft = null;
+        pendingPdfOutputSelectionMode = null;
         pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
@@ -530,6 +555,13 @@ public final class DocumentSessionViewModel extends ViewModel {
         }
     }
 
+    private void clearDraftOutput() {
+        if (pdfExportDraft != null) {
+            pdfExportDraft = pdfExportDraft.withOutput(null, null);
+        }
+        pendingPdfOutputSelectionMode = null;
+    }
+
     private void setPdfGenerationState(PdfGenerationState state) {
         pdfGenerationState = state;
         notifyPdfGenerationStateObservers(state);
@@ -556,6 +588,11 @@ public final class DocumentSessionViewModel extends ViewModel {
         HOME,
         EDITOR,
         PICKER
+    }
+
+    public enum PdfOutputSelectionMode {
+        BROWSE_ONLY,
+        CONVERT_AFTER_SELECTION
     }
 
     public static final class PendingCapturedImage {

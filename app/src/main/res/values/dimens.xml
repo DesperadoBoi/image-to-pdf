@@ -115,4 +115,5 @@
     <dimen name="gallery_access_panel_padding">16dp</dimen>
     <dimen name="gallery_access_text_spacing">4dp</dimen>
     <dimen name="gallery_bottom_bar_padding">8dp</dimen>
+    <dimen name="pdf_export_section_spacing">16dp</dimen>
 </resources>

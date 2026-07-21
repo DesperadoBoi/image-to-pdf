@@ -122,7 +122,8 @@ public class PdfGenerator {
                         pageLayout.getContentTop(),
                         pageLayout.getContentWidth(),
                         pageLayout.getContentHeight(),
-                        placementMode
+                        placementMode,
+                        pdfOptions.getQualityProfile().getTargetDpi()
                 );
                 EditedImageGeometryCalculator.Dimensions sourceTarget =
                         SourceResolutionCalculator.calculateForOutputTarget(

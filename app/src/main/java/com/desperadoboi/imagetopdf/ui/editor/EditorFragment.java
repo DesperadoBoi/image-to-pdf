@@ -35,10 +35,13 @@ import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.ImageImportMode;
 import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.model.PdfGenerationState;
+import com.desperadoboi.imagetopdf.model.PdfExportDraft;
+import com.desperadoboi.imagetopdf.model.PdfExportRequest;
 import com.desperadoboi.imagetopdf.model.PdfOptions;
 import com.desperadoboi.imagetopdf.model.PdfResult;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerator;
+import com.desperadoboi.imagetopdf.ui.export.PdfExportSheet;
 import com.desperadoboi.imagetopdf.util.FileSizeFormatter;
 import com.google.android.material.button.MaterialButton;
 
@@ -125,6 +128,7 @@ public final class EditorFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
+        configurePdfExportResultListener();
         configurePageEditResultListener();
         configurePageList();
         configureClickListeners();
@@ -241,7 +245,7 @@ public final class EditorFragment extends Fragment {
             }
         });
         addImagesButton.setOnClickListener(v -> openImagePicker());
-        createPdfButton.setOnClickListener(v -> launchCreateDocument());
+        createPdfButton.setOnClickListener(v -> showPdfExportSheet());
         openPdfButton.setOnClickListener(v -> openLastPdf());
         sharePdfButton.setOnClickListener(v -> shareLastPdf());
         newDocumentButton.setOnClickListener(v -> createNewDocument());
@@ -257,28 +261,103 @@ public final class EditorFragment extends Fragment {
         }
     }
 
-    private void launchCreateDocument() {
+    private void showPdfExportSheet() {
         if (!sessionViewModel.hasPages() || !sessionViewModel.canEditPages()) {
             return;
         }
+        if (sessionViewModel.getPdfExportDraft() == null) {
+            sessionViewModel.setPdfExportDraft(PdfExportDraft.defaults(
+                    buildSuggestedFileName()
+            ));
+        }
+        if (getParentFragmentManager().findFragmentByTag(PdfExportSheet.TAG) != null) {
+            return;
+        }
+        new PdfExportSheet().show(getParentFragmentManager(), PdfExportSheet.TAG);
+    }
+
+    private void configurePdfExportResultListener() {
+        getParentFragmentManager().setFragmentResultListener(
+                PdfExportSheet.RESULT_ACTION,
+                getViewLifecycleOwner(),
+                (requestKey, result) -> handlePdfExportAction(
+                        result.getString(PdfExportSheet.RESULT_ACTION_TYPE)
+                )
+        );
+    }
+
+    private void handlePdfExportAction(String action) {
+        PdfExportDraft draft = sessionViewModel.getPdfExportDraft();
+        if (draft == null) {
+            return;
+        }
+        PdfExportRequest request;
+        try {
+            request = draft.toRequest();
+        } catch (IllegalArgumentException exception) {
+            return;
+        }
+        if (PdfExportSheet.ACTION_BROWSE.equals(action)) {
+            launchCreateDocument(
+                    request,
+                    DocumentSessionViewModel.PdfOutputSelectionMode.BROWSE_ONLY
+            );
+            return;
+        }
+        if (!PdfExportSheet.ACTION_CONVERT.equals(action)) {
+            return;
+        }
+        if (request.getOutputUri() != null) {
+            startPdfGeneration(request);
+        } else {
+            launchCreateDocument(
+                    request,
+                    DocumentSessionViewModel.PdfOutputSelectionMode.CONVERT_AFTER_SELECTION
+            );
+        }
+    }
+
+    private void launchCreateDocument(
+            PdfExportRequest request,
+            DocumentSessionViewModel.PdfOutputSelectionMode selectionMode
+    ) {
         sessionViewModel.setAwaitingSaveLocation(true);
         sessionViewModel.setTransientStatusMessage(null);
-        sessionViewModel.setPendingSuggestedFileName(buildSuggestedFileName());
+        sessionViewModel.setPendingPdfOutputSelectionMode(selectionMode);
         updateUiState();
-        createDocumentLauncher.launch(sessionViewModel.getPendingSuggestedFileName());
+        createDocumentLauncher.launch(request.getFileName());
     }
 
     private void handleCreateDocumentResult(Uri outputUri) {
         sessionViewModel.setAwaitingSaveLocation(false);
+        DocumentSessionViewModel.PdfOutputSelectionMode selectionMode =
+                sessionViewModel.getPendingPdfOutputSelectionMode();
+        sessionViewModel.setPendingPdfOutputSelectionMode(null);
         if (outputUri == null) {
-            sessionViewModel.setPendingSuggestedFileName(null);
-            sessionViewModel.setTransientStatusMessage(
-                    getString(R.string.status_save_location_cancelled)
-            );
             updateUiState();
             return;
         }
-        startPdfGeneration(outputUri);
+        PdfExportDraft draft = sessionViewModel.getPdfExportDraft();
+        if (draft == null) {
+            return;
+        }
+        PdfMetadata metadata = queryPdfMetadata(outputUri);
+        String outputLabel = metadata.displayName;
+        if (outputLabel == null || outputLabel.trim().isEmpty()) {
+            outputLabel = outputUri.getAuthority();
+        }
+        draft = draft.withOutput(outputUri, outputLabel);
+        sessionViewModel.setPdfExportDraft(draft);
+        if (selectionMode == DocumentSessionViewModel.PdfOutputSelectionMode.CONVERT_AFTER_SELECTION) {
+            startPdfGeneration(draft.toRequest());
+            return;
+        }
+        PdfExportSheet sheet = (PdfExportSheet) getParentFragmentManager()
+                .findFragmentByTag(PdfExportSheet.TAG);
+        if (sheet != null) {
+            sheet.refreshFromDraft();
+        }
+        updateUiState();
     }
 
     private void openPagePreview(int position) {
@@ -364,16 +443,26 @@ public final class EditorFragment extends Fragment {
         );
     }
 
-    private void startPdfGeneration(Uri outputUri) {
+    private void startPdfGeneration(PdfExportRequest exportRequest) {
+        Uri outputUri = exportRequest.getOutputUri();
+        if (outputUri == null) {
+            return;
+        }
         List<PageItem> pageSnapshot = sessionViewModel.getPagesSnapshot();
-        PdfOptions pdfOptionsSnapshot = PdfOptions.defaults();
-        String fallbackDisplayName = sessionViewModel.getPendingSuggestedFileName();
+        PdfOptions pdfOptionsSnapshot = exportRequest.toPdfOptions();
+        String fallbackDisplayName = exportRequest.getFileName();
+        sessionViewModel.setPendingSuggestedFileName(fallbackDisplayName);
         int pageCount = pageSnapshot.size();
         DocumentSessionViewModel.GenerationOperation generationOperation =
                 sessionViewModel.startGeneration(pageCount);
         if (generationOperation == null) {
             updateUiState();
             return;
+        }
+        PdfExportSheet sheet = (PdfExportSheet) getParentFragmentManager()
+                .findFragmentByTag(PdfExportSheet.TAG);
+        if (sheet != null) {
+            sheet.dismissAllowingStateLoss();
         }
         updateUiState();
 
@@ -542,7 +631,7 @@ public final class EditorFragment extends Fragment {
     private String buildSuggestedFileName() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
         String timestamp = formatter.format(new Date());
-        return getString(R.string.pdf_file_name_template, timestamp);
+        return getString(R.string.pdf_file_name_base_template, timestamp);
     }
 
     private String mapErrorMessage(Exception exception) {
