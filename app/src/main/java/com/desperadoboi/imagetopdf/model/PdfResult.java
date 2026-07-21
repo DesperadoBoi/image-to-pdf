@@ -5,16 +5,17 @@ import android.net.Uri;
 import java.util.Objects;
 
 public final class PdfResult {
+    public static final long UNKNOWN_SIZE = -1L;
+
     private final Uri uri;
     private final String displayName;
     private final long sizeBytes;
-    private final boolean sizeKnown;
     private final int pageCount;
     private final long timestamp;
     private final String locationLabel;
 
     public PdfResult(Uri uri, String displayName, long sizeBytes, int pageCount) {
-        this(uri, displayName, sizeBytes, true, pageCount, 0L, "");
+        this(uri, displayName, sizeBytes, pageCount, 0L, "");
     }
 
     public PdfResult(
@@ -25,22 +26,10 @@ public final class PdfResult {
             long timestamp,
             String locationLabel
     ) {
-        this(uri, displayName, sizeBytes, true, pageCount, timestamp, locationLabel);
-    }
-
-    private PdfResult(
-            Uri uri,
-            String displayName,
-            long sizeBytes,
-            boolean sizeKnown,
-            int pageCount,
-            long timestamp,
-            String locationLabel
-    ) {
         this.uri = Objects.requireNonNull(uri, "uri is required");
         this.displayName = displayName == null ? "" : displayName.trim();
-        if (sizeBytes < 0L) {
-            throw new IllegalArgumentException("sizeBytes must be non-negative");
+        if (sizeBytes < UNKNOWN_SIZE) {
+            throw new IllegalArgumentException("sizeBytes must be known or UNKNOWN_SIZE");
         }
         if (pageCount < 0) {
             throw new IllegalArgumentException("pageCount must be non-negative");
@@ -49,7 +38,6 @@ public final class PdfResult {
             throw new IllegalArgumentException("timestamp must be non-negative");
         }
         this.sizeBytes = sizeBytes;
-        this.sizeKnown = sizeKnown;
         this.pageCount = pageCount;
         this.timestamp = timestamp;
         this.locationLabel = locationLabel == null ? "" : locationLabel.trim();
@@ -65,8 +53,7 @@ public final class PdfResult {
         return new PdfResult(
                 uri,
                 displayName,
-                0L,
-                false,
+                UNKNOWN_SIZE,
                 pageCount,
                 timestamp,
                 locationLabel
@@ -86,7 +73,7 @@ public final class PdfResult {
     }
 
     public boolean hasKnownSize() {
-        return sizeKnown;
+        return sizeBytes >= 0L;
     }
 
     public int getPageCount() {
@@ -106,11 +93,13 @@ public final class PdfResult {
             long newSizeBytes,
             String newLocationLabel
     ) {
+        if (newSizeBytes < 0L) {
+            throw new IllegalArgumentException("newSizeBytes must be non-negative");
+        }
         return new PdfResult(
                 uri,
                 newDisplayName,
                 newSizeBytes,
-                true,
                 pageCount,
                 timestamp,
                 newLocationLabel
@@ -125,7 +114,6 @@ public final class PdfResult {
                 uri,
                 newDisplayName,
                 sizeBytes,
-                sizeKnown,
                 pageCount,
                 timestamp,
                 newLocationLabel

@@ -131,7 +131,6 @@
     <string name="status_save_location_cancelled">Сохранение отменено</string>
     <string name="status_pdf_generating">Создание PDF…</string>
     <string name="status_pdf_generation_progress">Создание PDF: %1$d из %2$d</string>
-    <string name="status_pdf_created">PDF успешно создан</string>
     <string name="status_pdf_creation_error">Не удалось создать PDF</string>
     <string name="status_pdf_creation_permission_error">Не удалось получить доступ к выбранному файлу</string>
     <string name="status_pdf_creation_invalid_input">Не удалось создать PDF из выбранных изображений</string>
@@ -144,7 +143,7 @@
     <string name="status_page_edit_load_error">Не удалось открыть страницу</string>
     <string name="pdf_share_chooser_title">Поделиться PDF</string>
     <string name="pdf_result_unknown_name">Созданный PDF</string>
-    <string name="pdf_result_details_with_size">%1$s, %2$s</string>
+    <string name="pdf_result_summary">%1$s · %2$s</string>
     <string name="pdf_file_name_template">ImageToPDF_%1$s.pdf</string>
     <string name="image_picker_title">Выбор изображения</string>
     <string name="gallery_recent_title">Недавние</string>
@@ -188,9 +187,7 @@
     <string name="pdf_file_extension">.pdf</string>
     <string name="pdf_export_quality_label">Качество</string>
     <string name="pdf_quality_compact">Компактный</string>
-    <string name="pdf_quality_balanced">Сбалансированный</string>
     <string name="pdf_quality_balanced_short">Баланс</string>
-    <string name="pdf_quality_high">Высокое качество</string>
     <string name="pdf_quality_high_short">Высокое</string>
     <string name="pdf_quality_compact_description">Минимальный размер файла</string>
     <string name="pdf_quality_balanced_description">Хорошая читаемость и умеренный размер</string>
@@ -204,6 +201,8 @@
     <string name="pdf_export_additional_parameters">Дополнительные параметры</string>
     <string name="pdf_export_location_selected">Сохранение: %1$s</string>
     <string name="pdf_location_selected_folder">Выбранная папка</string>
+    <string name="pdf_location_downloads">Загрузки</string>
+    <string name="pdf_location_documents">Документы</string>
     <string name="action_change_pdf_location">Изменить</string>
     <string name="action_convert_pdf">Конвертировать</string>
     <string name="action_close_pdf_export_content_description">Закрыть параметры экспорта PDF</string>
@@ -212,9 +211,6 @@
     <string name="action_select_pdf_quality_compact_content_description">Выбрать качество: Компактный</string>
     <string name="action_select_pdf_quality_balanced_content_description">Выбрать качество: Баланс</string>
     <string name="action_select_pdf_quality_high_content_description">Выбрать качество: Высокое</string>
-    <string name="action_select_pdf_page_size_content_description">Выбрать размер страницы PDF</string>
-    <string name="action_select_pdf_orientation_content_description">Выбрать ориентацию PDF</string>
-    <string name="action_select_pdf_margins_content_description">Выбрать поля PDF</string>
     <string name="action_expand_pdf_additional_content_description">Раскрыть дополнительные параметры</string>
     <string name="action_collapse_pdf_additional_content_description">Свернуть дополнительные параметры</string>
     <string name="action_change_pdf_page_size_content_description">Изменить размер страницы</string>
@@ -226,21 +222,23 @@
     <string name="pdf_result_title">PDF готов</string>
     <string name="pdf_result_unavailable">Результат недоступен</string>
     <string name="pdf_result_preview_content_description">Предпросмотр первой страницы PDF</string>
-    <string name="pdf_result_size">Размер: %1$s</string>
-    <string name="pdf_result_size_unknown">Размер недоступен</string>
-    <string name="pdf_result_location">Расположение: %1$s</string>
-    <string name="pdf_result_location_unknown">Выбранное расположение</string>
-    <string name="pdf_result_last_created">Последний PDF создан</string>
-    <string name="action_open_pdf_result">Открыть результат</string>
+    <string name="pdf_result_size_unknown">Размер неизвестен</string>
+    <string name="pdf_result_location">Сохранено в: %1$s</string>
+    <string name="pdf_result_location_unknown">Сохранено в выбранной папке</string>
+    <string name="pdf_result_latest_title">Последний PDF</string>
     <string name="action_open_pdf_short">Открыть</string>
-    <string name="action_edit_pdf_pages">Редактировать страницы</string>
+    <string name="action_return_to_pdf_pages">Вернуться к страницам</string>
     <string name="action_new_pdf_document">Создать новый документ</string>
-    <string name="action_close_pdf_result_content_description">Закрыть результат PDF</string>
     <string name="action_share_pdf_content_description">Поделиться PDF</string>
     <string name="action_open_pdf_content_description">Открыть PDF</string>
-    <string name="action_edit_pdf_pages_content_description">Редактировать страницы PDF</string>
+    <string name="action_return_to_pdf_pages_content_description">Вернуться к страницам</string>
     <string name="action_new_pdf_document_content_description">Создать новый документ</string>
-    <string name="action_open_pdf_result_content_description">Открыть экран последнего результата PDF</string>
+    <string name="action_share_latest_pdf_content_description">Поделиться последним PDF</string>
+    <string name="action_open_latest_pdf_content_description">Открыть последний PDF</string>
+    <string name="pdf_success_banner_title">PDF готов</string>
+    <string name="pdf_success_banner_content_description">PDF успешно создан</string>
+    <string name="pdf_success_banner_announcement">PDF успешно создан. %1$s</string>
+    <string name="action_open_created_pdf_content_description">Открыть созданный PDF</string>
 
     <plurals name="gallery_album_image_count">
         <item quantity="one">%1$d изображение</item>
@@ -261,5 +259,12 @@
         <item quantity="few">%1$d страницы</item>
         <item quantity="many">%1$d страниц</item>
         <item quantity="other">%1$d страницы</item>
+    </plurals>
+
+    <plurals name="pdf_latest_result_pages_count">
+        <item quantity="one">%1$d стр.</item>
+        <item quantity="few">%1$d стр.</item>
+        <item quantity="many">%1$d стр.</item>
+        <item quantity="other">%1$d стр.</item>
     </plurals>
 </resources>

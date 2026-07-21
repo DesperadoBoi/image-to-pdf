@@ -45,7 +45,7 @@ public class PdfResultTest {
     }
 
     @Test
-    public void pendingMetadataUsesNonNegativeSizeAndMarksItUnknown() {
+    public void pendingMetadataUsesExplicitUnknownSize() {
         PdfResult result = PdfResult.pendingMetadata(
                 TEST_URI,
                 "result.pdf",
@@ -54,14 +54,14 @@ public class PdfResultTest {
                 "test.provider"
         );
 
-        assertEquals(0L, result.getSizeBytes());
+        assertEquals(PdfResult.UNKNOWN_SIZE, result.getSizeBytes());
         assertFalse(result.hasKnownSize());
         assertEquals(42L, result.getTimestamp());
         assertEquals("test.provider", result.getLocationLabel());
     }
 
     @Test
-    public void nonNegativeSizeIsKnown() {
+    public void zeroByteRealFileIsKnown() {
         PdfResult result = new PdfResult(TEST_URI, "result.pdf", 0L, 1);
 
         assertSame(TEST_URI, result.getUri());
@@ -76,6 +76,23 @@ public class PdfResultTest {
                 IllegalArgumentException.class,
                 () -> new PdfResult(TEST_URI, "result.pdf", -2L, 1)
         );
+    }
+
+    @Test
+    public void unknownSizeIsDistinctFromZeroByteFile() {
+        PdfResult unknown = PdfResult.pendingMetadata(
+                TEST_URI,
+                "result.pdf",
+                1,
+                42L,
+                ""
+        );
+        PdfResult zeroByte = new PdfResult(TEST_URI, "empty.pdf", 0L, 1);
+
+        assertFalse(unknown.hasKnownSize());
+        assertEquals(PdfResult.UNKNOWN_SIZE, unknown.getSizeBytes());
+        assertTrue(zeroByte.hasKnownSize());
+        assertEquals(0L, zeroByte.getSizeBytes());
     }
 
     @Test

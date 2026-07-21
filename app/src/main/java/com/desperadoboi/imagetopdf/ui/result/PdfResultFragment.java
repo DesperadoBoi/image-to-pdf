@@ -1,9 +1,7 @@
 package com.desperadoboi.imagetopdf.ui.result;
 
 import android.content.ActivityNotFoundException;
-import android.content.ClipData;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -24,10 +22,11 @@ import androidx.lifecycle.ViewModelProvider;
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
+import com.desperadoboi.imagetopdf.model.PdfFileNameFormatter;
 import com.desperadoboi.imagetopdf.model.PdfResult;
 import com.desperadoboi.imagetopdf.pdf.PdfPreviewLoader;
 import com.desperadoboi.imagetopdf.pdf.PdfResultMetadataReader;
-import com.desperadoboi.imagetopdf.util.FileSizeFormatter;
+import com.desperadoboi.imagetopdf.util.PdfResultSizeFormatter;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
@@ -36,7 +35,6 @@ import java.util.concurrent.Executor;
 
 public final class PdfResultFragment extends Fragment {
     public static final String TAG = "PdfResultFragment";
-    private static final String PDF_MIME_TYPE = "application/pdf";
 
     private DocumentSessionViewModel sessionViewModel;
     private NavigationCallback navigationCallback;
@@ -49,8 +47,7 @@ public final class PdfResultFragment extends Fragment {
     private ProgressBar previewProgress;
     private TextView pageBadge;
     private TextView fileNameText;
-    private TextView pagesText;
-    private TextView sizeText;
+    private TextView summaryText;
     private TextView locationText;
     private MaterialButton shareButton;
     private MaterialButton openButton;
@@ -76,7 +73,7 @@ public final class PdfResultFragment extends Fragment {
                 .get(DocumentSessionViewModel.class);
         Context applicationContext = requireContext().getApplicationContext();
         capturedImageStorage = new CapturedImageStorage(applicationContext);
-        metadataReader = new PdfResultMetadataReader(applicationContext.getContentResolver());
+        metadataReader = new PdfResultMetadataReader(applicationContext);
         mainExecutor = ContextCompat.getMainExecutor(applicationContext);
         previewLoader = new PdfPreviewLoader(
                 applicationContext.getContentResolver(),
@@ -120,8 +117,7 @@ public final class PdfResultFragment extends Fragment {
         previewProgress = null;
         pageBadge = null;
         fileNameText = null;
-        pagesText = null;
-        sizeText = null;
+        summaryText = null;
         locationText = null;
         shareButton = null;
         openButton = null;
@@ -153,8 +149,7 @@ public final class PdfResultFragment extends Fragment {
         previewProgress = view.findViewById(R.id.progress_pdf_result_preview);
         pageBadge = view.findViewById(R.id.text_pdf_result_page_badge);
         fileNameText = view.findViewById(R.id.text_pdf_result_file_name);
-        pagesText = view.findViewById(R.id.text_pdf_result_pages);
-        sizeText = view.findViewById(R.id.text_pdf_result_size);
+        summaryText = view.findViewById(R.id.text_pdf_result_summary);
         locationText = view.findViewById(R.id.text_pdf_result_location);
         shareButton = view.findViewById(R.id.button_pdf_result_share);
         openButton = view.findViewById(R.id.button_pdf_result_open);
@@ -163,8 +158,8 @@ public final class PdfResultFragment extends Fragment {
     }
 
     private void configureActions(View view) {
-        ImageButton closeButton = view.findViewById(R.id.button_pdf_result_close);
-        closeButton.setOnClickListener(clicked -> handleBackPressed());
+        ImageButton backButton = view.findViewById(R.id.button_pdf_result_back);
+        backButton.setOnClickListener(clicked -> handleBackPressed());
         shareButton.setOnClickListener(clicked -> sharePdf());
         openButton.setOnClickListener(clicked -> openPdf());
         editPagesButton.setOnClickListener(clicked -> editPages());
@@ -224,16 +219,19 @@ public final class PdfResultFragment extends Fragment {
         if (!available) {
             fileNameText.setText(R.string.pdf_result_unavailable);
             pageBadge.setVisibility(View.GONE);
-            pagesText.setVisibility(View.GONE);
-            sizeText.setVisibility(View.GONE);
+            summaryText.setVisibility(View.GONE);
             locationText.setVisibility(View.GONE);
             previewProgress.setVisibility(View.GONE);
             return;
         }
 
-        fileNameText.setText(result.getDisplayName().isEmpty()
+        String displayName = result.getDisplayName().isEmpty()
                 ? getString(R.string.pdf_result_unknown_name)
-                : result.getDisplayName());
+                : result.getDisplayName();
+        fileNameText.setText(result.getDisplayName().isEmpty()
+                ? displayName
+                : PdfFileNameFormatter.toDisplayTitle(displayName));
+        fileNameText.setContentDescription(displayName);
         pageBadge.setText(String.valueOf(result.getPageCount()));
         pageBadge.setContentDescription(getResources().getQuantityString(
                 R.plurals.pdf_result_pages_count,
@@ -241,24 +239,25 @@ public final class PdfResultFragment extends Fragment {
                 result.getPageCount()
         ));
         pageBadge.setVisibility(View.VISIBLE);
-        pagesText.setText(getResources().getQuantityString(
+        String pages = getResources().getQuantityString(
                 R.plurals.pdf_result_pages_count,
                 result.getPageCount(),
                 result.getPageCount()
-        ));
-        pagesText.setVisibility(View.VISIBLE);
-        sizeText.setText(result.hasKnownSize()
-                ? getString(
-                        R.string.pdf_result_size,
-                        FileSizeFormatter.format(result.getSizeBytes(), Locale.getDefault())
-                )
-                : getString(R.string.pdf_result_size_unknown));
-        sizeText.setVisibility(View.VISIBLE);
+        );
+        String size = PdfResultSizeFormatter.format(
+                result,
+                Locale.getDefault(),
+                getString(R.string.pdf_result_size_unknown)
+        );
+        summaryText.setText(getString(R.string.pdf_result_summary, pages, size));
+        summaryText.setVisibility(View.VISIBLE);
         String location = result.getLocationLabel();
-        if (location.isEmpty()) {
-            location = getString(R.string.pdf_result_location_unknown);
+        if (location.isEmpty()
+                || location.equals(getString(R.string.pdf_location_selected_folder))) {
+            locationText.setText(R.string.pdf_result_location_unknown);
+        } else {
+            locationText.setText(getString(R.string.pdf_result_location, location));
         }
-        locationText.setText(getString(R.string.pdf_result_location, location));
         locationText.setVisibility(View.VISIBLE);
     }
 
@@ -267,18 +266,12 @@ public final class PdfResultFragment extends Fragment {
         if (result == null) {
             return;
         }
-        Intent sendIntent = new Intent(Intent.ACTION_SEND);
-        sendIntent.setType(PDF_MIME_TYPE);
-        sendIntent.putExtra(Intent.EXTRA_STREAM, result.getUri());
-        grantReadPermission(sendIntent, result);
-        Intent chooser = Intent.createChooser(
-                sendIntent,
-                getString(R.string.pdf_share_chooser_title)
-        );
-        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        chooser.setClipData(sendIntent.getClipData());
         try {
-            startActivity(chooser);
+            startActivity(PdfIntentFactory.createShareIntent(
+                    requireContext().getContentResolver(),
+                    result,
+                    getString(R.string.pdf_share_chooser_title)
+            ));
         } catch (ActivityNotFoundException | SecurityException exception) {
             showToast(R.string.status_pdf_share_error);
         }
@@ -289,25 +282,16 @@ public final class PdfResultFragment extends Fragment {
         if (result == null) {
             return;
         }
-        Intent viewIntent = new Intent(Intent.ACTION_VIEW);
-        viewIntent.setDataAndType(result.getUri(), PDF_MIME_TYPE);
-        grantReadPermission(viewIntent, result);
         try {
-            startActivity(viewIntent);
+            startActivity(PdfIntentFactory.createOpenIntent(
+                    requireContext().getContentResolver(),
+                    result
+            ));
         } catch (ActivityNotFoundException exception) {
             showToast(R.string.status_pdf_open_app_not_found);
         } catch (SecurityException exception) {
             showToast(R.string.status_pdf_open_error);
         }
-    }
-
-    private void grantReadPermission(Intent intent, PdfResult result) {
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        intent.setClipData(ClipData.newUri(
-                requireContext().getContentResolver(),
-                result.getDisplayName(),
-                result.getUri()
-        ));
     }
 
     private void editPages() {

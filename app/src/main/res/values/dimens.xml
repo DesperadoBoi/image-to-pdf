@@ -47,13 +47,12 @@
     <dimen name="primary_button_corner_radius">18dp</dimen>
     <dimen name="pdf_options_label_width">124dp</dimen>
     <dimen name="pdf_options_row_spacing">8dp</dimen>
-    <dimen name="pdf_result_block_padding">8dp</dimen>
+    <dimen name="pdf_latest_result_padding">12dp</dimen>
+    <dimen name="pdf_latest_result_action_spacing">4dp</dimen>
     <dimen name="pdf_generation_progress_text_spacing">8dp</dimen>
     <dimen name="pdf_generation_cancel_button_spacing">8dp</dimen>
     <dimen name="pdf_generation_cancel_button_min_height">48dp</dimen>
     <dimen name="pdf_result_details_spacing">4dp</dimen>
-    <dimen name="pdf_result_actions_spacing">8dp</dimen>
-    <dimen name="pdf_result_action_button_spacing">8dp</dimen>
     <dimen name="page_item_spacing">12dp</dimen>
     <dimen name="page_item_horizontal_padding">8dp</dimen>
     <dimen name="page_item_vertical_padding">8dp</dimen>
@@ -120,13 +119,18 @@
     <dimen name="pdf_export_chip_text_size">13sp</dimen>
     <dimen name="pdf_export_setting_row_height">56dp</dimen>
     <dimen name="pdf_export_summary_spacing">4dp</dimen>
-    <dimen name="pdf_result_preview_container_height">360dp</dimen>
+    <dimen name="pdf_result_preview_container_height">320dp</dimen>
     <dimen name="pdf_result_preview_max_width">360dp</dimen>
     <dimen name="pdf_result_preview_max_height">420dp</dimen>
     <dimen name="pdf_result_preview_padding">8dp</dimen>
-    <dimen name="pdf_result_metadata_padding">16dp</dimen>
     <dimen name="pdf_result_metadata_row_spacing">8dp</dimen>
     <dimen name="pdf_result_badge_corner_radius">12dp</dimen>
     <dimen name="pdf_result_badge_horizontal_padding">10dp</dimen>
     <dimen name="pdf_result_badge_vertical_padding">5dp</dimen>
+    <dimen name="pdf_success_banner_min_height">72dp</dimen>
+    <dimen name="pdf_success_banner_padding">14dp</dimen>
+    <dimen name="pdf_success_banner_action_padding">4dp</dimen>
+    <dimen name="pdf_success_banner_text_spacing">2dp</dimen>
+    <dimen name="pdf_success_banner_elevation">8dp</dimen>
+    <dimen name="pdf_success_banner_translation">88dp</dimen>
 </resources>
