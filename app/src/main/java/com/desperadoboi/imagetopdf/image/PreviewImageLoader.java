@@ -33,11 +33,21 @@ public final class PreviewImageLoader {
             int targetHeight,
             Callback callback
     ) {
-        String key = buildKey(pageItem, targetWidth, targetHeight);
+        load(pageItem, targetWidth, targetHeight, PageProcessingMode.FINAL, callback);
+    }
+
+    public void load(
+            PageItem pageItem,
+            int targetWidth,
+            int targetHeight,
+            PageProcessingMode mode,
+            Callback callback
+    ) {
+        String key = buildKey(pageItem, targetWidth, targetHeight, mode);
         previewExecutor.execute(() -> {
             Bitmap bitmap = null;
             try {
-                bitmap = loadInternal(pageItem, targetWidth, targetHeight);
+                bitmap = loadInternal(pageItem, targetWidth, targetHeight, mode);
                 Bitmap loadedBitmap = bitmap;
                 mainExecutor.execute(() -> callback.onLoaded(key, loadedBitmap));
             } catch (IOException | RuntimeException exception) {
@@ -54,28 +64,64 @@ public final class PreviewImageLoader {
     }
 
     public static String buildKey(PageItem pageItem, int targetWidth, int targetHeight) {
-        return pageItem.getThumbnailKey() + "@" + targetWidth + "x" + targetHeight;
+        return buildKey(
+                pageItem,
+                targetWidth,
+                targetHeight,
+                PageProcessingMode.FINAL
+        );
     }
 
-    private Bitmap loadInternal(PageItem pageItem, int targetWidth, int targetHeight) throws IOException {
+    public static String buildKey(
+            PageItem pageItem,
+            int targetWidth,
+            int targetHeight,
+            PageProcessingMode mode
+    ) {
+        return pageItem.getThumbnailKey()
+                + "@" + targetWidth + "x" + targetHeight
+                + "@" + mode.name();
+    }
+
+    private Bitmap loadInternal(
+            PageItem pageItem,
+            int targetWidth,
+            int targetHeight,
+            PageProcessingMode mode
+    ) throws IOException {
         int boundedTargetWidth = clampTargetDimension(targetWidth);
         int boundedTargetHeight = clampTargetDimension(targetHeight);
         ImageTransform exifTransform = imageOrientationReader.read(pageItem.getImageUri());
         boolean swapsDimensions = exifTransform.swapsDimensions() ^ pageItem.swapsDimensions();
+        ImageBounds rawBounds = readImageBounds(pageItem.getImageUri());
+        int orientedWidth = swapsDimensions ? rawBounds.height : rawBounds.width;
+        int orientedHeight = swapsDimensions ? rawBounds.width : rawBounds.height;
+        EditedImageGeometryCalculator.Dimensions sourceTarget =
+                SourceResolutionCalculator.calculateForFitTarget(
+                        orientedWidth,
+                        orientedHeight,
+                        pageItem.getEditSpec(),
+                        mode,
+                        boundedTargetWidth,
+                        boundedTargetHeight
+                );
         Bitmap bitmap = decodeBitmap(
                 pageItem.getImageUri(),
-                swapsDimensions ? boundedTargetHeight : boundedTargetWidth,
-                swapsDimensions ? boundedTargetWidth : boundedTargetHeight
+                rawBounds,
+                swapsDimensions ? sourceTarget.getHeight() : sourceTarget.getWidth(),
+                swapsDimensions ? sourceTarget.getWidth() : sourceTarget.getHeight()
         );
-        bitmap = ImageBitmapTransformer.applyTransform(bitmap, exifTransform);
-        bitmap = ImageBitmapTransformer.applyClockwiseRotation(
+        bitmap = PageBitmapProcessor.process(
                 bitmap,
-                pageItem.getManualRotationDegrees()
+                exifTransform,
+                pageItem.getManualRotationDegrees(),
+                pageItem.getEditSpec(),
+                mode
         );
         return ImageBitmapTransformer.scaleDownToFit(bitmap, boundedTargetWidth, boundedTargetHeight);
     }
 
-    private Bitmap decodeBitmap(Uri imageUri, int targetWidth, int targetHeight) throws IOException {
+    private ImageBounds readImageBounds(Uri imageUri) throws IOException {
         BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
         boundsOptions.inJustDecodeBounds = true;
 
@@ -86,11 +132,19 @@ public final class PreviewImageLoader {
         if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
             throw new IOException("Unable to read image bounds");
         }
+        return new ImageBounds(boundsOptions.outWidth, boundsOptions.outHeight);
+    }
 
+    private Bitmap decodeBitmap(
+            Uri imageUri,
+            ImageBounds bounds,
+            int targetWidth,
+            int targetHeight
+    ) throws IOException {
         BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-        decodeOptions.inSampleSize = calculateInSampleSize(
-                boundsOptions.outWidth,
-                boundsOptions.outHeight,
+        decodeOptions.inSampleSize = BitmapSampleSizeCalculator.calculate(
+                bounds.width,
+                bounds.height,
                 targetWidth,
                 targetHeight
         );
@@ -113,26 +167,6 @@ public final class PreviewImageLoader {
         return inputStream;
     }
 
-    private int calculateInSampleSize(
-            int sourceWidth,
-            int sourceHeight,
-            int targetWidth,
-            int targetHeight
-    ) {
-        if (sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0) {
-            throw new IllegalArgumentException("Invalid bitmap dimensions");
-        }
-
-        int sampleSize = 1;
-        while ((sourceWidth / sampleSize) > targetWidth || (sourceHeight / sampleSize) > targetHeight) {
-            if (sampleSize > Integer.MAX_VALUE / 2) {
-                break;
-            }
-            sampleSize *= 2;
-        }
-        return Math.max(1, sampleSize);
-    }
-
     private int clampTargetDimension(int value) {
         if (value <= 0) {
             throw new IllegalArgumentException("Target dimension must be positive");
@@ -144,5 +178,15 @@ public final class PreviewImageLoader {
         void onLoaded(String key, Bitmap bitmap);
 
         void onError(String key);
+    }
+
+    private static final class ImageBounds {
+        private final int width;
+        private final int height;
+
+        private ImageBounds(int width, int height) {
+            this.width = width;
+            this.height = height;
+        }
     }
 }

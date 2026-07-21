@@ -4,13 +4,16 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/layout_page_item"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="?attr/selectableItemBackground"
+    android:layout_height="@dimen/page_card_height"
+    android:layout_marginBottom="@dimen/page_item_spacing"
+    android:background="@drawable/bg_page_card"
     android:clickable="true"
     android:focusable="true"
     android:gravity="center_vertical"
     android:orientation="horizontal"
+    android:paddingStart="@dimen/page_item_horizontal_padding"
     android:paddingTop="@dimen/page_item_vertical_padding"
+    android:paddingEnd="@dimen/page_item_horizontal_padding"
     android:paddingBottom="@dimen/page_item_vertical_padding">
 
     <TextView
@@ -29,7 +32,8 @@
         android:layout_height="@dimen/page_thumbnail_size"
         android:layout_marginStart="@dimen/page_item_spacing"
         android:adjustViewBounds="false"
-        android:background="?attr/colorSurfaceVariant"
+        android:background="@drawable/bg_page_thumbnail"
+        android:clipToOutline="true"
         android:contentDescription="@string/page_thumbnail_content_description_generic"
         android:scaleType="fitCenter"
         tools:src="@drawable/ic_broken_image_24" />
@@ -43,28 +47,32 @@
         android:id="@+id/button_drag_page"
         android:layout_width="@dimen/page_action_button_size"
         android:layout_height="@dimen/page_action_button_size"
-        android:layout_marginStart="@dimen/page_item_spacing"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_marginStart="@dimen/page_action_spacing"
+        android:background="@drawable/bg_icon_button_round"
         android:contentDescription="@string/action_reorder_page_content_description_generic"
-        android:src="@drawable/ic_reorder_24"
-        app:tint="?attr/colorControlNormal" />
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_reorder_24"
+        app:tint="?attr/colorOnSurfaceVariant" />
 
     <ImageButton
         android:id="@+id/button_rotate_page"
         android:layout_width="@dimen/page_action_button_size"
         android:layout_height="@dimen/page_action_button_size"
-        android:layout_marginStart="@dimen/page_item_spacing"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_marginStart="@dimen/page_action_spacing"
+        android:background="@drawable/bg_icon_button_round"
         android:contentDescription="@string/action_rotate_page_content_description_generic"
-        android:src="@drawable/ic_rotate_right_24"
-        app:tint="?attr/colorControlNormal" />
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_rotate_right_24"
+        app:tint="?attr/colorPrimary" />
 
     <ImageButton
         android:id="@+id/button_delete_page"
         android:layout_width="@dimen/page_action_button_size"
         android:layout_height="@dimen/page_action_button_size"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_marginStart="@dimen/page_action_spacing"
+        android:background="@drawable/bg_destructive_icon_button"
         android:contentDescription="@string/action_delete_page_content_description_generic"
-        android:src="@drawable/ic_delete_24"
-        app:tint="?attr/colorControlNormal" />
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_delete_24"
+        app:tint="@color/destructive_icon" />
 </LinearLayout>

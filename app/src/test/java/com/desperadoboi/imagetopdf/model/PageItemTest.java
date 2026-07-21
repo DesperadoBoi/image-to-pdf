@@ -20,6 +20,7 @@ public class PageItemTest {
         PageItem pageItem = new PageItem(TEST_URI);
 
         assertEquals(0, pageItem.getManualRotationDegrees());
+        assertSame(PageEditSpec.DEFAULT, pageItem.getEditSpec());
     }
 
     @Test
@@ -37,6 +38,14 @@ public class PageItemTest {
         assertEquals(PageSource.CAMERA, pageItem.getSource());
         assertTrue(pageItem.isAppOwnedCapture());
         assertEquals("capture_test.jpg", pageItem.getCapturedFileName());
+    }
+
+    @Test
+    public void filesPageUsesFilesSource() {
+        PageItem pageItem = PageItem.files(TEST_URI);
+
+        assertEquals(PageSource.FILES, pageItem.getSource());
+        assertFalse(pageItem.isAppOwnedCapture());
     }
 
     @Test
@@ -68,6 +77,18 @@ public class PageItemTest {
     }
 
     @Test
+    public void filesSourceIsPreservedAfterRotationAndCrop() {
+        PageItem pageItem = PageItem.files(TEST_URI);
+
+        PageItem editedPageItem = pageItem
+                .rotateClockwise()
+                .withCropRect(new CropRect(0.1f, 0.1f, 0.9f, 0.9f));
+
+        assertEquals(PageSource.FILES, editedPageItem.getSource());
+        assertEquals(pageItem.getId(), editedPageItem.getId());
+    }
+
+    @Test
     public void stableIdDoesNotChangeAfterRotation() {
         PageItem pageItem = new PageItem(TEST_URI);
 
@@ -96,6 +117,37 @@ public class PageItemTest {
     public void invalidRotationIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> new PageItem(TEST_URI, 45));
         assertThrows(IllegalArgumentException.class, () -> PageItem.rotateClockwise(45));
+    }
+
+    @Test
+    public void rotationPreservesEditsAndTransformsTheirCoordinates() {
+        PageItem pageItem = new PageItem(TEST_URI).withCropRect(
+                new CropRect(0.1f, 0.2f, 0.7f, 0.9f)
+        );
+
+        PageItem rotated = pageItem.rotateClockwise();
+
+        assertEquals(pageItem.getId(), rotated.getId());
+        assertSame(TEST_URI, rotated.getImageUri());
+        assertEquals(new CropRect(0.1f, 0.1f, 0.8f, 0.7f), rotated.getEditSpec().getCropRect());
+    }
+
+    @Test
+    public void thumbnailKeyChangesForRotationCropAndPerspective() {
+        PageItem page = new PageItem(TEST_URI);
+        PageItem rotated = page.rotateClockwise();
+        PageItem cropped = page.withCropRect(new CropRect(0.1f, 0.1f, 0.9f, 0.9f));
+        PageItem perspective = page.withPerspectiveQuad(new PerspectiveQuad(
+                new NormalizedPoint(0.1f, 0.1f),
+                new NormalizedPoint(0.9f, 0.1f),
+                new NormalizedPoint(0.8f, 0.9f),
+                new NormalizedPoint(0.2f, 0.9f)
+        ));
+
+        assertNotEquals(page.getThumbnailKey(), rotated.getThumbnailKey());
+        assertNotEquals(page.getThumbnailKey(), cropped.getThumbnailKey());
+        assertNotEquals(page.getThumbnailKey(), perspective.getThumbnailKey());
+        assertEquals(page.getId(), perspective.getId());
     }
 
     @Test

@@ -36,13 +36,17 @@ com.desperadoboi.imagetopdf
 └── util
 ```
 
-`MainActivity` сейчас является контейнером экранов. `HomeFragment` отвечает за первичный выбор изображений, `EditorFragment` - за список страниц, редактирование порядка, поворот, удаление, создание PDF и действия с результатом.
+`MainActivity` сейчас является контейнером экранов. `HomeFragment` является dashboard и отвечает за запуск существующих сценариев выбора изображений и камеры, `AllToolsFragment` показывает секционный каталог инструментов, а `EditorFragment` отвечает за список страниц, редактирование порядка, поворот, удаление, создание PDF и действия с результатом.
 
 ## Целевая UI-архитектура
 
 - одна `Activity` как контейнер;
-- отдельные `Fragment` для домашнего экрана и редактора страниц;
-- `PagePreviewFragment` открывается поверх редактора в существующем fragment-контейнере и использует stable ID страницы вместо передачи `Bitmap` через `Bundle`;
+- отдельные `Fragment` для домашнего dashboard, полного каталога и редактора страниц;
+- `HomeFragment` показывает четыре колонки из восьми инструментов, не содержит фиктивной истории, поиска или настроек;
+- `AllToolsFragment` использует один секционный `RecyclerView` и существующий fragment-контейнер без новой Activity и Navigation Component;
+- immutable `ToolCatalog` является единственной точкой истины для `ToolId`, category, availability, title/icon resources и порядка Home/каталога;
+- `PageEditFragment` открывается поверх редактора в существующем fragment-контейнере, использует stable ID страницы и общий `DocumentSessionViewModel`, содержит основной просмотр, горизонтальную ленту и обычный прямоугольный crop;
+- обычный `PageEditFragment` не показывает perspective correction: rotate left/right расположены как overlay-кнопки в нижних углах preview, а нижняя панель содержит только crop и done;
 - activity-scoped `DocumentSessionViewModel` для состояния пользовательской сессии;
 - `Fragment` читает состояние из `DocumentSessionViewModel` и применяет точечные обновления XML UI;
 - однонаправленный поток: `UI action -> ViewModel -> сервис/компонент -> новое состояние -> UI`;
@@ -50,6 +54,16 @@ com.desperadoboi.imagetopdf
 - `Context` передаётся только компонентам, которым он действительно нужен;
 - DI-фреймворк на старте не добавляется;
 - зависимости передаются явно через конструкторы или простой `AppContainer`.
+
+### Будущий Smart Scan
+
+Perspective-модели, overlay, geometry, bitmap transform и интеграция с thumbnail/preview/PDF
+сохраняются как технический фундамент, но не имеют точки входа в обычном Image-to-PDF
+редакторе. `SmartScanFlowCoordinator` фиксирует будущий контракт навигации без пустого
+экрана в текущей версии.
+
+Целевой отдельный сценарий: `Home Smart Scan tile -> Camera -> Document perspective editor
+-> Result editor -> PDF`.
 
 ## Основные технические решения
 
@@ -75,6 +89,11 @@ com.desperadoboi.imagetopdf
 - хранить в состоянии `Uri` и небольшие миниатюры;
 - `PreviewImageLoader` декодирует изображение для полноэкранного просмотра на фоновой очереди через `ContentResolver`, bounds, `inSampleSize`, EXIF orientation и ручной поворот;
 - `ZoomableImageView` реализует fit-center, pinch-to-zoom и ограниченный pan через стандартные Android `Matrix` и gesture APIs без сторонней библиотеки;
+- `PageItem` хранит immutable `PageEditSpec`: `PerspectiveQuad` в координатах ориентированного изображения и `CropRect` в координатах rectified result;
+- `RectCropOverlayView` и `DocumentPerspectiveOverlayView` отвечают только за отрисовку и временную touch-геометрию; применённые параметры записывает `PageEditFragment` через `DocumentSessionViewModel`;
+- `PageBitmapProcessor` задаёт единый порядок EXIF, manual rotation, perspective и crop для `ThumbnailLoader`, `PreviewImageLoader` и `PdfGenerator`;
+- perspective correction использует стандартный `Matrix.setPolyToPoly` с четырьмя парами точек и отрисовку через `Canvas`, без OpenCV и постоянных обработанных файлов;
+- `SourceResolutionCalculator` учитывает долю perspective quad и crop при выборе sampled decode, чтобы сохранить целевые 144 DPI без декодирования всех исходников одновременно;
 - `PageItem` хранит `PageSource`, чтобы отличать внешние изображения галереи от app-owned снимков камеры;
 - удалять app-owned camera-файлы при удалении соответствующей страницы и при создании новой сессии, не удаляя gallery `Uri`;
 - во время создания PDF обрабатывать изображения последовательно;

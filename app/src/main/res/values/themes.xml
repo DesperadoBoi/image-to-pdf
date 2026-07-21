@@ -1,8 +1,24 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+<resources>
     <style name="Base.Theme.ImageToPDF" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="android:colorBackground">@color/app_background</item>
+        <item name="colorOnBackground">@color/app_primary_text</item>
+        <item name="colorSurface">@color/app_surface</item>
+        <item name="colorSurfaceVariant">@color/app_surface_variant</item>
+        <item name="colorOnSurface">@color/app_primary_text</item>
+        <item name="colorOnSurfaceVariant">@color/app_secondary_text</item>
+        <item name="colorPrimary">@color/app_accent</item>
+        <item name="colorOnPrimary">@color/app_on_accent</item>
+        <item name="colorPrimaryContainer">@color/app_accent_container</item>
+        <item name="colorOnPrimaryContainer">@color/app_primary_text</item>
+        <item name="colorSecondary">@color/app_accent</item>
+        <item name="colorSecondaryContainer">@color/app_accent_container</item>
+        <item name="colorOnSecondaryContainer">@color/app_primary_text</item>
+        <item name="colorOutline">@color/app_outline</item>
+        <item name="colorControlNormal">@color/app_secondary_text</item>
+        <item name="android:disabledAlpha">0.60</item>
+        <item name="android:statusBarColor">@color/app_background</item>
+        <item name="android:navigationBarColor">@color/app_background</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <style name="Theme.ImageToPDF" parent="Base.Theme.ImageToPDF" />

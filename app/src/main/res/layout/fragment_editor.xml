@@ -3,39 +3,50 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground">
 
-    <com.google.android.material.button.MaterialButton
+    <ImageButton
         android:id="@+id/button_back"
-        style="?attr/materialButtonOutlinedStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="@dimen/editor_top_button_min_width"
-        android:text="@string/action_back"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:background="@drawable/bg_icon_button_round"
+        android:contentDescription="@string/action_editor_back_content_description"
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_back_24"
+        app:tint="?attr/colorOnSurface"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/text_editor_title"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/editor_toolbar_height"
         android:layout_marginStart="@dimen/content_spacing_small"
         android:layout_marginEnd="@dimen/content_spacing_small"
-        android:gravity="center"
+        android:gravity="center_vertical"
         android:text="@string/editor_title"
         android:textAppearance="?attr/textAppearanceTitleLarge"
-        app:layout_constraintBottom_toBottomOf="@id/button_back"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@id/button_add_images"
         app:layout_constraintStart_toEndOf="@id/button_back"
-        app:layout_constraintTop_toTopOf="@id/button_back" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_add_images"
         style="?attr/materialButtonOutlinedStyle"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="@dimen/editor_top_button_min_width"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:contentDescription="@string/action_add_page_content_description"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minWidth="0dp"
         android:text="@string/action_add"
+        app:icon="@drawable/ic_action_add_24"
+        app:iconGravity="textStart"
+        app:iconPadding="@dimen/editor_compact_icon_spacing"
+        app:iconTint="?attr/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -46,6 +57,7 @@
         android:layout_marginTop="@dimen/content_spacing_medium"
         android:gravity="center"
         android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurface"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/text_editor_title"
@@ -55,10 +67,11 @@
         android:id="@+id/text_reorder_hint"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/content_spacing_small"
+        android:layout_marginTop="@dimen/editor_hint_spacing"
         android:gravity="center"
         android:text="@string/reorder_hint"
         android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/text_selection_status" />
@@ -70,6 +83,7 @@
         android:layout_marginTop="@dimen/content_spacing_medium"
         android:layout_marginBottom="@dimen/content_spacing_medium"
         android:clipToPadding="false"
+        android:paddingBottom="@dimen/page_item_spacing"
         app:layout_constraintBottom_toTopOf="@id/layout_editor_bottom"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -82,16 +96,28 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:paddingTop="@dimen/bottom_action_padding"
+        android:paddingBottom="@dimen/bottom_action_padding"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <com.google.android.material.button.MaterialButton
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/button_create_pdf"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="@dimen/primary_button_height"
+            android:background="@drawable/bg_primary_action"
+            android:contentDescription="@string/action_create_pdf"
+            android:drawableStart="@drawable/ic_action_create_pdf_24"
+            android:drawablePadding="@dimen/content_spacing_small"
+            android:drawableTint="@color/primary_action_content"
             android:enabled="false"
-            android:text="@string/action_create_pdf" />
+            android:gravity="center"
+            android:minHeight="@dimen/primary_button_height"
+            android:text="@string/action_create_pdf"
+            android:textAllCaps="false"
+            android:textColor="@color/primary_action_content"
+            android:textStyle="bold" />
 
         <ProgressBar
             android:id="@+id/progress_generation"
@@ -109,12 +135,14 @@
             android:layout_marginTop="@dimen/pdf_generation_progress_text_spacing"
             android:gravity="center"
             android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurface"
             android:visibility="gone"
             tools:text="Создание PDF: 2 из 5"
             tools:visibility="visible" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/button_cancel_generation"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/pdf_generation_cancel_button_spacing"
@@ -130,6 +158,8 @@
             android:layout_marginTop="@dimen/content_spacing_small"
             android:gravity="center"
             android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone"
             tools:text="PDF успешно создан" />
 
         <LinearLayout
@@ -137,6 +167,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_spacing_medium"
+            android:background="@drawable/bg_surface_panel"
             android:orientation="vertical"
             android:padding="@dimen/pdf_result_block_padding"
             android:visibility="gone"
@@ -147,6 +178,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnSurface"
                 tools:text="ImageToPDF_20260720_120000.pdf" />
 
             <TextView
@@ -155,7 +187,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/pdf_result_details_spacing"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
-                tools:text="3 pages, 1.4 MB" />
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="3 страницы, 1,4 МБ" />
 
             <LinearLayout
                 android:id="@+id/layout_pdf_result_actions"
@@ -164,20 +197,22 @@
                 android:layout_marginTop="@dimen/pdf_result_actions_spacing"
                 android:orientation="vertical">
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_open_pdf"
+                    style="?attr/materialButtonOutlinedStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/action_open_pdf" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_share_pdf"
+                    style="?attr/materialButtonOutlinedStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/pdf_result_action_button_spacing"
                     android:text="@string/action_share_pdf" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_new_document"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

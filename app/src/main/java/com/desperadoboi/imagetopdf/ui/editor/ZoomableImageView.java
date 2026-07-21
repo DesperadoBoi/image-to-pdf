@@ -25,6 +25,7 @@ public final class ZoomableImageView extends AppCompatImageView {
     private float lastTouchX;
     private float lastTouchY;
     private boolean dragging;
+    private boolean gesturesEnabled = true;
 
     public ZoomableImageView(Context context) {
         this(context, null);
@@ -54,6 +55,9 @@ public final class ZoomableImageView extends AppCompatImageView {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (!gesturesEnabled) {
+            return false;
+        }
         if (getDrawable() == null) {
             return super.onTouchEvent(event);
         }
@@ -127,6 +131,28 @@ public final class ZoomableImageView extends AppCompatImageView {
         imageMatrix.setScale(currentScale, currentScale);
         imageMatrix.postTranslate(translateX, translateY);
         setImageMatrix(imageMatrix);
+    }
+
+    public void setGesturesEnabled(boolean gesturesEnabled) {
+        this.gesturesEnabled = gesturesEnabled;
+        if (!gesturesEnabled) {
+            dragging = false;
+            requestParentDisallowIntercept(false);
+        }
+    }
+
+    public boolean getImageContentRect(RectF outputRect) {
+        if (outputRect == null || !hasValidDrawableAndViewSize()) {
+            return false;
+        }
+        drawableRect.set(
+                0f,
+                0f,
+                getDrawable().getIntrinsicWidth(),
+                getDrawable().getIntrinsicHeight()
+        );
+        imageMatrix.mapRect(outputRect, drawableRect);
+        return true;
     }
 
     private void panBy(float dx, float dy) {

@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.UnaryOperator;
 
 public final class DocumentSessionViewModel extends ViewModel {
     private final ArrayList<PageItem> pages = new ArrayList<>();
@@ -47,46 +48,115 @@ public final class DocumentSessionViewModel extends ViewModel {
     }
 
     public List<String> replacePages(List<Uri> imageUris) {
-        List<String> capturedFileNames = collectCurrentCapturedFileNames();
-        pages.clear();
-        appendPageItems(imageUris);
-        clearDocumentStateForReplacement();
-        return capturedFileNames;
+        return importImages(
+                new ImageImportRequest(
+                        ImageImportSource.GALLERY,
+                        ImageImportMode.NEW_DOCUMENT
+                ),
+                imageUris
+        ).getCapturedFileNamesToDelete();
     }
 
     public List<String> replacePagesWithCameraCapture(Uri imageUri, String capturedFileName) {
-        List<String> capturedFileNames = collectCurrentCapturedFileNames();
-        if (capturedFileName != null) {
-            capturedFileNames.removeIf(capturedFileName::equals);
-        }
-        pages.clear();
-        pages.add(PageItem.camera(imageUri, capturedFileName));
-        clearDocumentStateForReplacement();
-        return capturedFileNames;
+        return importCameraImage(
+                new ImageImportRequest(
+                        ImageImportSource.CAMERA,
+                        ImageImportMode.NEW_DOCUMENT
+                ),
+                imageUri,
+                capturedFileName
+        ).getCapturedFileNamesToDelete();
     }
 
     public int appendPages(List<Uri> imageUris) {
-        int firstInsertedPosition = pages.size();
-        appendPageItems(imageUris);
-        transientStatusMessage = null;
-        resetFinishedGenerationState();
-        return firstInsertedPosition;
+        ImageImportResult result = importImages(
+                new ImageImportRequest(
+                        ImageImportSource.GALLERY,
+                        ImageImportMode.APPEND_TO_DOCUMENT
+                ),
+                imageUris
+        );
+        return result.hasChanges() ? result.getFirstInsertedPosition() : pages.size();
     }
 
     public int appendCameraPage(Uri imageUri, String capturedFileName) {
-        int insertedPosition = pages.size();
-        pages.add(PageItem.camera(imageUri, capturedFileName));
-        transientStatusMessage = null;
-        resetFinishedGenerationState();
-        return insertedPosition;
+        return importCameraImage(
+                new ImageImportRequest(
+                        ImageImportSource.CAMERA,
+                        ImageImportMode.APPEND_TO_DOCUMENT
+                ),
+                imageUri,
+                capturedFileName
+        ).getFirstInsertedPosition();
+    }
+
+    public ImageImportResult importImages(ImageImportRequest request, List<Uri> imageUris) {
+        Objects.requireNonNull(request, "request is required");
+        if (request.getSource() == ImageImportSource.CAMERA) {
+            throw new IllegalArgumentException("Camera import requires captured file metadata");
+        }
+        if (imageUris == null || imageUris.isEmpty()) {
+            return ImageImportResult.noChange();
+        }
+
+        ArrayList<PageItem> importedPages = new ArrayList<>(imageUris.size());
+        for (Uri imageUri : imageUris) {
+            importedPages.add(createExternalPage(request.getSource(), imageUri));
+        }
+        return applyImportedPages(request, importedPages);
+    }
+
+    public ImageImportResult importCameraImage(
+            ImageImportRequest request,
+            Uri imageUri,
+            String capturedFileName
+    ) {
+        Objects.requireNonNull(request, "request is required");
+        if (request.getSource() != ImageImportSource.CAMERA) {
+            throw new IllegalArgumentException("Camera metadata requires CAMERA source");
+        }
+        return applyImportedPages(
+                request,
+                java.util.Collections.singletonList(PageItem.camera(imageUri, capturedFileName))
+        );
     }
 
     public PageItem rotatePage(int position) {
         validatePosition(position);
         PageItem rotatedPage = pages.get(position).rotateClockwise();
         pages.set(position, rotatedPage);
-        transientStatusMessage = null;
+        markDocumentEdited();
         return rotatedPage;
+    }
+
+    public PageItem rotatePageLeft(long pageId) {
+        return updatePage(pageId, PageItem::rotateCounterClockwise);
+    }
+
+    public PageItem rotatePageRight(long pageId) {
+        return updatePage(pageId, PageItem::rotateClockwise);
+    }
+
+    public PageItem updatePageCrop(long pageId, CropRect cropRect) {
+        Objects.requireNonNull(cropRect, "cropRect is required");
+        return updatePage(pageId, pageItem -> pageItem.withCropRect(cropRect));
+    }
+
+    public PageItem updatePagePerspective(long pageId, PerspectiveQuad perspectiveQuad) {
+        Objects.requireNonNull(perspectiveQuad, "perspectiveQuad is required");
+        return updatePage(pageId, pageItem -> pageItem.withPerspectiveQuad(perspectiveQuad));
+    }
+
+    public PageItem resetPageCrop(long pageId) {
+        return updatePage(pageId, PageItem::resetCrop);
+    }
+
+    public PageItem resetPagePerspective(long pageId) {
+        return updatePage(pageId, PageItem::resetPerspective);
+    }
+
+    public PageItem resetPageEdits(long pageId) {
+        return updatePage(pageId, PageItem::resetEdits);
     }
 
     public PageItem deletePage(int position) {
@@ -300,13 +370,49 @@ public final class DocumentSessionViewModel extends ViewModel {
         super.onCleared();
     }
 
-    private void appendPageItems(List<Uri> imageUris) {
-        if (imageUris == null || imageUris.isEmpty()) {
-            return;
+    private PageItem createExternalPage(ImageImportSource source, Uri imageUri) {
+        if (source == ImageImportSource.GALLERY) {
+            return PageItem.gallery(imageUri);
         }
-        for (Uri imageUri : imageUris) {
-            pages.add(new PageItem(imageUri));
+        if (source == ImageImportSource.FILES) {
+            return PageItem.files(imageUri);
         }
+        throw new IllegalArgumentException("Unsupported external image source: " + source);
+    }
+
+    private ImageImportResult applyImportedPages(
+            ImageImportRequest request,
+            List<PageItem> importedPages
+    ) {
+        if (importedPages.isEmpty()) {
+            return ImageImportResult.noChange();
+        }
+
+        int firstInsertedPosition;
+        List<String> capturedFileNamesToDelete;
+        if (request.getMode() == ImageImportMode.NEW_DOCUMENT) {
+            capturedFileNamesToDelete = collectCurrentCapturedFileNames();
+            for (PageItem importedPage : importedPages) {
+                if (importedPage.isAppOwnedCapture()) {
+                    capturedFileNamesToDelete.remove(importedPage.getCapturedFileName());
+                }
+            }
+            pages.clear();
+            firstInsertedPosition = 0;
+            pages.addAll(importedPages);
+            clearDocumentStateForReplacement();
+        } else {
+            capturedFileNamesToDelete = java.util.Collections.emptyList();
+            firstInsertedPosition = pages.size();
+            pages.addAll(importedPages);
+            transientStatusMessage = null;
+            resetFinishedGenerationState();
+        }
+        return new ImageImportResult(
+                firstInsertedPosition,
+                importedPages.size(),
+                capturedFileNamesToDelete
+        );
     }
 
     private List<String> collectCurrentCapturedFileNames() {
@@ -337,6 +443,38 @@ public final class DocumentSessionViewModel extends ViewModel {
         if (position < 0 || position >= pages.size()) {
             throw new IndexOutOfBoundsException("position is out of bounds: " + position);
         }
+    }
+
+    private PageItem updatePage(long pageId, UnaryOperator<PageItem> update) {
+        int position = findPagePosition(pageId);
+        if (position < 0) {
+            throw new IllegalArgumentException("Unknown page ID: " + pageId);
+        }
+        PageItem currentPage = pages.get(position);
+        PageItem updatedPage = Objects.requireNonNull(
+                update.apply(currentPage),
+                "Updated page is required"
+        );
+        if (updatedPage != currentPage) {
+            pages.set(position, updatedPage);
+            markDocumentEdited();
+        }
+        return updatedPage;
+    }
+
+    private int findPagePosition(long pageId) {
+        for (int position = 0; position < pages.size(); position++) {
+            if (pages.get(position).getId() == pageId) {
+                return position;
+            }
+        }
+        return -1;
+    }
+
+    private void markDocumentEdited() {
+        transientStatusMessage = null;
+        lastPdfResult = null;
+        resetFinishedGenerationState();
     }
 
     private void cancelActiveGeneration() {

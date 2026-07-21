@@ -12,8 +12,9 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.ui.editor.EditorFragment;
-import com.desperadoboi.imagetopdf.ui.editor.PagePreviewFragment;
+import com.desperadoboi.imagetopdf.ui.editor.PageEditFragment;
 import com.desperadoboi.imagetopdf.ui.home.HomeFragment;
+import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 
 public class MainActivity extends AppCompatActivity
         implements HomeFragment.NavigationCallback, EditorFragment.NavigationCallback {
@@ -44,24 +45,29 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
+    public void onAllToolsRequested() {
+        showAllTools();
+    }
+
+    @Override
     public void onReturnHomeRequested() {
         showHome();
     }
 
     @Override
-    public void onPagePreviewRequested(long pageId) {
+    public void onPageEditRequested(long pageId) {
         if (!sessionViewModel.canEditPages()
-                || getSupportFragmentManager().findFragmentByTag(PagePreviewFragment.TAG) != null) {
+                || getSupportFragmentManager().findFragmentByTag(PageEditFragment.TAG) != null) {
             return;
         }
         getSupportFragmentManager()
                 .beginTransaction()
                 .add(
                         R.id.fragment_container,
-                        PagePreviewFragment.newInstance(pageId),
-                        PagePreviewFragment.TAG
+                        PageEditFragment.newInstance(pageId),
+                        PageEditFragment.TAG
                 )
-                .addToBackStack(PagePreviewFragment.TAG)
+                .addToBackStack(PageEditFragment.TAG)
                 .commit();
     }
 
@@ -83,7 +89,13 @@ public class MainActivity extends AppCompatActivity
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                if (getSupportFragmentManager().findFragmentByTag(PagePreviewFragment.TAG) != null) {
+                PageEditFragment pageEditFragment = (PageEditFragment)
+                        getSupportFragmentManager().findFragmentByTag(PageEditFragment.TAG);
+                if (pageEditFragment != null) {
+                    pageEditFragment.handleBackPressed();
+                    return;
+                }
+                if (getSupportFragmentManager().findFragmentByTag(AllToolsFragment.TAG) != null) {
                     getSupportFragmentManager().popBackStack();
                     return;
                 }
@@ -110,6 +122,14 @@ public class MainActivity extends AppCompatActivity
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragment_container, new EditorFragment(), EditorFragment.TAG)
+                .commit();
+    }
+
+    private void showAllTools() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, new AllToolsFragment(), AllToolsFragment.TAG)
+                .addToBackStack(AllToolsFragment.TAG)
                 .commit();
     }
 }

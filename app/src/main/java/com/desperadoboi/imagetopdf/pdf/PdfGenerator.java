@@ -14,6 +14,11 @@ import android.net.Uri;
 import com.desperadoboi.imagetopdf.image.ImageBitmapTransformer;
 import com.desperadoboi.imagetopdf.image.ImageOrientationReader;
 import com.desperadoboi.imagetopdf.image.ImageTransform;
+import com.desperadoboi.imagetopdf.image.BitmapSampleSizeCalculator;
+import com.desperadoboi.imagetopdf.image.EditedImageGeometryCalculator;
+import com.desperadoboi.imagetopdf.image.PageBitmapProcessor;
+import com.desperadoboi.imagetopdf.image.PageProcessingMode;
+import com.desperadoboi.imagetopdf.image.SourceResolutionCalculator;
 import com.desperadoboi.imagetopdf.model.ImagePlacementMode;
 import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.model.PageSizeMode;
@@ -90,8 +95,20 @@ public class PdfGenerator {
                 PageItem pageItem = pageItems.get(index);
                 ImageBounds rawBounds = readImageBounds(pageItem.getImageUri());
                 ImageTransform imageTransform = imageOrientationReader.read(pageItem.getImageUri());
-                ImageBounds orientedBounds = rawBounds.swapIf(imageTransform.swapsDimensions());
-                ImageBounds finalBounds = orientedBounds.swapIf(pageItem.swapsDimensions());
+                boolean totalTransformSwapsDimensions =
+                        imageTransform.swapsDimensions() ^ pageItem.swapsDimensions();
+                ImageBounds orientedBounds = rawBounds.swapIf(totalTransformSwapsDimensions);
+                EditedImageGeometryCalculator.Dimensions editedDimensions =
+                        EditedImageGeometryCalculator.calculate(
+                                orientedBounds.getWidth(),
+                                orientedBounds.getHeight(),
+                                pageItem.getEditSpec(),
+                                PageProcessingMode.FINAL
+                        );
+                ImageBounds finalBounds = new ImageBounds(
+                        editedDimensions.getWidth(),
+                        editedDimensions.getHeight()
+                );
                 PdfPageLayout pageLayout = PdfPageLayoutCalculator.calculate(
                         pdfOptions,
                         finalBounds.getWidth(),
@@ -107,25 +124,33 @@ public class PdfGenerator {
                         pageLayout.getContentHeight(),
                         placementMode
                 );
-                boolean totalTransformSwapsDimensions =
-                        imageTransform.swapsDimensions() ^ pageItem.swapsDimensions();
+                EditedImageGeometryCalculator.Dimensions sourceTarget =
+                        SourceResolutionCalculator.calculateForOutputTarget(
+                                orientedBounds.getWidth(),
+                                orientedBounds.getHeight(),
+                                pageItem.getEditSpec(),
+                                PageProcessingMode.FINAL,
+                                rasterTarget.getTargetWidthPixels(),
+                                rasterTarget.getTargetHeightPixels()
+                        );
                 Bitmap bitmap = decodeBitmap(
                         pageItem.getImageUri(),
                         rawBounds,
                         totalTransformSwapsDimensions
-                                ? rasterTarget.getTargetHeightPixels()
-                                : rasterTarget.getTargetWidthPixels(),
+                                ? sourceTarget.getHeight()
+                                : sourceTarget.getWidth(),
                         totalTransformSwapsDimensions
-                                ? rasterTarget.getTargetWidthPixels()
-                                : rasterTarget.getTargetHeightPixels()
+                                ? sourceTarget.getWidth()
+                                : sourceTarget.getHeight()
                 );
                 try {
                     throwIfCancelled(cancellationToken);
-                    bitmap = ImageBitmapTransformer.applyTransform(bitmap, imageTransform);
-                    throwIfCancelled(cancellationToken);
-                    bitmap = ImageBitmapTransformer.applyClockwiseRotation(
+                    bitmap = PageBitmapProcessor.process(
                             bitmap,
-                            pageItem.getManualRotationDegrees()
+                            imageTransform,
+                            pageItem.getManualRotationDegrees(),
+                            pageItem.getEditSpec(),
+                            PageProcessingMode.FINAL
                     );
                     throwIfCancelled(cancellationToken);
                     bitmap = ImageBitmapTransformer.scaleDownToFit(
@@ -199,7 +224,7 @@ public class PdfGenerator {
             int targetHeight
     ) throws IOException {
         BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-        decodeOptions.inSampleSize = calculateInSampleSize(
+        decodeOptions.inSampleSize = BitmapSampleSizeCalculator.calculate(
                 bounds.getWidth(),
                 bounds.getHeight(),
                 targetWidth,
@@ -279,28 +304,6 @@ public class PdfGenerator {
         } catch (RuntimeException exception) {
             // Some document providers do not support deleting a just-created document.
         }
-    }
-
-    private int calculateInSampleSize(
-            int sourceWidth,
-            int sourceHeight,
-            int targetWidth,
-            int targetHeight
-    ) {
-        if (sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0) {
-            throw new IllegalArgumentException("Invalid bitmap dimensions");
-        }
-
-        int sampleSize = 1;
-        while (sampleSize <= Integer.MAX_VALUE / 2) {
-            int nextSampleSize = sampleSize * 2;
-            if ((sourceWidth / nextSampleSize) < targetWidth
-                    || (sourceHeight / nextSampleSize) < targetHeight) {
-                break;
-            }
-            sampleSize = nextSampleSize;
-        }
-        return Math.max(1, sampleSize);
     }
 
     private void throwIfCancelled(CancellationToken cancellationToken)

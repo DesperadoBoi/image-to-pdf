@@ -1,0 +1,120 @@
+{
+  "version": 2,
+  "source": "user-approved 4x4 reference sheet plus three matching extension icons",
+  "icons": [
+    {
+      "id": "image_to_pdf",
+      "label_ru": "Изображение в PDF",
+      "resource": "@drawable/ic_tool_image_to_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_image_to_pdf.png"
+    },
+    {
+      "id": "smart_scan",
+      "label_ru": "Умное сканирование",
+      "resource": "@drawable/ic_tool_smart_scan",
+      "card_reference": "docs/ui/tool_cards/card_tool_smart_scan.png"
+    },
+    {
+      "id": "import_pdf",
+      "label_ru": "Импортировать PDF",
+      "resource": "@drawable/ic_tool_import_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_import_pdf.png"
+    },
+    {
+      "id": "compress_pdf",
+      "label_ru": "Сжать",
+      "resource": "@drawable/ic_tool_compress_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_compress_pdf.png"
+    },
+    {
+      "id": "pdf_to_jpg",
+      "label_ru": "PDF в JPG",
+      "resource": "@drawable/ic_tool_pdf_to_jpg",
+      "card_reference": "docs/ui/tool_cards/card_tool_pdf_to_jpg.png"
+    },
+    {
+      "id": "merge_pdf",
+      "label_ru": "Слияние PDF",
+      "resource": "@drawable/ic_tool_merge_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_merge_pdf.png"
+    },
+    {
+      "id": "docx_to_pdf",
+      "label_ru": "DOCX в PDF",
+      "resource": "@drawable/ic_tool_docx_to_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_docx_to_pdf.png"
+    },
+    {
+      "id": "more",
+      "label_ru": "Ещё",
+      "resource": "@drawable/ic_tool_more",
+      "card_reference": "docs/ui/tool_cards/card_tool_more.png"
+    },
+    {
+      "id": "id_scan",
+      "label_ru": "Скан удостоверения",
+      "resource": "@drawable/ic_tool_id_scan",
+      "card_reference": "docs/ui/tool_cards/card_tool_id_scan.png"
+    },
+    {
+      "id": "print_pdf",
+      "label_ru": "Печать PDF",
+      "resource": "@drawable/ic_tool_print_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_print_pdf.png"
+    },
+    {
+      "id": "pdf_to_word",
+      "label_ru": "PDF в Word",
+      "resource": "@drawable/ic_tool_pdf_to_word",
+      "card_reference": "docs/ui/tool_cards/card_tool_pdf_to_word.png"
+    },
+    {
+      "id": "pdf_to_ppt",
+      "label_ru": "PDF в PPT",
+      "resource": "@drawable/ic_tool_pdf_to_ppt",
+      "card_reference": "docs/ui/tool_cards/card_tool_pdf_to_ppt.png"
+    },
+    {
+      "id": "add_text",
+      "label_ru": "Добавить текст",
+      "resource": "@drawable/ic_tool_add_text",
+      "card_reference": "docs/ui/tool_cards/card_tool_add_text.png"
+    },
+    {
+      "id": "signature",
+      "label_ru": "Подпись",
+      "resource": "@drawable/ic_tool_signature",
+      "card_reference": "docs/ui/tool_cards/card_tool_signature.png"
+    },
+    {
+      "id": "lock_pdf",
+      "label_ru": "Заблокировать PDF",
+      "resource": "@drawable/ic_tool_lock_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_lock_pdf.png"
+    },
+    {
+      "id": "unlock_pdf",
+      "label_ru": "Разблокировать PDF",
+      "resource": "@drawable/ic_tool_unlock_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_unlock_pdf.png"
+    },
+    {
+      "id": "camera",
+      "label_ru": "Камера",
+      "resource": "@drawable/ic_tool_camera",
+      "card_reference": "docs/ui/tool_cards/card_tool_camera.png"
+    },
+    {
+      "id": "ppt_to_pdf",
+      "label_ru": "PPT в PDF",
+      "resource": "@drawable/ic_tool_ppt_to_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_ppt_to_pdf.png"
+    },
+    {
+      "id": "draw_pdf",
+      "label_ru": "Рисовать",
+      "resource": "@drawable/ic_tool_draw_pdf",
+      "card_reference": "docs/ui/tool_cards/card_tool_draw_pdf.png"
+    }
+  ]
+}
