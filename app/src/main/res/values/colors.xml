@@ -29,4 +29,9 @@
     <color name="scan_camera_surface">#FF07101F</color>
     <color name="scan_camera_panel">#F2111929</color>
     <color name="scan_camera_secondary_text">#FFC5CDDA</color>
+    <color name="brand_navy_light">#FF152E63</color>
+    <color name="brand_navy_dark">#FF081A3B</color>
+    <color name="brand_mark_main">#FFE8EEFA</color>
+    <color name="brand_mark_shade">#FFAFC6ED</color>
+    <color name="brand_image_accent">#FF7798D7</color>
 </resources>
