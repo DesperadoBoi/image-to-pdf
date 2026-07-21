@@ -72,7 +72,7 @@ public final class ToolCatalog {
                         ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 5),
                 tool(ToolId.SMART_SCAN, R.string.tool_smart_scan,
                         R.drawable.ic_tool_smart_scan, ToolCategory.POPULAR,
-                        ToolAvailability.COMING_SOON, true, 1, 6),
+                        ToolAvailability.AVAILABLE, true, 1, 6),
                 tool(ToolId.ID_SCAN, R.string.tool_id_scan,
                         R.drawable.ic_tool_id_scan, ToolCategory.POPULAR,
                         ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 7),

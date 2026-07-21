@@ -9,7 +9,9 @@
 - Android 13 и новее используют `READ_MEDIA_IMAGES` для полного доступа;
 - Android 14 и новее дополнительно учитывают `READ_MEDIA_VISUAL_USER_SELECTED`: такой grant отображается как `PARTIAL`, а не как полная галерея;
 - Android 7–12L используют `READ_EXTERNAL_STORAGE`, ограниченный в manifest через `maxSdkVersion="32"`;
-- `WRITE_EXTERNAL_STORAGE`, `MANAGE_EXTERNAL_STORAGE`, `CAMERA` и `INTERNET` не используются.
+- `WRITE_EXTERNAL_STORAGE`, `MANAGE_EXTERNAL_STORAGE` и `INTERNET` не используются.
+  `CAMERA` относится только к отдельному встроенному CameraX Smart Scan; внешний
+  `TakePicture` внутри picker не запрашивает это разрешение.
 
 `GalleryAccessState` различает `FULL`, `PARTIAL`, `DENIED` и `NOT_REQUESTED`. При частичном доступе экран показывает только разрешённые системой элементы и предлагает изменить доступ. При отказе остаются доступны Android Photo Picker и Storage Access Framework. После окончательного отказа также показывается переход в настройки приложения.
 

@@ -62,13 +62,13 @@ public class ToolCatalogTest {
         assertEquals(ToolAvailability.AVAILABLE,
                 ToolCatalog.get(ToolId.CAMERA).getAvailability());
         assertEquals(ToolAvailability.AVAILABLE,
+                ToolCatalog.get(ToolId.SMART_SCAN).getAvailability());
+        assertEquals(ToolAvailability.AVAILABLE,
                 ToolCatalog.get(ToolId.MORE).getAvailability());
     }
 
     @Test
     public void plannedHomeToolsAreComingSoon() {
-        assertEquals(ToolAvailability.COMING_SOON,
-                ToolCatalog.get(ToolId.SMART_SCAN).getAvailability());
         assertEquals(ToolAvailability.COMING_SOON,
                 ToolCatalog.get(ToolId.IMPORT_PDF).getAvailability());
         assertEquals(ToolAvailability.COMING_SOON,

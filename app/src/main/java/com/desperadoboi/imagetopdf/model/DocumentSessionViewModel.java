@@ -153,6 +153,24 @@ public final class DocumentSessionViewModel extends ViewModel {
         );
     }
 
+    public ImageImportResult importPreparedPages(
+            ImageImportMode mode,
+            List<PageItem> preparedPages
+    ) {
+        Objects.requireNonNull(mode, "mode is required");
+        if (preparedPages == null || preparedPages.isEmpty()) {
+            return ImageImportResult.noChange();
+        }
+        ArrayList<PageItem> pagesToImport = new ArrayList<>(preparedPages.size());
+        for (PageItem page : preparedPages) {
+            pagesToImport.add(Objects.requireNonNull(page, "prepared page is required"));
+        }
+        return applyImportedPages(
+                new ImageImportRequest(ImageImportSource.IN_APP_GALLERY, mode),
+                pagesToImport
+        );
+    }
+
     public PageItem rotatePage(int position) {
         validatePosition(position);
         PageItem rotatedPage = pages.get(position).rotateClockwise();

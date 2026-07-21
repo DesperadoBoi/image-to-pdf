@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/scan_camera_surface"
+    android:keepScreenOn="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/layout_scan_toolbar"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/scan_toolbar_height"
+        android:background="@color/scan_camera_panel"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageButton
+            android:id="@+id/button_scan_back"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="@drawable/bg_scan_icon_button"
+            android:contentDescription="@string/smart_scan_back_content_description"
+            android:padding="12dp"
+            android:src="@drawable/ic_action_back_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+
+        <TextView
+            android:id="@+id/text_scan_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/smart_scan_title"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/button_scan_torch"
+            app:layout_constraintStart_toEndOf="@id/button_scan_back"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/button_scan_torch"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="@drawable/bg_scan_icon_button"
+            android:contentDescription="@string/smart_scan_torch_content_description"
+            android:enabled="false"
+            android:padding="12dp"
+            android:src="@drawable/ic_action_flash_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/button_scan_grid"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+
+        <ImageButton
+            android:id="@+id/button_scan_grid"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="@drawable/bg_scan_icon_button"
+            android:contentDescription="@string/smart_scan_grid_content_description"
+            android:padding="12dp"
+            android:src="@drawable/ic_action_grid_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/button_scan_more"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+
+        <ImageButton
+            android:id="@+id/button_scan_more"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="@drawable/bg_scan_icon_button"
+            android:contentDescription="@string/smart_scan_more_content_description"
+            android:padding="12dp"
+            android:src="@drawable/ic_action_more_vert_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <FrameLayout
+        android:id="@+id/layout_scan_camera"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/layout_scan_controls"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layout_scan_toolbar">
+
+        <androidx.camera.view.PreviewView
+            android:id="@+id/view_scan_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:implementationMode="compatible"
+            app:scaleType="fillCenter" />
+
+        <com.desperadoboi.imagetopdf.ui.smartscan.ScanGridOverlayView
+            android:id="@+id/view_scan_grid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <com.desperadoboi.imagetopdf.ui.smartscan.DocumentFrameOverlayView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/text_scan_camera_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_scan_icon_button"
+            android:gravity="center"
+            android:maxWidth="280dp"
+            android:padding="16dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="@color/white"
+            android:visibility="gone"
+            tools:text="Камера недоступна"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/text_scan_frame_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="@dimen/scan_hint_margin"
+            android:background="@drawable/bg_scan_icon_button"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp"
+            android:text="@string/smart_scan_frame_hint"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/white" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_scan_controls"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/scan_camera_panel"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="@dimen/scan_controls_padding"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/smart_scan_mode_document"
+            android:textAppearance="?attr/textAppearanceLabelLarge"
+            android:textColor="@color/scan_camera_secondary_text"
+            android:textStyle="bold" />
+
+        <com.desperadoboi.imagetopdf.ui.smartscan.LevelIndicatorView
+            android:id="@+id/view_scan_level"
+            android:layout_width="@dimen/scan_level_width"
+            android:layout_height="@dimen/scan_level_height"
+            android:layout_marginTop="@dimen/scan_controls_spacing"
+            android:visibility="gone" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/scan_controls_spacing">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_scan_gallery"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="@dimen/scan_bottom_side_width"
+                android:layout_height="@dimen/touch_target"
+                android:text="@string/smart_scan_gallery"
+                android:textColor="@color/white"
+                app:icon="@drawable/ic_source_gallery_24"
+                app:iconTint="@color/white"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <FrameLayout
+                android:id="@+id/layout_scan_shutter"
+                android:layout_width="@dimen/scan_shutter_size"
+                android:layout_height="@dimen/scan_shutter_size"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageButton
+                    android:id="@+id/button_scan_shutter"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_scan_shutter"
+                    android:contentDescription="@string/smart_scan_capture_content_description"
+                    android:padding="0dp"
+                    android:src="@android:color/transparent" />
+
+                <ProgressBar
+                    android:id="@+id/progress_scan_capture"
+                    android:layout_width="@dimen/scan_shutter_progress_size"
+                    android:layout_height="@dimen/scan_shutter_progress_size"
+                    android:layout_gravity="center"
+                    android:indeterminateTint="@color/app_accent"
+                    android:visibility="gone" />
+
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="@dimen/scan_bottom_side_width"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <TextView
+                    android:id="@+id/text_scan_page_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/scan_camera_secondary_text"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:visibility="gone"
+                    tools:text="Страниц: 2"
+                    tools:visibility="visible" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_scan_done"
+                    style="@style/Widget.Material3.Button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_marginTop="2dp"
+                    android:minWidth="0dp"
+                    android:text="@string/action_done"
+                    android:visibility="gone"
+                    tools:text="Готово (2)"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_scan_permission"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="@dimen/scan_permission_padding"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layout_scan_toolbar"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/text_scan_permission"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:maxWidth="@dimen/scan_permission_max_width"
+            android:text="@string/smart_scan_permission_message"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="@color/white" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scan_allow_permission"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/primary_button_height"
+            android:layout_marginTop="20dp"
+            android:maxWidth="@dimen/scan_permission_max_width"
+            android:text="@string/smart_scan_permission_allow" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scan_permission_gallery"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/primary_button_height"
+            android:layout_marginTop="8dp"
+            android:maxWidth="@dimen/scan_permission_max_width"
+            android:text="@string/smart_scan_gallery"
+            android:textColor="@color/white" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scan_settings"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/touch_target"
+            android:layout_marginTop="8dp"
+            android:text="@string/smart_scan_open_settings"
+            android:textColor="@color/white"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

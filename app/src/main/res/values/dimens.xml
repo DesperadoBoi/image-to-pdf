@@ -132,4 +132,24 @@
     <dimen name="pdf_success_banner_elevation">8dp</dimen>
     <dimen name="pdf_success_banner_top_spacing">4dp</dimen>
     <dimen name="pdf_success_icon_container_size">36dp</dimen>
+    <dimen name="scan_toolbar_height">52dp</dimen>
+    <dimen name="scan_toolbar_spacing">4dp</dimen>
+    <dimen name="scan_frame_safe_inset">20dp</dimen>
+    <dimen name="scan_frame_corner_length">34dp</dimen>
+    <dimen name="scan_frame_stroke">1dp</dimen>
+    <dimen name="scan_frame_corner_stroke">4dp</dimen>
+    <dimen name="scan_grid_stroke">1dp</dimen>
+    <dimen name="scan_hint_margin">14dp</dimen>
+    <dimen name="scan_controls_padding">12dp</dimen>
+    <dimen name="scan_controls_spacing">6dp</dimen>
+    <dimen name="scan_level_width">116dp</dimen>
+    <dimen name="scan_level_height">24dp</dimen>
+    <dimen name="scan_level_line_stroke">2dp</dimen>
+    <dimen name="scan_level_point_radius">5dp</dimen>
+    <dimen name="scan_shutter_size">78dp</dimen>
+    <dimen name="scan_shutter_progress_size">30dp</dimen>
+    <dimen name="scan_bottom_side_width">112dp</dimen>
+    <dimen name="scan_permission_max_width">420dp</dimen>
+    <dimen name="scan_permission_padding">24dp</dimen>
+    <dimen name="scan_review_tools_spacing">4dp</dimen>
 </resources>

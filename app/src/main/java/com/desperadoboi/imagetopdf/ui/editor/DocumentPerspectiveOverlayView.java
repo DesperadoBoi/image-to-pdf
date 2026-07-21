@@ -46,6 +46,7 @@ public final class DocumentPerspectiveOverlayView extends View {
     private PerspectiveQuad gestureStartQuad;
     private PerspectiveQuadEditor.Handle activeHandle;
     private boolean hasImageRect;
+    private boolean edgeHandlesEnabled = true;
 
     public DocumentPerspectiveOverlayView(Context context) {
         this(context, null);
@@ -116,6 +117,11 @@ public final class DocumentPerspectiveOverlayView extends View {
         return quad;
     }
 
+    public void setEdgeHandlesEnabled(boolean enabled) {
+        edgeHandlesEnabled = enabled;
+        invalidate();
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -131,6 +137,9 @@ public final class DocumentPerspectiveOverlayView extends View {
         drawGrid(canvas);
         canvas.drawPath(quadPath, borderPaint);
         for (PerspectiveQuadEditor.Handle handle : HANDLES) {
+            if (!edgeHandlesEnabled && !isCorner(handle)) {
+                continue;
+            }
             NormalizedPoint point = handlePoint(handle);
             canvas.drawCircle(viewX(point), viewY(point), handleRadius, handlePaint);
         }
@@ -195,6 +204,9 @@ public final class DocumentPerspectiveOverlayView extends View {
         PerspectiveQuadEditor.Handle nearest = null;
         float nearestDistanceSquared = touchRadius * touchRadius;
         for (PerspectiveQuadEditor.Handle handle : HANDLES) {
+            if (!edgeHandlesEnabled && !isCorner(handle)) {
+                continue;
+            }
             NormalizedPoint point = handlePoint(handle);
             float dx = x - viewX(point);
             float dy = y - viewY(point);
@@ -205,6 +217,13 @@ public final class DocumentPerspectiveOverlayView extends View {
             }
         }
         return nearest;
+    }
+
+    private boolean isCorner(PerspectiveQuadEditor.Handle handle) {
+        return handle == PerspectiveQuadEditor.Handle.TOP_LEFT
+                || handle == PerspectiveQuadEditor.Handle.TOP_RIGHT
+                || handle == PerspectiveQuadEditor.Handle.BOTTOM_RIGHT
+                || handle == PerspectiveQuadEditor.Handle.BOTTOM_LEFT;
     }
 
     private void buildQuadPath() {

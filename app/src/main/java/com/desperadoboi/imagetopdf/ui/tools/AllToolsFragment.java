@@ -84,7 +84,8 @@ public final class AllToolsFragment extends Fragment {
     }
 
     private void handleToolSelected(ToolId toolId) {
-        if (toolId != ToolId.IMAGE_TO_PDF || !ToolCatalog.get(toolId).isAvailable()) {
+        if ((toolId != ToolId.IMAGE_TO_PDF && toolId != ToolId.SMART_SCAN)
+                || !ToolCatalog.get(toolId).isAvailable()) {
             return;
         }
         Bundle result = new Bundle();

@@ -43,7 +43,9 @@ Picker и Storage Access Framework остаются доступными fallbac
 
 `CAMERA` сохраняет существующий flow `ActivityResultContracts.TakePicture`.
 `CapturedImageStorage` заранее создаёт app-owned файл, а `FileProvider` выдаёт камере
-временный `content://` `Uri`. `CAMERA` permission приложению не требуется. Полученная
+временный `content://` `Uri`. Для этого внешнего `TakePicture` flow отдельный runtime camera
+permission не требуется. Manifest содержит `CAMERA` для встроенного CameraX-инструмента
+Smart Scan. Полученная
 страница имеет `PageSource.CAMERA` и хранит имя принадлежащего приложению файла.
 
 ### Files
@@ -73,6 +75,8 @@ Picker и Storage Access Framework остаются доступными fallbac
 
 ## Permissions
 
-Manifest содержит только `READ_MEDIA_IMAGES`, `READ_MEDIA_VISUAL_USER_SELECTED` и
-`READ_EXTERNAL_STORAGE` с `maxSdkVersion="32"`. Partial grant Android 14+ не выдаётся за
-full access. При denied состоянии Camera, Photo Picker и Files продолжают работать.
+Manifest содержит `CAMERA` для Smart Scan, `READ_MEDIA_IMAGES`,
+`READ_MEDIA_VISUAL_USER_SELECTED` и `READ_EXTERNAL_STORAGE` с `maxSdkVersion="32"`.
+Storage permissions для CameraX не используются. Partial grant Android 14+ не выдаётся за
+full access. При denied gallery состоянии Camera, Photo Picker и Files продолжают работать;
+при denied camera состоянии Smart Scan сохраняет одиночный Photo Picker fallback.

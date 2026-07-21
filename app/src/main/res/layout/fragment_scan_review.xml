@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground">
+
+    <ImageButton
+        android:id="@+id/button_scan_review_back"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/touch_target"
+        android:background="@drawable/bg_icon_button_round"
+        android:contentDescription="@string/scan_review_back_content_description"
+        android:padding="12dp"
+        android:src="@drawable/ic_action_back_24"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="?attr/colorOnSurface" />
+
+    <TextView
+        android:id="@+id/text_scan_review_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@id/button_scan_review_back"
+        app:layout_constraintEnd_toStartOf="@id/button_scan_review_delete"
+        app:layout_constraintStart_toEndOf="@id/button_scan_review_back"
+        app:layout_constraintTop_toTopOf="@id/button_scan_review_back"
+        tools:text="Страница 1" />
+
+    <ImageButton
+        android:id="@+id/button_scan_review_delete"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/touch_target"
+        android:background="@drawable/bg_destructive_icon_button"
+        android:contentDescription="@string/scan_review_delete_content_description"
+        android:padding="12dp"
+        android:src="@drawable/ic_action_delete_24"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/destructive_icon" />
+
+    <FrameLayout
+        android:id="@+id/layout_scan_review_preview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:background="@color/editor_preview_background"
+        app:layout_constraintBottom_toTopOf="@id/layout_scan_review_tools"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/button_scan_review_back">
+
+        <com.desperadoboi.imagetopdf.ui.editor.ZoomableImageView
+            android:id="@+id/image_scan_review"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/page_edit_image_content_description_generic" />
+
+        <com.desperadoboi.imagetopdf.ui.editor.DocumentPerspectiveOverlayView
+            android:id="@+id/overlay_scan_review"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/scan_review_corner_overlay_content_description" />
+
+        <ProgressBar
+            android:id="@+id/progress_scan_review"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+
+        <TextView
+            android:id="@+id/text_scan_review_error"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:padding="@dimen/page_edit_error_padding"
+            android:text="@string/scan_review_load_error"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="@color/white"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_scan_review_tools"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingVertical="4dp"
+        app:layout_constraintBottom_toTopOf="@id/button_scan_review_add"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scan_review_retake"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/touch_target"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:text="@string/scan_review_retake" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scan_review_rotate"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/touch_target"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:text="@string/scan_review_rotate" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scan_review_auto"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/touch_target"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:text="@string/scan_review_auto" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_scan_review_original"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/touch_target"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:text="@string/scan_review_original" />
+
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_scan_review_add"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/editor_bottom_button_height"
+        android:layout_marginTop="4dp"
+        android:text="@string/scan_review_add_page"
+        app:icon="@drawable/ic_action_done_24"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
