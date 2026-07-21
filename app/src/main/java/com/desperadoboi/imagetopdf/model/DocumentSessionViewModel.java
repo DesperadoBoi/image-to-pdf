@@ -606,7 +606,7 @@ public final class DocumentSessionViewModel extends ViewModel {
     }
 
     public enum PdfOutputSelectionMode {
-        BROWSE_ONLY,
+        CHANGE_LOCATION,
         CONVERT_AFTER_SELECTION
     }
 

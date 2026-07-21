@@ -277,10 +277,10 @@ public final class EditorFragment extends Fragment {
         } catch (IllegalArgumentException exception) {
             return;
         }
-        if (PdfExportSheet.ACTION_BROWSE.equals(action)) {
+        if (PdfExportSheet.ACTION_CHANGE_LOCATION.equals(action)) {
             launchCreateDocument(
                     request,
-                    DocumentSessionViewModel.PdfOutputSelectionMode.BROWSE_ONLY
+                    DocumentSessionViewModel.PdfOutputSelectionMode.CHANGE_LOCATION
             );
             return;
         }

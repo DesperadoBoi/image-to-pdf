@@ -35,7 +35,7 @@ public final class PdfExportDraft {
         return new PdfExportDraft(
                 suggestedFileName,
                 PdfQualityProfile.BALANCED,
-                PageSizeMode.A4,
+                PageSizeMode.IMAGE,
                 PdfOrientationMode.AUTO,
                 MarginPreset.STANDARD,
                 null,

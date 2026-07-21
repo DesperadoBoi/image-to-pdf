@@ -2,12 +2,9 @@ package com.desperadoboi.imagetopdf.model;
 
 import android.net.Uri;
 
-import java.util.Locale;
 import java.util.Objects;
 
 public final class PdfExportRequest {
-    private static final String PDF_EXTENSION = ".pdf";
-
     private final String fileName;
     private final PdfQualityProfile quality;
     private final PageSizeMode pageSize;
@@ -70,19 +67,6 @@ public final class PdfExportRequest {
     }
 
     public static String normalizeFileName(String value) {
-        if (value == null) {
-            throw new IllegalArgumentException("fileName is required");
-        }
-        String normalized = value.trim();
-        while (normalized.toLowerCase(Locale.ROOT).endsWith(PDF_EXTENSION)) {
-            normalized = normalized.substring(0, normalized.length() - PDF_EXTENSION.length())
-                    .trim();
-        }
-        normalized = normalized.replaceAll("[\\p{Cntrl}\\\\/:*?\"<>|]", "_");
-        normalized = normalized.replaceAll("^[.\\s]+|[.\\s]+$", "");
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("fileName must not be empty");
-        }
-        return normalized + PDF_EXTENSION;
+        return PdfFileNameFormatter.normalizeFileName(value);
     }
 }
