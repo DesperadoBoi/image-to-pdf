@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground">
+
+    <ImageButton
+        android:id="@+id/button_pdf_result_close"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:background="@drawable/bg_icon_button_round"
+        android:contentDescription="@string/action_close_pdf_result_content_description"
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_close_24"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="?attr/colorOnSurface" />
+
+    <TextView
+        android:id="@+id/text_pdf_result_title"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:layout_marginStart="@dimen/content_spacing_small"
+        android:gravity="center_vertical"
+        android:text="@string/pdf_result_title"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/button_pdf_result_close"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:fillViewport="false"
+        android:paddingTop="@dimen/content_spacing_medium"
+        android:paddingBottom="@dimen/content_spacing_large"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_pdf_result_title">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/pdf_result_preview_container_height"
+                android:background="@drawable/bg_surface_panel"
+                android:padding="@dimen/pdf_result_preview_padding">
+
+                <ImageView
+                    android:id="@+id/image_pdf_result_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/pdf_result_preview_content_description"
+                    android:padding="@dimen/content_spacing_large"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_action_create_pdf_24" />
+
+                <ProgressBar
+                    android:id="@+id/progress_pdf_result_preview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" />
+
+                <TextView
+                    android:id="@+id/text_pdf_result_page_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|bottom"
+                    android:background="@drawable/bg_pdf_page_badge"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textStyle="bold"
+                    tools:text="3" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/text_pdf_result_file_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/content_spacing_large"
+                android:gravity="center"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold"
+                tools:text="ImageToPDF_20260721_120000.pdf" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/content_spacing_medium"
+                android:background="@drawable/bg_surface_panel"
+                android:orientation="vertical"
+                android:padding="@dimen/pdf_result_metadata_padding">
+
+                <TextView
+                    android:id="@+id/text_pdf_result_pages"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurface"
+                    tools:text="3 страницы" />
+
+                <TextView
+                    android:id="@+id/text_pdf_result_size"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/pdf_result_metadata_row_spacing"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    tools:text="Размер: 1,4 MB" />
+
+                <TextView
+                    android:id="@+id/text_pdf_result_location"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/pdf_result_metadata_row_spacing"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    tools:text="Расположение: com.android.providers.downloads.documents" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/content_spacing_large"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_pdf_result_share"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/editor_bottom_button_height"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/action_share_pdf_content_description"
+                    android:text="@string/action_share_pdf"
+                    app:icon="@drawable/ic_action_share_24" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_pdf_result_open"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/editor_bottom_button_height"
+                    android:layout_marginStart="@dimen/content_spacing_small"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/action_open_pdf_content_description"
+                    android:text="@string/action_open_pdf_short"
+                    app:icon="@drawable/ic_action_open_pdf_24" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_pdf_result_edit_pages"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/editor_bottom_button_height"
+                android:layout_marginTop="@dimen/content_spacing_medium"
+                android:contentDescription="@string/action_edit_pdf_pages_content_description"
+                android:text="@string/action_edit_pdf_pages"
+                app:icon="@drawable/ic_action_edit_pages_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_pdf_result_new_document"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/editor_bottom_button_height"
+                android:layout_marginTop="@dimen/content_spacing_small"
+                android:contentDescription="@string/action_new_pdf_document_content_description"
+                android:text="@string/action_new_pdf_document"
+                app:icon="@drawable/ic_action_new_document_24" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.constraintlayout.widget.ConstraintLayout>

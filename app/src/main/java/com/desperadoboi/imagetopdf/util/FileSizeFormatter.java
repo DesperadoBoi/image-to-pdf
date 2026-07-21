@@ -1,7 +1,5 @@
 package com.desperadoboi.imagetopdf.util;
 
-import com.desperadoboi.imagetopdf.model.PdfResult;
-
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -17,11 +15,8 @@ public final class FileSizeFormatter {
 
     public static String format(long sizeBytes, Locale locale) {
         Objects.requireNonNull(locale, "locale is required");
-        if (sizeBytes == PdfResult.UNKNOWN_SIZE_BYTES) {
-            return "";
-        }
         if (sizeBytes < 0L) {
-            throw new IllegalArgumentException("sizeBytes must be non-negative or unknown");
+            throw new IllegalArgumentException("sizeBytes must be non-negative");
         }
         if (sizeBytes < BYTES_PER_KIB) {
             return sizeBytes + " B";

@@ -105,6 +105,13 @@ rotate/delete не участвуют в long-press fallback. Во время dr
 «Конвертировать» запускает генерацию сразу или после системного `CreateDocument`. В sheet
 нет фиктивных password/signature/encryption опций.
 
+Success автоматически открывает отдельный `PdfResultFragment`. Он показывает bounded
+preview первой PDF-страницы, page badge, display name, size и provider/location label;
+Share/Open используют системные intents. Back и «Редактировать страницы» возвращают
+текущую session, «Создать новый документ» очищает страницы и camera captures, не удаляя
+output PDF. Большой result-block Editor удалён: остаётся одна короткая строка открытия
+последнего результата. Контракт зафиксирован в [PDF_RESULT_SCREEN.md](PDF_RESULT_SCREEN.md).
+
 Обычный режим содержит:
 
 - toolbar с back, «Страница N» и компактным reset;

@@ -18,20 +18,20 @@ public class PdfResultTest {
     public void nullUriIsRejected() {
         assertThrows(
                 NullPointerException.class,
-                () -> new PdfResult(null, "result.pdf", PdfResult.UNKNOWN_SIZE_BYTES, 1)
+                () -> new PdfResult(null, "result.pdf", 0L, 1)
         );
     }
 
     @Test
     public void emptyDisplayNameIsAllowedAndStored() {
-        PdfResult result = new PdfResult(TEST_URI, "", PdfResult.UNKNOWN_SIZE_BYTES, 1);
+        PdfResult result = new PdfResult(TEST_URI, "", 0L, 1);
 
         assertEquals("", result.getDisplayName());
     }
 
     @Test
     public void displayNameIsTrimmed() {
-        PdfResult result = new PdfResult(TEST_URI, " result.pdf ", PdfResult.UNKNOWN_SIZE_BYTES, 1);
+        PdfResult result = new PdfResult(TEST_URI, " result.pdf ", 0L, 1);
 
         assertEquals("result.pdf", result.getDisplayName());
     }
@@ -40,22 +40,24 @@ public class PdfResultTest {
     public void negativePageCountIsRejected() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new PdfResult(TEST_URI, "result.pdf", PdfResult.UNKNOWN_SIZE_BYTES, -1)
+                () -> new PdfResult(TEST_URI, "result.pdf", 0L, -1)
         );
     }
 
     @Test
-    public void unknownSizeHasExplicitRepresentation() {
-        PdfResult result = new PdfResult(
+    public void pendingMetadataUsesNonNegativeSizeAndMarksItUnknown() {
+        PdfResult result = PdfResult.pendingMetadata(
                 TEST_URI,
                 "result.pdf",
-                PdfResult.UNKNOWN_SIZE_BYTES,
-                1
+                1,
+                42L,
+                "test.provider"
         );
 
-        assertEquals(-1L, PdfResult.UNKNOWN_SIZE_BYTES);
-        assertEquals(PdfResult.UNKNOWN_SIZE_BYTES, result.getSizeBytes());
+        assertEquals(0L, result.getSizeBytes());
         assertFalse(result.hasKnownSize());
+        assertEquals(42L, result.getTimestamp());
+        assertEquals("test.provider", result.getLocationLabel());
     }
 
     @Test
@@ -69,10 +71,61 @@ public class PdfResultTest {
     }
 
     @Test
-    public void negativeSizeExceptUnknownIsRejected() {
+    public void negativeSizeIsRejected() {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new PdfResult(TEST_URI, "result.pdf", -2L, 1)
+        );
+    }
+
+    @Test
+    public void metadataFieldsAreRetainedAndTrimmed() {
+        PdfResult result = new PdfResult(
+                TEST_URI,
+                " result.pdf ",
+                2048L,
+                3,
+                1234L,
+                " documents.provider "
+        );
+
+        assertEquals("result.pdf", result.getDisplayName());
+        assertEquals(2048L, result.getSizeBytes());
+        assertEquals(3, result.getPageCount());
+        assertEquals(1234L, result.getTimestamp());
+        assertEquals("documents.provider", result.getLocationLabel());
+    }
+
+    @Test
+    public void knownMetadataUpdateKeepsIdentityAndPageCount() {
+        PdfResult pending = PdfResult.pendingMetadata(
+                TEST_URI,
+                "fallback.pdf",
+                4,
+                1234L,
+                "provider"
+        );
+
+        PdfResult result = pending.withKnownMetadata(
+                " resolved.pdf ",
+                4096L,
+                " resolved.provider "
+        );
+
+        assertSame(TEST_URI, result.getUri());
+        assertEquals("resolved.pdf", result.getDisplayName());
+        assertEquals(4096L, result.getSizeBytes());
+        assertTrue(result.hasKnownSize());
+        assertEquals(4, result.getPageCount());
+        assertEquals(1234L, result.getTimestamp());
+        assertEquals("resolved.provider", result.getLocationLabel());
+    }
+
+    @Test
+    public void negativeTimestampIsRejected() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new PdfResult(TEST_URI, "result.pdf", 1L, 1, -1L, "provider")
         );
     }
 }

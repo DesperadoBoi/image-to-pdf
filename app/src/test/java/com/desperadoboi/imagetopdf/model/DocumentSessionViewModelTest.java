@@ -175,6 +175,46 @@ public class DocumentSessionViewModelTest {
     }
 
     @Test
+    public void successfulGenerationQueuesResultNavigationOnlyOnce() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        Uri pdfUri = FakeUri.create("content://test/result.pdf");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+
+        viewModel.completeGenerationSuccess(
+                operation.getOperationId(),
+                pdfUri,
+                "result.pdf",
+                1
+        );
+
+        assertTrue(viewModel.consumePendingPdfResultNavigation(operation.getOperationId()));
+        assertFalse(viewModel.consumePendingPdfResultNavigation(operation.getOperationId()));
+        assertSame(pdfUri, viewModel.getLastPdfResult().getUri());
+        assertFalse(viewModel.getLastPdfResult().hasKnownSize());
+        assertTrue(viewModel.getLastPdfResult().getTimestamp() > 0L);
+    }
+
+    @Test
+    public void pageEditsKeepLastSuccessfulPdfResult() {
+        Uri firstImageUri = FakeUri.create("content://test/first");
+        Uri secondImageUri = FakeUri.create("content://test/second");
+        Uri pdfUri = FakeUri.create("content://test/result.pdf");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(firstImageUri, secondImageUri));
+        PdfResult previousResult = new PdfResult(pdfUri, "result.pdf", 1024L, 2);
+        viewModel.setLastPdfResult(previousResult);
+
+        viewModel.rotatePage(0);
+        viewModel.movePage(0, 1);
+        viewModel.deletePage(1);
+
+        assertSame(previousResult, viewModel.getLastPdfResult());
+        assertEquals(1, viewModel.getPageCount());
+    }
+
+    @Test
     public void oldOperationCallbackDoesNotChangeNewGenerationState() {
         Uri imageUri = FakeUri.create("content://test/image");
         DocumentSessionViewModel viewModel = new DocumentSessionViewModel();

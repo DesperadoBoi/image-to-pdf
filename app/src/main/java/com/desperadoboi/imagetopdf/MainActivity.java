@@ -16,12 +16,14 @@ import com.desperadoboi.imagetopdf.ui.editor.EditorFragment;
 import com.desperadoboi.imagetopdf.ui.editor.PageEditFragment;
 import com.desperadoboi.imagetopdf.ui.gallery.ImagePickerFragment;
 import com.desperadoboi.imagetopdf.ui.home.HomeFragment;
+import com.desperadoboi.imagetopdf.ui.result.PdfResultFragment;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 
 public class MainActivity extends AppCompatActivity
         implements HomeFragment.NavigationCallback,
         EditorFragment.NavigationCallback,
-        ImagePickerFragment.NavigationCallback {
+        ImagePickerFragment.NavigationCallback,
+        PdfResultFragment.NavigationCallback {
     private DocumentSessionViewModel sessionViewModel;
 
     @Override
@@ -78,6 +80,30 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
+    public void onPdfResultRequested() {
+        showPdfResult();
+    }
+
+    @Override
+    public void onPdfResultClosed() {
+        if (sessionViewModel.hasPages()) {
+            showEditor();
+        } else {
+            showHome();
+        }
+    }
+
+    @Override
+    public void onEditPdfPagesRequested() {
+        showEditor();
+    }
+
+    @Override
+    public void onNewPdfDocumentRequested() {
+        showHome();
+    }
+
+    @Override
     public void onPageEditRequested(long pageId) {
         if (!sessionViewModel.canEditPages()
                 || getSupportFragmentManager().findFragmentByTag(PageEditFragment.TAG) != null) {
@@ -112,6 +138,12 @@ public class MainActivity extends AppCompatActivity
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
+                PdfResultFragment resultFragment = (PdfResultFragment)
+                        getSupportFragmentManager().findFragmentByTag(PdfResultFragment.TAG);
+                if (resultFragment != null) {
+                    resultFragment.handleBackPressed();
+                    return;
+                }
                 ImagePickerFragment imagePickerFragment = (ImagePickerFragment)
                         getSupportFragmentManager().findFragmentByTag(ImagePickerFragment.TAG);
                 if (imagePickerFragment != null) {
@@ -161,6 +193,20 @@ public class MainActivity extends AppCompatActivity
                         R.id.fragment_container,
                         ImagePickerFragment.newInstance(mode),
                         ImagePickerFragment.TAG
+                )
+                .commit();
+    }
+
+    private void showPdfResult() {
+        if (sessionViewModel.getLastPdfResult() == null) {
+            return;
+        }
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(
+                        R.id.fragment_container,
+                        new PdfResultFragment(),
+                        PdfResultFragment.TAG
                 )
                 .commit();
     }

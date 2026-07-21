@@ -20,6 +20,6 @@
 
 «Обзор» запускает `CreateDocument(application/pdf)` с нормализованным именем, записывает возвращённый `Uri` и best-effort display name в draft, но не начинает генерацию. «Конвертировать» использует уже выбранный `Uri`; если его нет, тот же `CreateDocument` автоматически продолжает генерацию после успешного выбора.
 
-Cancel системного диалога оставляет sheet и draft без status/toast. После начала генерации sheet закрывается, Editor показывает существующие progress и cancel. `operationId`, stale-callback filtering, `CancellationToken` и удаление partial output сохранены. После cancel/error параметры остаются для повтора, а удалённый partial `Uri` очищается из draft.
+Cancel системного диалога оставляет sheet и draft без status/toast. После начала генерации sheet закрывается, Editor показывает существующие progress и cancel. `operationId`, stale-callback filtering, `CancellationToken` и удаление partial output сохранены. После cancel/error параметры остаются для повтора, а удалённый partial `Uri` очищается из draft. Success публикует одноразовый navigation signal и автоматически открывает отдельный `PdfResultFragment`; подробности находятся в [PDF_RESULT_SCREEN.md](PDF_RESULT_SCREEN.md).
 
 В sheet нет пароля, шифрования, подписи и других неработающих параметров.

@@ -209,6 +209,24 @@
     <string name="action_browse_pdf_location_content_description">Выбрать расположение PDF</string>
     <string name="action_convert_pdf_content_description">Конвертировать изображения в PDF</string>
     <string name="pdf_file_name_base_template">ImageToPDF_%1$s</string>
+    <string name="pdf_result_title">PDF готов</string>
+    <string name="pdf_result_unavailable">Результат недоступен</string>
+    <string name="pdf_result_preview_content_description">Предпросмотр первой страницы PDF</string>
+    <string name="pdf_result_size">Размер: %1$s</string>
+    <string name="pdf_result_size_unknown">Размер недоступен</string>
+    <string name="pdf_result_location">Расположение: %1$s</string>
+    <string name="pdf_result_location_unknown">Выбранное расположение</string>
+    <string name="pdf_result_last_created">Последний PDF создан</string>
+    <string name="action_open_pdf_result">Открыть результат</string>
+    <string name="action_open_pdf_short">Открыть</string>
+    <string name="action_edit_pdf_pages">Редактировать страницы</string>
+    <string name="action_new_pdf_document">Создать новый документ</string>
+    <string name="action_close_pdf_result_content_description">Закрыть результат PDF</string>
+    <string name="action_share_pdf_content_description">Поделиться PDF</string>
+    <string name="action_open_pdf_content_description">Открыть PDF</string>
+    <string name="action_edit_pdf_pages_content_description">Редактировать страницы PDF</string>
+    <string name="action_new_pdf_document_content_description">Создать новый документ</string>
+    <string name="action_open_pdf_result_content_description">Открыть экран последнего результата PDF</string>
 
     <plurals name="gallery_album_image_count">
         <item quantity="one">%1$d изображение</item>

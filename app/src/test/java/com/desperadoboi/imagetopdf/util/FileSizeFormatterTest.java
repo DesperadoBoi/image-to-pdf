@@ -1,7 +1,5 @@
 package com.desperadoboi.imagetopdf.util;
 
-import com.desperadoboi.imagetopdf.model.PdfResult;
-
 import org.junit.Test;
 
 import java.util.Locale;
@@ -10,11 +8,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 public class FileSizeFormatterTest {
-    @Test
-    public void unknownSizeFormatsAsEmptyString() {
-        assertEquals("", FileSizeFormatter.format(PdfResult.UNKNOWN_SIZE_BYTES, Locale.US));
-    }
-
     @Test
     public void zeroBytesFormatsAsBytes() {
         assertEquals("0 B", FileSizeFormatter.format(0L, Locale.US));
@@ -53,6 +46,6 @@ public class FileSizeFormatterTest {
 
     @Test
     public void invalidNegativeSizeIsRejected() {
-        assertThrows(IllegalArgumentException.class, () -> FileSizeFormatter.format(-2L, Locale.US));
+        assertThrows(IllegalArgumentException.class, () -> FileSizeFormatter.format(-1L, Locale.US));
     }
 }
