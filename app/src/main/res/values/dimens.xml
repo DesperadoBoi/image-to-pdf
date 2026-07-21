@@ -98,4 +98,21 @@
     <dimen name="document_handle_touch_radius">24dp</dimen>
     <dimen name="document_border_stroke">2dp</dimen>
     <dimen name="document_grid_stroke">1dp</dimen>
+    <dimen name="gallery_thumbnail_corner_radius">12dp</dimen>
+    <dimen name="gallery_selected_outline_width">3dp</dimen>
+    <dimen name="gallery_selection_badge_size">26dp</dimen>
+    <dimen name="gallery_selection_badge_margin">6dp</dimen>
+    <dimen name="gallery_grid_spacing">6dp</dimen>
+    <dimen name="gallery_grid_half_spacing">3dp</dimen>
+    <dimen name="gallery_recent_height">108dp</dimen>
+    <dimen name="gallery_recent_item_size">100dp</dimen>
+    <dimen name="gallery_camera_icon_size">28dp</dimen>
+    <dimen name="gallery_camera_label_spacing">6dp</dimen>
+    <dimen name="gallery_files_row_height">80dp</dimen>
+    <dimen name="gallery_album_row_height">76dp</dimen>
+    <dimen name="gallery_album_cover_size">60dp</dimen>
+    <dimen name="gallery_section_content_spacing">8dp</dimen>
+    <dimen name="gallery_access_panel_padding">16dp</dimen>
+    <dimen name="gallery_access_text_spacing">4dp</dimen>
+    <dimen name="gallery_bottom_bar_padding">8dp</dimen>
 </resources>

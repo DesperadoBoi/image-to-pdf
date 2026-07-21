@@ -2,15 +2,16 @@
 
 ## Назначение
 
-Импорт изображений использует системные Android-компоненты и передаёт в приложение
-только `content://` `Uri`. Приложение не запрашивает широкие разрешения на хранилище,
-не перечисляет медиатеку через `MediaStore` и не преобразует `Uri` в абсолютные пути.
+Импорт изображений передаёт в приложение только `content://` `Uri`. Основной сценарий
+использует внутренний `ImagePickerFragment` и `MediaStore`, а системные Android Photo
+Picker и Storage Access Framework остаются доступными fallback. Абсолютные пути и
+`MediaStore.DATA` не используются.
 
 ## Модель запроса
 
 `ImageImportRequest` объединяет два обязательных значения:
 
-- `ImageImportSource` — `GALLERY`, `CAMERA` или `FILES`;
+- `ImageImportSource` — `IN_APP_GALLERY`, `GALLERY`, `CAMERA` или `FILES`;
 - `ImageImportMode` — `NEW_DOCUMENT` или `APPEND_TO_DOCUMENT`.
 
 `NEW_DOCUMENT` заменяет страницы текущей сессии, очищает относящееся к документу
@@ -18,16 +19,22 @@
 `APPEND_TO_DOCUMENT` сохраняет текущие страницы, добавляет новые в конец и сбрасывает
 только завершённый operation status. Пустой результат системного выбора является no-op.
 
-`ImageSourceSheet` отвечает только за выбор источника. `ImagePickerLauncher` и
-`ImageImportCoordinator` являются точкой запуска источников, а создание `PageItem`
-сосредоточено в `DocumentSessionViewModel.importImages()` и
-`importCameraImage()`. Поэтому любой источник возвращает данные в один и тот же pipeline.
+`ImagePickerFragment` хранит ordered selection отдельно от source metadata, а создание
+`PageItem` сосредоточено в `DocumentSessionViewModel.importImages()`. Поэтому смешанный
+выбор MediaStore, Photo Picker, Camera и Files проходит через один pipeline без потери
+порядка.
 
 ## Текущие источники
 
-### Gallery
+### In-app Gallery
 
-`GALLERY` запускает системный Android Photo Picker через
+`IN_APP_GALLERY` читает разрешённые системе изображения через отдельный
+`MediaGalleryRepository`. Версионная permission model, partial access, альбомы,
+миниатюры и selection описаны в [IN_APP_GALLERY.md](IN_APP_GALLERY.md).
+
+### Android Photo Picker
+
+`GALLERY` используется fallback-действием и запускает системный Android Photo Picker через
 `ActivityResultContracts.PickMultipleVisualMedia` с `ImageOnly`. Он поддерживает выбор
 нескольких изображений и не требует storage permissions. Полученные страницы имеют
 `PageSource.GALLERY`.
@@ -64,14 +71,8 @@
 Отмена Photo Picker, камеры или Files не меняет страницы, `PdfResult` или status и не
 показывает Toast/Snackbar.
 
-## Будущая внутренняя галерея
+## Permissions
 
-Будущий `IN_APP_GALLERY` добавляется как новый `ImageImportSource` и launcher в
-`ImageImportCoordinator`. Экран галереи должен вернуть выбранные `Uri` в существующий
-`importImages()` pipeline; `EditorFragment`, создание `PageItem`, thumbnail и PDF logic
-не должны получать отдельную копию импорта.
-
-Полноценная внутренняя галерея отложена в отдельный этап, потому что ей потребуются
-`MediaStore`, версия-зависимая политика разрешений, paging, thumbnail cache и обработка
-больших библиотек. В текущем этапе нет `MediaStore` query, album browser или новых media
-permissions.
+Manifest содержит только `READ_MEDIA_IMAGES`, `READ_MEDIA_VISUAL_USER_SELECTED` и
+`READ_EXTERNAL_STORAGE` с `maxSdkVersion="32"`. Partial grant Android 14+ не выдаётся за
+full access. При denied состоянии Camera, Photo Picker и Files продолжают работать.

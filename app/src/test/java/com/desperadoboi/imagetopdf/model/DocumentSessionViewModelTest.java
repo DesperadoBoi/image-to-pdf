@@ -317,4 +317,29 @@ public class DocumentSessionViewModelTest {
         assertEquals(PageSource.FILES, viewModel.getPages().get(0).getSource());
         assertSame(filesUri, viewModel.getPages().get(0).getImageUri());
     }
+
+    @Test
+    public void mixedPickerImportKeepsSelectionOrderAndSources() {
+        Uri mediaUri = FakeUri.create("content://test/media");
+        Uri cameraUri = FakeUri.create("content://test/camera");
+        Uri filesUri = FakeUri.create("content://test/files");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+
+        ImageImportResult result = viewModel.importImages(
+                ImageImportMode.NEW_DOCUMENT,
+                Arrays.asList(
+                        ImageImportEntry.external(mediaUri, ImageImportSource.IN_APP_GALLERY),
+                        ImageImportEntry.camera(cameraUri, "capture_picker.jpg"),
+                        ImageImportEntry.external(filesUri, ImageImportSource.FILES)
+                )
+        );
+
+        assertEquals(3, result.getInsertedCount());
+        assertSame(mediaUri, viewModel.getPages().get(0).getImageUri());
+        assertEquals(PageSource.GALLERY, viewModel.getPages().get(0).getSource());
+        assertSame(cameraUri, viewModel.getPages().get(1).getImageUri());
+        assertEquals(PageSource.CAMERA, viewModel.getPages().get(1).getSource());
+        assertSame(filesUri, viewModel.getPages().get(2).getImageUri());
+        assertEquals(PageSource.FILES, viewModel.getPages().get(2).getSource());
+    }
 }

@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground">
+
+    <ImageButton
+        android:id="@+id/button_image_picker_back"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:background="@drawable/bg_icon_button_round"
+        android:contentDescription="@string/action_image_picker_back_content_description"
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_back_24"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="?attr/colorOnSurface" />
+
+    <TextView
+        android:id="@+id/text_image_picker_title"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:layout_marginStart="@dimen/content_spacing_small"
+        android:layout_marginEnd="@dimen/content_spacing_small"
+        android:gravity="center_vertical"
+        android:text="@string/image_picker_title"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/button_image_picker_mode"
+        app:layout_constraintStart_toEndOf="@id/button_image_picker_back"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageButton
+        android:id="@+id/button_image_picker_mode"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:background="@drawable/bg_icon_button_round"
+        android:contentDescription="@string/action_show_image_grid_content_description"
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_grid_24"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="?attr/colorOnSurface" />
+
+    <FrameLayout
+        android:id="@+id/layout_image_picker_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/content_spacing_small"
+        android:layout_marginBottom="@dimen/content_spacing_small"
+        app:layout_constraintBottom_toTopOf="@id/layout_image_picker_bottom"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/button_image_picker_back">
+
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/scroll_image_picker_albums"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="@dimen/content_spacing_medium">
+
+                <LinearLayout
+                    android:id="@+id/layout_gallery_access_state"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_surface_panel"
+                    android:orientation="vertical"
+                    android:padding="@dimen/gallery_access_panel_padding">
+
+                    <TextView
+                        android:id="@+id/text_gallery_access_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/text_gallery_access_message"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/gallery_access_text_spacing"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_gallery_permission"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/content_spacing_small"
+                        android:contentDescription="@string/action_change_gallery_access_content_description"
+                        android:text="@string/action_allow_gallery_access" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_gallery_photo_picker"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/source_sheet_item_gap"
+                        android:contentDescription="@string/action_select_individual_images_content_description"
+                        android:text="@string/action_select_individual_images" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_gallery_settings"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/source_sheet_item_gap"
+                        android:text="@string/action_open_app_settings"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/text_gallery_recent_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/content_spacing_medium"
+                    android:text="@string/gallery_recent_title"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_gallery_recent"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/gallery_recent_height"
+                    android:layout_marginTop="@dimen/gallery_section_content_spacing"
+                    android:clipToPadding="false"
+                    android:overScrollMode="never"
+                    tools:itemCount="5"
+                    tools:listitem="@layout/item_gallery_image_recent" />
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/row_gallery_files"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/gallery_files_row_height"
+                    android:layout_marginTop="@dimen/content_spacing_medium"
+                    android:background="@drawable/bg_source_row"
+                    android:clickable="true"
+                    android:contentDescription="@string/action_open_files_content_description"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:id="@+id/icon_gallery_files"
+                        android:layout_width="@dimen/source_icon_container_size"
+                        android:layout_height="@dimen/source_icon_container_size"
+                        android:layout_marginStart="@dimen/source_row_horizontal_padding"
+                        android:background="@drawable/bg_source_icon_container"
+                        android:backgroundTint="@color/source_files_container"
+                        android:padding="@dimen/content_spacing_small"
+                        android:src="@drawable/ic_source_files_24"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:tint="@color/source_files_icon" />
+
+                    <TextView
+                        android:id="@+id/text_gallery_files_title"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/source_row_text_spacing"
+                        android:text="@string/image_source_files"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textColor="?attr/colorOnSurface"
+                        app:layout_constraintBottom_toTopOf="@id/text_gallery_files_subtitle"
+                        app:layout_constraintEnd_toStartOf="@id/icon_gallery_files_chevron"
+                        app:layout_constraintStart_toEndOf="@id/icon_gallery_files"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintVertical_chainStyle="packed" />
+
+                    <TextView
+                        android:id="@+id/text_gallery_files_subtitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/source_title_subtitle_spacing"
+                        android:text="@string/gallery_files_subtitle"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toStartOf="@id/icon_gallery_files_chevron"
+                        app:layout_constraintStart_toStartOf="@id/text_gallery_files_title"
+                        app:layout_constraintTop_toBottomOf="@id/text_gallery_files_title" />
+
+                    <ImageView
+                        android:id="@+id/icon_gallery_files_chevron"
+                        android:layout_width="@dimen/editor_action_icon_size"
+                        android:layout_height="@dimen/editor_action_icon_size"
+                        android:layout_marginEnd="@dimen/source_row_horizontal_padding"
+                        android:src="@drawable/ic_action_chevron_right_24"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <TextView
+                    android:id="@+id/text_gallery_albums_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/content_spacing_medium"
+                    android:text="@string/gallery_albums_title"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_gallery_albums"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/gallery_section_content_spacing"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"
+                    tools:itemCount="4"
+                    tools:listitem="@layout/item_media_album" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_gallery_grid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="@dimen/gallery_grid_spacing"
+            android:visibility="gone"
+            tools:itemCount="12"
+            tools:listitem="@layout/item_gallery_image_grid" />
+
+        <ProgressBar
+            android:id="@+id/progress_gallery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_image_picker_bottom"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/gallery_bottom_bar_padding"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/text_gallery_current_album"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="@string/gallery_all_images"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_gallery_import"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/touch_target"
+            android:contentDescription="@string/action_import_selected_images_content_description"
+            android:enabled="false"
+            android:text="@string/action_import_images_empty" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

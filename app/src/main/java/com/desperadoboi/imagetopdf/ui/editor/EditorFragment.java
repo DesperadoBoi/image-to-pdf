@@ -18,7 +18,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -34,18 +33,12 @@ import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.ImageImportMode;
-import com.desperadoboi.imagetopdf.model.ImageImportRequest;
-import com.desperadoboi.imagetopdf.model.ImageImportResult;
-import com.desperadoboi.imagetopdf.model.ImageImportSource;
 import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.model.PdfGenerationState;
 import com.desperadoboi.imagetopdf.model.PdfOptions;
 import com.desperadoboi.imagetopdf.model.PdfResult;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerator;
-import com.desperadoboi.imagetopdf.ui.importer.ImageImportCoordinator;
-import com.desperadoboi.imagetopdf.ui.importer.ImagePickerLauncher;
-import com.desperadoboi.imagetopdf.ui.importer.ImageSourceSheet;
 import com.desperadoboi.imagetopdf.util.FileSizeFormatter;
 import com.google.android.material.button.MaterialButton;
 
@@ -65,11 +58,7 @@ public final class EditorFragment extends Fragment {
 
     private DocumentSessionViewModel sessionViewModel;
     private NavigationCallback navigationCallback;
-    private ActivityResultLauncher<PickVisualMediaRequest> addImagesLauncher;
-    private ActivityResultLauncher<Uri> cameraLauncher;
-    private ActivityResultLauncher<String[]> filesLauncher;
     private ActivityResultLauncher<String> createDocumentLauncher;
-    private ImagePickerLauncher imagePickerLauncher;
 
     private TextView selectedImagesTextView;
     private TextView reorderHintTextView;
@@ -115,28 +104,10 @@ public final class EditorFragment extends Fragment {
                 ContextCompat.getMainExecutor(requireContext())
         );
         capturedImageStorage = new CapturedImageStorage(requireContext());
-        addImagesLauncher = registerForActivityResult(
-                new ActivityResultContracts.PickMultipleVisualMedia(),
-                this::handleAdditionalImages
-        );
-        cameraLauncher = registerForActivityResult(
-                new ActivityResultContracts.TakePicture(),
-                this::handleCameraResult
-        );
-        filesLauncher = registerForActivityResult(
-                new ActivityResultContracts.OpenMultipleDocuments(),
-                this::handleAdditionalFiles
-        );
         createDocumentLauncher = registerForActivityResult(
                 new ActivityResultContracts.CreateDocument(PDF_MIME_TYPE),
                 this::handleCreateDocumentResult
         );
-        imagePickerLauncher = new ImageImportCoordinator()
-                .register(ImageImportSource.GALLERY, request -> launchAddImagesPicker())
-                .register(ImageImportSource.CAMERA, request -> launchCamera())
-                .register(ImageImportSource.FILES, request -> filesLauncher.launch(
-                        new String[]{"image/*"}
-                ));
     }
 
     @Nullable
@@ -153,7 +124,6 @@ public final class EditorFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
-        configureImageSourceResultListener();
         configurePageEditResultListener();
         configurePageList();
         configureClickListeners();
@@ -248,6 +218,10 @@ public final class EditorFragment extends Fragment {
         pagesRecyclerView.setAdapter(pageAdapter);
         pageTouchHelper = new ItemTouchHelper(new PageMoveCallback());
         pageTouchHelper.attachToRecyclerView(pagesRecyclerView);
+        int scrollPosition = sessionViewModel.consumePendingEditorScrollPosition();
+        if (scrollPosition >= 0 && scrollPosition < sessionViewModel.getPageCount()) {
+            pagesRecyclerView.scrollToPosition(scrollPosition);
+        }
     }
 
     private void configurePageEditResultListener() {
@@ -265,7 +239,7 @@ public final class EditorFragment extends Fragment {
                 navigationCallback.onReturnHomeRequested();
             }
         });
-        addImagesButton.setOnClickListener(v -> showImageSourceSheet());
+        addImagesButton.setOnClickListener(v -> openImagePicker());
         createPdfButton.setOnClickListener(v -> launchCreateDocument());
         openPdfButton.setOnClickListener(v -> openLastPdf());
         sharePdfButton.setOnClickListener(v -> shareLastPdf());
@@ -273,58 +247,13 @@ public final class EditorFragment extends Fragment {
         cancelGenerationButton.setOnClickListener(v -> cancelPdfGeneration());
     }
 
-    private void showImageSourceSheet() {
+    private void openImagePicker() {
         if (!sessionViewModel.canEditPages()) {
             return;
         }
-        if (getParentFragmentManager().findFragmentByTag(ImageSourceSheet.TAG) != null) {
-            return;
+        if (navigationCallback != null) {
+            navigationCallback.onImagePickerRequested(ImageImportMode.APPEND_TO_DOCUMENT);
         }
-        ImageSourceSheet.newInstance(ImageImportMode.APPEND_TO_DOCUMENT)
-                .show(getParentFragmentManager(), ImageSourceSheet.TAG);
-    }
-
-    private void configureImageSourceResultListener() {
-        getParentFragmentManager().setFragmentResultListener(
-                ImageSourceSheet.RESULT_SOURCE_SELECTED,
-                getViewLifecycleOwner(),
-                (requestKey, result) -> imagePickerLauncher.launch(new ImageImportRequest(
-                        ImageImportSource.valueOf(result.getString(ImageSourceSheet.RESULT_SOURCE)),
-                        ImageImportMode.valueOf(result.getString(ImageSourceSheet.RESULT_MODE))
-                ))
-        );
-    }
-
-    private void launchAddImagesPicker() {
-        if (!sessionViewModel.canEditPages()) {
-            return;
-        }
-        PickVisualMediaRequest request = new PickVisualMediaRequest.Builder()
-                .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
-                .build();
-        addImagesLauncher.launch(request);
-    }
-
-    private void handleAdditionalImages(List<Uri> imageUris) {
-        handleImportedUris(
-                ImageImportSource.GALLERY,
-                ImageImportMode.APPEND_TO_DOCUMENT,
-                imageUris
-        );
-    }
-
-    private void handleAdditionalFiles(List<Uri> imageUris) {
-        if (imageUris == null || imageUris.isEmpty()) {
-            return;
-        }
-        for (Uri imageUri : imageUris) {
-            takePersistableReadPermission(imageUri);
-        }
-        handleImportedUris(
-                ImageImportSource.FILES,
-                ImageImportMode.APPEND_TO_DOCUMENT,
-                imageUris
-        );
     }
 
     private void launchCreateDocument() {
@@ -400,100 +329,6 @@ public final class EditorFragment extends Fragment {
             );
         }
         updateUiState();
-    }
-
-    private void launchCamera() {
-        if (!sessionViewModel.canEditPages()) {
-            return;
-        }
-
-        CapturedImageStorage.CapturedImage capturedImage;
-        try {
-            capturedImage = capturedImageStorage.createCapturedImage();
-        } catch (IOException | RuntimeException exception) {
-            showToast(getString(R.string.status_camera_destination_error));
-            return;
-        }
-
-        sessionViewModel.setPendingCapturedImage(
-                capturedImage.getUri(),
-                capturedImage.getFileName(),
-                DocumentSessionViewModel.CaptureTarget.EDITOR
-        );
-        try {
-            cameraLauncher.launch(capturedImage.getUri());
-        } catch (ActivityNotFoundException exception) {
-            cleanupPendingCapture();
-            showToast(getString(R.string.status_camera_app_not_found));
-        } catch (RuntimeException exception) {
-            cleanupPendingCapture();
-            showToast(getString(R.string.status_camera_destination_error));
-        }
-    }
-
-    private void handleCameraResult(Boolean isSuccessful) {
-        DocumentSessionViewModel.PendingCapturedImage pendingCapturedImage =
-                sessionViewModel.getPendingCapturedImage();
-        if (pendingCapturedImage == null
-                || pendingCapturedImage.getTarget() != DocumentSessionViewModel.CaptureTarget.EDITOR) {
-            return;
-        }
-
-        pendingCapturedImage = sessionViewModel.clearPendingCapturedImage();
-        if (!Boolean.TRUE.equals(isSuccessful)) {
-            capturedImageStorage.delete(pendingCapturedImage.getCapturedFileName());
-            return;
-        }
-        if (!capturedImageStorage.existsAndHasContent(pendingCapturedImage.getCapturedFileName())) {
-            capturedImageStorage.delete(pendingCapturedImage.getCapturedFileName());
-            showToast(getString(R.string.status_camera_empty_file));
-            return;
-        }
-
-        ImageImportResult result = sessionViewModel.importCameraImage(
-                new ImageImportRequest(
-                        ImageImportSource.CAMERA,
-                        ImageImportMode.APPEND_TO_DOCUMENT
-                ),
-                pendingCapturedImage.getUri(),
-                pendingCapturedImage.getCapturedFileName()
-        );
-        finishAppendImport(result);
-    }
-
-    private void handleImportedUris(
-            ImageImportSource source,
-            ImageImportMode mode,
-            List<Uri> imageUris
-    ) {
-        ImageImportResult result = sessionViewModel.importImages(
-                new ImageImportRequest(source, mode),
-                imageUris
-        );
-        finishAppendImport(result);
-    }
-
-    private void finishAppendImport(ImageImportResult result) {
-        if (!result.hasChanges()) {
-            return;
-        }
-        pageAdapter.notifyItemRangeInserted(
-                result.getFirstInsertedPosition(),
-                result.getInsertedCount()
-        );
-        pagesRecyclerView.scrollToPosition(result.getFirstInsertedPosition());
-        updateUiState();
-    }
-
-    private void takePersistableReadPermission(Uri imageUri) {
-        try {
-            requireContext().getContentResolver().takePersistableUriPermission(
-                    imageUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-            );
-        } catch (SecurityException exception) {
-            // Some document providers only grant access for the current session.
-        }
     }
 
     private void startPageDrag(RecyclerView.ViewHolder viewHolder) {
@@ -852,14 +687,6 @@ public final class EditorFragment extends Fragment {
         }
     }
 
-    private void cleanupPendingCapture() {
-        DocumentSessionViewModel.PendingCapturedImage pendingCapturedImage =
-                sessionViewModel.clearPendingCapturedImage();
-        if (pendingCapturedImage != null) {
-            capturedImageStorage.delete(pendingCapturedImage.getCapturedFileName());
-        }
-    }
-
     private void deleteCapturedFileIfNeeded(PageItem pageItem) {
         if (pageItem != null && pageItem.isAppOwnedCapture()) {
             capturedImageStorage.delete(pageItem.getCapturedFileName());
@@ -880,6 +707,8 @@ public final class EditorFragment extends Fragment {
         void onReturnHomeRequested();
 
         void onPageEditRequested(long pageId);
+
+        void onImagePickerRequested(ImageImportMode mode);
     }
 
     private static final class PdfMetadata {

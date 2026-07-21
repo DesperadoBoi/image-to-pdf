@@ -11,7 +11,6 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,7 +28,6 @@ import com.desperadoboi.imagetopdf.model.ImageImportResult;
 import com.desperadoboi.imagetopdf.model.ImageImportSource;
 import com.desperadoboi.imagetopdf.ui.importer.ImageImportCoordinator;
 import com.desperadoboi.imagetopdf.ui.importer.ImagePickerLauncher;
-import com.desperadoboi.imagetopdf.ui.importer.ImageSourceSheet;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 import com.desperadoboi.imagetopdf.ui.tools.ToolCatalog;
 import com.desperadoboi.imagetopdf.ui.tools.ToolId;
@@ -43,9 +41,7 @@ public final class HomeFragment extends Fragment {
 
     private DocumentSessionViewModel sessionViewModel;
     private NavigationCallback navigationCallback;
-    private ActivityResultLauncher<PickVisualMediaRequest> photoPickerLauncher;
     private ActivityResultLauncher<Uri> cameraLauncher;
-    private ActivityResultLauncher<String[]> filesLauncher;
     private CapturedImageStorage capturedImageStorage;
     private ImagePickerLauncher imagePickerLauncher;
 
@@ -65,24 +61,12 @@ public final class HomeFragment extends Fragment {
         sessionViewModel = new ViewModelProvider(requireActivity())
                 .get(DocumentSessionViewModel.class);
         capturedImageStorage = new CapturedImageStorage(requireContext());
-        photoPickerLauncher = registerForActivityResult(
-                new ActivityResultContracts.PickMultipleVisualMedia(),
-                this::handleImageSelection
-        );
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.TakePicture(),
                 this::handleCameraResult
         );
-        filesLauncher = registerForActivityResult(
-                new ActivityResultContracts.OpenMultipleDocuments(),
-                this::handleFilesSelection
-        );
         imagePickerLauncher = new ImageImportCoordinator()
-                .register(ImageImportSource.GALLERY, request -> launchPhotoPicker())
-                .register(ImageImportSource.CAMERA, request -> launchCamera())
-                .register(ImageImportSource.FILES, request -> filesLauncher.launch(
-                        new String[]{"image/*"}
-                ));
+                .register(ImageImportSource.CAMERA, request -> launchCamera());
     }
 
     @Nullable
@@ -106,7 +90,6 @@ public final class HomeFragment extends Fragment {
         ));
         toolsRecyclerView.setAdapter(adapter);
         adapter.submitList(ToolCatalog.getHomeTools());
-        configureImageSourceResult();
         configureCatalogToolResult();
     }
 
@@ -116,17 +99,10 @@ public final class HomeFragment extends Fragment {
         super.onDetach();
     }
 
-    private void launchPhotoPicker() {
-        PickVisualMediaRequest request = new PickVisualMediaRequest.Builder()
-                .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
-                .build();
-        photoPickerLauncher.launch(request);
-    }
-
     private void handleToolSelected(ToolId toolId) {
         switch (toolId) {
             case IMAGE_TO_PDF:
-                showImageSourceSheet();
+                openImagePicker();
                 break;
             case CAMERA:
                 imagePickerLauncher.launch(new ImageImportRequest(
@@ -151,51 +127,16 @@ public final class HomeFragment extends Fragment {
                 (requestKey, result) -> {
                     String toolName = result.getString(AllToolsFragment.RESULT_TOOL_ID);
                     if (ToolId.IMAGE_TO_PDF.name().equals(toolName)) {
-                        showImageSourceSheet();
+                        openImagePicker();
                     }
                 }
         );
     }
 
-    private void configureImageSourceResult() {
-        getParentFragmentManager().setFragmentResultListener(
-                ImageSourceSheet.RESULT_SOURCE_SELECTED,
-                getViewLifecycleOwner(),
-                (requestKey, result) -> imagePickerLauncher.launch(new ImageImportRequest(
-                        ImageImportSource.valueOf(result.getString(ImageSourceSheet.RESULT_SOURCE)),
-                        ImageImportMode.valueOf(result.getString(ImageSourceSheet.RESULT_MODE))
-                ))
-        );
-    }
-
-    private void showImageSourceSheet() {
-        if (getParentFragmentManager().findFragmentByTag(ImageSourceSheet.TAG) != null) {
-            return;
+    private void openImagePicker() {
+        if (navigationCallback != null) {
+            navigationCallback.onImagePickerRequested(ImageImportMode.NEW_DOCUMENT);
         }
-        ImageSourceSheet.newInstance(ImageImportMode.NEW_DOCUMENT)
-                .show(getParentFragmentManager(), ImageSourceSheet.TAG);
-    }
-
-    private void handleImageSelection(List<Uri> imageUris) {
-        handleImportedUris(
-                ImageImportSource.GALLERY,
-                ImageImportMode.NEW_DOCUMENT,
-                imageUris
-        );
-    }
-
-    private void handleFilesSelection(List<Uri> imageUris) {
-        if (imageUris == null || imageUris.isEmpty()) {
-            return;
-        }
-        for (Uri imageUri : imageUris) {
-            takePersistableReadPermission(imageUri);
-        }
-        handleImportedUris(
-                ImageImportSource.FILES,
-                ImageImportMode.NEW_DOCUMENT,
-                imageUris
-        );
     }
 
     private void launchCamera() {
@@ -253,18 +194,6 @@ public final class HomeFragment extends Fragment {
         finishNewDocumentImport(result);
     }
 
-    private void handleImportedUris(
-            ImageImportSource source,
-            ImageImportMode mode,
-            List<Uri> imageUris
-    ) {
-        ImageImportResult result = sessionViewModel.importImages(
-                new ImageImportRequest(source, mode),
-                imageUris
-        );
-        finishNewDocumentImport(result);
-    }
-
     private void finishNewDocumentImport(ImageImportResult result) {
         if (!result.hasChanges()) {
             return;
@@ -272,17 +201,6 @@ public final class HomeFragment extends Fragment {
         deleteCapturedFiles(result.getCapturedFileNamesToDelete());
         if (navigationCallback != null) {
             navigationCallback.onImagesSelectedForEditing();
-        }
-    }
-
-    private void takePersistableReadPermission(Uri imageUri) {
-        try {
-            requireContext().getContentResolver().takePersistableUriPermission(
-                    imageUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-            );
-        } catch (SecurityException exception) {
-            // Some document providers only grant access for the current session.
         }
     }
 
@@ -310,5 +228,7 @@ public final class HomeFragment extends Fragment {
         void onImagesSelectedForEditing();
 
         void onAllToolsRequested();
+
+        void onImagePickerRequested(ImageImportMode mode);
     }
 }

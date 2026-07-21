@@ -11,13 +11,17 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
+import com.desperadoboi.imagetopdf.model.ImageImportMode;
 import com.desperadoboi.imagetopdf.ui.editor.EditorFragment;
 import com.desperadoboi.imagetopdf.ui.editor.PageEditFragment;
+import com.desperadoboi.imagetopdf.ui.gallery.ImagePickerFragment;
 import com.desperadoboi.imagetopdf.ui.home.HomeFragment;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 
 public class MainActivity extends AppCompatActivity
-        implements HomeFragment.NavigationCallback, EditorFragment.NavigationCallback {
+        implements HomeFragment.NavigationCallback,
+        EditorFragment.NavigationCallback,
+        ImagePickerFragment.NavigationCallback {
     private DocumentSessionViewModel sessionViewModel;
 
     @Override
@@ -41,6 +45,25 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onImagesSelectedForEditing() {
+        showEditor();
+    }
+
+    @Override
+    public void onImagePickerRequested(ImageImportMode mode) {
+        showImagePicker(mode);
+    }
+
+    @Override
+    public void onImagePickerCancelled(ImageImportMode mode) {
+        if (mode == ImageImportMode.APPEND_TO_DOCUMENT) {
+            showEditor();
+        } else {
+            showHome();
+        }
+    }
+
+    @Override
+    public void onImagesImported() {
         showEditor();
     }
 
@@ -89,6 +112,12 @@ public class MainActivity extends AppCompatActivity
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
+                ImagePickerFragment imagePickerFragment = (ImagePickerFragment)
+                        getSupportFragmentManager().findFragmentByTag(ImagePickerFragment.TAG);
+                if (imagePickerFragment != null) {
+                    imagePickerFragment.handleBackPressed();
+                    return;
+                }
                 PageEditFragment pageEditFragment = (PageEditFragment)
                         getSupportFragmentManager().findFragmentByTag(PageEditFragment.TAG);
                 if (pageEditFragment != null) {
@@ -122,6 +151,17 @@ public class MainActivity extends AppCompatActivity
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragment_container, new EditorFragment(), EditorFragment.TAG)
+                .commit();
+    }
+
+    private void showImagePicker(ImageImportMode mode) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(
+                        R.id.fragment_container,
+                        ImagePickerFragment.newInstance(mode),
+                        ImagePickerFragment.TAG
+                )
                 .commit();
     }
 

@@ -28,6 +28,7 @@ public final class DocumentSessionViewModel extends ViewModel {
     private String pendingSuggestedFileName;
     private PendingCapturedImage pendingCapturedImage;
     private boolean awaitingSaveLocation;
+    private int pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
     private long nextGenerationOperationId = PdfGenerationState.NO_OPERATION_ID + 1L;
     private CancellationToken activeCancellationToken;
 
@@ -104,6 +105,32 @@ public final class DocumentSessionViewModel extends ViewModel {
             importedPages.add(createExternalPage(request.getSource(), imageUri));
         }
         return applyImportedPages(request, importedPages);
+    }
+
+    public ImageImportResult importImages(
+            ImageImportMode mode,
+            List<ImageImportEntry> importEntries
+    ) {
+        Objects.requireNonNull(mode, "mode is required");
+        if (importEntries == null || importEntries.isEmpty()) {
+            return ImageImportResult.noChange();
+        }
+        ArrayList<PageItem> importedPages = new ArrayList<>(importEntries.size());
+        for (ImageImportEntry entry : importEntries) {
+            Objects.requireNonNull(entry, "import entry is required");
+            if (entry.getSource() == ImageImportSource.CAMERA) {
+                importedPages.add(PageItem.camera(
+                        entry.getUri(),
+                        entry.getCapturedFileName()
+                ));
+            } else {
+                importedPages.add(createExternalPage(entry.getSource(), entry.getUri()));
+            }
+        }
+        return applyImportedPages(
+                new ImageImportRequest(ImageImportSource.IN_APP_GALLERY, mode),
+                importedPages
+        );
     }
 
     public ImageImportResult importCameraImage(
@@ -186,6 +213,7 @@ public final class DocumentSessionViewModel extends ViewModel {
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
         pendingCapturedImage = null;
+        pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;
@@ -363,6 +391,16 @@ public final class DocumentSessionViewModel extends ViewModel {
         return !isGenerationInProgress() && !awaitingSaveLocation;
     }
 
+    public void setPendingEditorScrollPosition(int position) {
+        pendingEditorScrollPosition = position;
+    }
+
+    public int consumePendingEditorScrollPosition() {
+        int position = pendingEditorScrollPosition;
+        pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
+        return position;
+    }
+
     @Override
     protected void onCleared() {
         cancelActiveGeneration();
@@ -371,7 +409,7 @@ public final class DocumentSessionViewModel extends ViewModel {
     }
 
     private PageItem createExternalPage(ImageImportSource source, Uri imageUri) {
-        if (source == ImageImportSource.GALLERY) {
+        if (source == ImageImportSource.GALLERY || source == ImageImportSource.IN_APP_GALLERY) {
             return PageItem.gallery(imageUri);
         }
         if (source == ImageImportSource.FILES) {
@@ -428,6 +466,7 @@ public final class DocumentSessionViewModel extends ViewModel {
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
         pendingCapturedImage = null;
+        pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;
@@ -515,7 +554,8 @@ public final class DocumentSessionViewModel extends ViewModel {
 
     public enum CaptureTarget {
         HOME,
-        EDITOR
+        EDITOR,
+        PICKER
     }
 
     public static final class PendingCapturedImage {
