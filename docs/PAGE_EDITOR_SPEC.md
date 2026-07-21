@@ -53,6 +53,14 @@ Preview modes request only the geometry they display. `SourceResolutionCalculato
 
 PDF generation snapshots immutable `PageItem` instances, processes one page at a time, preserves progress and cancellation checks, and releases each working bitmap before moving to the next page.
 
+## Page reorder
+
+The page list starts drag immediately from the 2×3 dot grip and also supports a card or
+thumbnail long-press fallback. Rotate and delete controls never start drag. A logical-start
+gate prevents the two entry paths from starting one gesture twice. Moves use
+`PageOrderManager`, `notifyItemMoved` and a page-number payload, so Uri, stable ID, source,
+rotation, crop and perspective stay attached to the page without reloading thumbnails.
+
 ## Future Smart Scan flow
 
 The ordinary Image-to-PDF editor does not show a Document action or perspective quad.

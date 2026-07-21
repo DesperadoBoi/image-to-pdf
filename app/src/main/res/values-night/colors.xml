@@ -22,4 +22,5 @@
     <color name="destructive_outline">#FF7C3D4B</color>
     <color name="destructive_ripple">#40FF91A1</color>
     <color name="primary_action_disabled">#FF293244</color>
+    <color name="drag_handle_ripple">#408B91FF</color>
 </resources>

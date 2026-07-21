@@ -54,7 +54,8 @@ public final class EditorFragment extends Fragment {
     public static final String TAG = "EditorFragment";
 
     private static final String PDF_MIME_TYPE = "application/pdf";
-    private static final float DRAG_ACTIVE_ALPHA = 0.85f;
+    private static final float DRAG_ACTIVE_ALPHA = 0.94f;
+    private static final float DRAG_ACTIVE_SCALE = 1.015f;
 
     private DocumentSessionViewModel sessionViewModel;
     private NavigationCallback navigationCallback;
@@ -199,8 +200,8 @@ public final class EditorFragment extends Fragment {
                     }
 
                     @Override
-                    public void onDragStart(RecyclerView.ViewHolder viewHolder) {
-                        startPageDrag(viewHolder);
+                    public boolean onDragStart(RecyclerView.ViewHolder viewHolder) {
+                        return startPageDrag(viewHolder);
                     }
 
                     @Override
@@ -331,10 +332,12 @@ public final class EditorFragment extends Fragment {
         updateUiState();
     }
 
-    private void startPageDrag(RecyclerView.ViewHolder viewHolder) {
+    private boolean startPageDrag(RecyclerView.ViewHolder viewHolder) {
         if (sessionViewModel.canEditPages()) {
             pageTouchHelper.startDrag(viewHolder);
+            return true;
         }
+        return false;
     }
 
     private boolean movePage(int fromPosition, int toPosition) {
@@ -812,6 +815,8 @@ public final class EditorFragment extends Fragment {
             super.onSelectedChanged(viewHolder, actionState);
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
                 viewHolder.itemView.setAlpha(DRAG_ACTIVE_ALPHA);
+                viewHolder.itemView.setScaleX(DRAG_ACTIVE_SCALE);
+                viewHolder.itemView.setScaleY(DRAG_ACTIVE_SCALE);
                 viewHolder.itemView.setElevation(
                         getResources().getDimensionPixelSize(R.dimen.page_drag_elevation)
                 );
@@ -827,9 +832,12 @@ public final class EditorFragment extends Fragment {
         ) {
             super.clearView(recyclerView, viewHolder);
             viewHolder.itemView.setAlpha(1f);
+            viewHolder.itemView.setScaleX(1f);
+            viewHolder.itemView.setScaleY(1f);
             viewHolder.itemView.setElevation(0f);
             viewHolder.itemView.setActivated(false);
             viewHolder.itemView.setPressed(false);
+            pageAdapter.onDragFinished(viewHolder);
         }
     }
 }

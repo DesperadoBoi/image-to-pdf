@@ -48,10 +48,10 @@
         android:layout_width="@dimen/page_action_button_size"
         android:layout_height="@dimen/page_action_button_size"
         android:layout_marginStart="@dimen/page_action_spacing"
-        android:background="@drawable/bg_icon_button_round"
+        android:background="@drawable/bg_drag_handle_ripple"
         android:contentDescription="@string/action_reorder_page_content_description_generic"
         android:padding="@dimen/editor_overlay_button_padding"
-        android:src="@drawable/ic_action_reorder_24"
+        android:src="@drawable/ic_action_drag_grip_24"
         app:tint="?attr/colorOnSurfaceVariant" />
 
     <ImageButton

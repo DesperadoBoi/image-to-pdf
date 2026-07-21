@@ -125,4 +125,29 @@ public class PageOrderManagerTest {
         assertSame(firstPage, pages.get(1));
         assertEquals(editSpec, pages.get(1).getEditSpec());
     }
+
+    @Test
+    public void movePreservesStableIdUriRotationCropAndSourceTogether() {
+        Uri cameraUri = FakeUri.create("content://test/camera");
+        Uri otherUri = FakeUri.create("content://test/other");
+        CropRect crop = new CropRect(0.1f, 0.2f, 0.8f, 0.9f);
+        PageItem cameraPage = PageItem.camera(cameraUri, "capture_drag.jpg")
+                .rotateClockwise()
+                .withCropRect(crop);
+        List<PageItem> pages = new ArrayList<>(Arrays.asList(
+                cameraPage,
+                PageItem.files(otherUri)
+        ));
+
+        PageOrderManager.move(pages, 0, 1);
+
+        PageItem moved = pages.get(1);
+        assertSame(cameraPage, moved);
+        assertEquals(cameraPage.getId(), moved.getId());
+        assertSame(cameraUri, moved.getImageUri());
+        assertEquals(90, moved.getManualRotationDegrees());
+        assertEquals(crop, moved.getEditSpec().getCropRect());
+        assertEquals(PageSource.CAMERA, moved.getSource());
+        assertEquals("capture_drag.jpg", moved.getCapturedFileName());
+    }
 }

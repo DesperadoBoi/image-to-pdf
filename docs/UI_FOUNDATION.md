@@ -95,6 +95,11 @@ rotate, crop, done, delete, PDF и reset. Иконки tint-ятся semantic pa
 `notifyDataSetChanged`. Основная кнопка создания PDF закреплена снизу без большого внешнего
 контейнера; progress, cancel, status и result появляются только в соответствующем состоянии.
 
+Reorder использует симметричный grip 2×3 без постоянного круглого контейнера. Drag
+запускается сразу по `ACTION_DOWN` на grip или долгим удержанием карточки/миниатюры;
+rotate/delete не участвуют в long-press fallback. Во время drag карточка получает elevation,
+небольшие alpha/scale и activated state, которые полностью сбрасываются в `clearView`.
+
 Обычный режим содержит:
 
 - toolbar с back, «Страница N» и компактным reset;

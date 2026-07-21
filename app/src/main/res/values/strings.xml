@@ -92,7 +92,7 @@
     <string name="action_rotate_preview_page_content_description">Повернуть страницу</string>
     <string name="action_close_page_preview_content_description">Закрыть просмотр</string>
     <string name="editor_title">Страницы</string>
-    <string name="reorder_hint">Тяните за значок изменения порядка</string>
+    <string name="reorder_hint">Тяните за точки или удерживайте страницу</string>
     <string name="page_number_label">%1$d</string>
     <string name="page_thumbnail_content_description">Открыть страницу %1$d</string>
     <string name="page_thumbnail_content_description_generic">Открыть страницу</string>
