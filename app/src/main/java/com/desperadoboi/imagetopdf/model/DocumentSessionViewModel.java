@@ -27,9 +27,15 @@ public final class DocumentSessionViewModel extends ViewModel {
     private String transientStatusMessage;
     private String pendingSuggestedFileName;
     private PendingCapturedImage pendingCapturedImage;
+    private PdfExportDraft pdfExportDraft;
+    private PdfOutputSelectionMode pendingPdfOutputSelectionMode;
     private boolean awaitingSaveLocation;
+    private int pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
     private long nextGenerationOperationId = PdfGenerationState.NO_OPERATION_ID + 1L;
+    private PdfSuccessEvent pendingPdfSuccessEvent;
     private CancellationToken activeCancellationToken;
+    private final PdfResultNavigationCoordinator pdfResultNavigationCoordinator =
+            new PdfResultNavigationCoordinator();
 
     public List<PageItem> getPages() {
         return pages;
@@ -106,6 +112,32 @@ public final class DocumentSessionViewModel extends ViewModel {
         return applyImportedPages(request, importedPages);
     }
 
+    public ImageImportResult importImages(
+            ImageImportMode mode,
+            List<ImageImportEntry> importEntries
+    ) {
+        Objects.requireNonNull(mode, "mode is required");
+        if (importEntries == null || importEntries.isEmpty()) {
+            return ImageImportResult.noChange();
+        }
+        ArrayList<PageItem> importedPages = new ArrayList<>(importEntries.size());
+        for (ImageImportEntry entry : importEntries) {
+            Objects.requireNonNull(entry, "import entry is required");
+            if (entry.getSource() == ImageImportSource.CAMERA) {
+                importedPages.add(PageItem.camera(
+                        entry.getUri(),
+                        entry.getCapturedFileName()
+                ));
+            } else {
+                importedPages.add(createExternalPage(entry.getSource(), entry.getUri()));
+            }
+        }
+        return applyImportedPages(
+                new ImageImportRequest(ImageImportSource.IN_APP_GALLERY, mode),
+                importedPages
+        );
+    }
+
     public ImageImportResult importCameraImage(
             ImageImportRequest request,
             Uri imageUri,
@@ -161,8 +193,9 @@ public final class DocumentSessionViewModel extends ViewModel {
 
     public PageItem deletePage(int position) {
         validatePosition(position);
-        transientStatusMessage = null;
-        return pages.remove(position);
+        PageItem removedPage = pages.remove(position);
+        markDocumentEdited();
+        return removedPage;
     }
 
     public boolean movePage(int fromPosition, int toPosition) {
@@ -174,7 +207,7 @@ public final class DocumentSessionViewModel extends ViewModel {
         }
         boolean moved = PageOrderManager.move(pages, fromPosition, toPosition);
         if (moved) {
-            transientStatusMessage = null;
+            markDocumentEdited();
         }
         return moved;
     }
@@ -186,6 +219,11 @@ public final class DocumentSessionViewModel extends ViewModel {
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
         pendingCapturedImage = null;
+        pdfExportDraft = null;
+        pendingPdfOutputSelectionMode = null;
+        pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
+        pendingPdfSuccessEvent = null;
+        pdfResultNavigationCoordinator.reset();
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;
@@ -202,6 +240,7 @@ public final class DocumentSessionViewModel extends ViewModel {
 
     public void clearLastPdfResult() {
         lastPdfResult = null;
+        pendingPdfSuccessEvent = null;
     }
 
     public String getTransientStatusMessage() {
@@ -272,6 +311,22 @@ public final class DocumentSessionViewModel extends ViewModel {
         return pdfExecutor;
     }
 
+    public PdfExportDraft getPdfExportDraft() {
+        return pdfExportDraft;
+    }
+
+    public void setPdfExportDraft(PdfExportDraft pdfExportDraft) {
+        this.pdfExportDraft = pdfExportDraft;
+    }
+
+    public PdfOutputSelectionMode getPendingPdfOutputSelectionMode() {
+        return pendingPdfOutputSelectionMode;
+    }
+
+    public void setPendingPdfOutputSelectionMode(PdfOutputSelectionMode mode) {
+        pendingPdfOutputSelectionMode = mode;
+    }
+
     public GenerationOperation startGeneration(int totalPages) {
         if (isGenerationInProgress()) {
             return null;
@@ -282,7 +337,9 @@ public final class DocumentSessionViewModel extends ViewModel {
 
         long operationId = nextGenerationOperationId++;
         activeCancellationToken = new CancellationToken();
+        pendingPdfSuccessEvent = null;
         transientStatusMessage = null;
+        pdfResultNavigationCoordinator.onOperationStarted(operationId);
         setPdfGenerationState(PdfGenerationState.running(operationId, totalPages));
         return new GenerationOperation(operationId, activeCancellationToken);
     }
@@ -306,23 +363,25 @@ public final class DocumentSessionViewModel extends ViewModel {
 
     public void completeGenerationSuccess(
             long operationId,
-            Uri savedUri,
-            String fallbackDisplayName,
-            int pageCount
+            PdfResult result
     ) {
+        Objects.requireNonNull(result, "result is required");
         PdfGenerationState currentState = getPdfGenerationState();
-        PdfGenerationState nextState = currentState.succeeded(operationId, savedUri);
+        if (!currentState.isRunning() || currentState.getOperationId() != operationId) {
+            return;
+        }
+        PdfGenerationState nextState = currentState.succeeded(operationId, result.getUri());
         if (!nextState.isSucceeded() || nextState.getOperationId() != operationId) {
             setPdfGenerationState(nextState);
             return;
         }
-        lastPdfResult = new PdfResult(
-                savedUri,
-                fallbackDisplayName,
-                PdfResult.UNKNOWN_SIZE_BYTES,
-                pageCount
-        );
+        lastPdfResult = result;
+        if (pendingPdfSuccessEvent == null
+                || pendingPdfSuccessEvent.getOperationId() != operationId) {
+            pendingPdfSuccessEvent = new PdfSuccessEvent(operationId, result);
+        }
         clearActiveGeneration(operationId);
+        clearDraftOutput();
         pendingSuggestedFileName = null;
         setPdfGenerationState(nextState);
     }
@@ -335,6 +394,7 @@ public final class DocumentSessionViewModel extends ViewModel {
             return;
         }
         clearActiveGeneration(operationId);
+        clearDraftOutput();
         pendingSuggestedFileName = null;
         setPdfGenerationState(nextState);
     }
@@ -347,6 +407,7 @@ public final class DocumentSessionViewModel extends ViewModel {
             return;
         }
         clearActiveGeneration(operationId);
+        clearDraftOutput();
         pendingSuggestedFileName = null;
         setPdfGenerationState(nextState);
     }
@@ -363,6 +424,35 @@ public final class DocumentSessionViewModel extends ViewModel {
         return !isGenerationInProgress() && !awaitingSaveLocation;
     }
 
+    public void setPendingEditorScrollPosition(int position) {
+        pendingEditorScrollPosition = position;
+    }
+
+    public PdfResultNavigationCoordinator.Decision resolvePdfResultNavigation(
+            PdfGenerationState state
+    ) {
+        return pdfResultNavigationCoordinator.onGenerationStateChanged(state);
+    }
+
+    public PdfSuccessEvent peekPendingPdfSuccessEvent() {
+        return pendingPdfSuccessEvent;
+    }
+
+    public PdfSuccessEvent consumePendingPdfSuccessEvent(PdfResult currentResult) {
+        if (pendingPdfSuccessEvent == null
+                || !pendingPdfSuccessEvent.matches(currentResult)
+                || !pendingPdfSuccessEvent.consume()) {
+            return null;
+        }
+        return pendingPdfSuccessEvent;
+    }
+
+    public int consumePendingEditorScrollPosition() {
+        int position = pendingEditorScrollPosition;
+        pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
+        return position;
+    }
+
     @Override
     protected void onCleared() {
         cancelActiveGeneration();
@@ -371,7 +461,7 @@ public final class DocumentSessionViewModel extends ViewModel {
     }
 
     private PageItem createExternalPage(ImageImportSource source, Uri imageUri) {
-        if (source == ImageImportSource.GALLERY) {
+        if (source == ImageImportSource.GALLERY || source == ImageImportSource.IN_APP_GALLERY) {
             return PageItem.gallery(imageUri);
         }
         if (source == ImageImportSource.FILES) {
@@ -428,6 +518,11 @@ public final class DocumentSessionViewModel extends ViewModel {
         transientStatusMessage = null;
         pendingSuggestedFileName = null;
         pendingCapturedImage = null;
+        pdfExportDraft = null;
+        pendingPdfOutputSelectionMode = null;
+        pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
+        pendingPdfSuccessEvent = null;
+        pdfResultNavigationCoordinator.reset();
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;
@@ -473,7 +568,6 @@ public final class DocumentSessionViewModel extends ViewModel {
 
     private void markDocumentEdited() {
         transientStatusMessage = null;
-        lastPdfResult = null;
         resetFinishedGenerationState();
     }
 
@@ -489,6 +583,13 @@ public final class DocumentSessionViewModel extends ViewModel {
         if (state.getOperationId() == operationId) {
             activeCancellationToken = null;
         }
+    }
+
+    private void clearDraftOutput() {
+        if (pdfExportDraft != null) {
+            pdfExportDraft = pdfExportDraft.withOutput(null, null);
+        }
+        pendingPdfOutputSelectionMode = null;
     }
 
     private void setPdfGenerationState(PdfGenerationState state) {
@@ -515,7 +616,13 @@ public final class DocumentSessionViewModel extends ViewModel {
 
     public enum CaptureTarget {
         HOME,
-        EDITOR
+        EDITOR,
+        PICKER
+    }
+
+    public enum PdfOutputSelectionMode {
+        CHANGE_LOCATION,
+        CONVERT_AFTER_SELECTION
     }
 
     public static final class PendingCapturedImage {

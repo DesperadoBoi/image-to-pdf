@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.desperadoboi.imagetopdf.ui.result.PdfSuccessBanner xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:accessibilityLiveRegion="polite"
+    android:contentDescription="@string/pdf_success_banner_content_description"
+    android:minHeight="@dimen/pdf_success_banner_min_height"
+    android:visibility="gone"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardElevation="@dimen/pdf_success_banner_elevation"
+    app:shapeAppearance="@style/ShapeAppearance.ImageToPDF.PdfSuccessBanner"
+    app:strokeColor="?attr/colorOutline"
+    app:strokeWidth="@dimen/standard_outline_width"
+    tools:visibility="visible">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/pdf_success_banner_padding"
+        android:paddingTop="@dimen/content_spacing_small"
+        android:paddingEnd="@dimen/pdf_success_banner_action_padding"
+        android:paddingBottom="@dimen/content_spacing_small">
+
+        <FrameLayout
+            android:layout_width="@dimen/pdf_success_icon_container_size"
+            android:layout_height="@dimen/pdf_success_icon_container_size"
+            android:background="@drawable/bg_success_icon_container"
+            android:importantForAccessibility="no">
+
+            <ImageView
+                android:layout_width="@dimen/editor_action_icon_size"
+                android:layout_height="@dimen/editor_action_icon_size"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_action_check_circle_24"
+                app:tint="?attr/colorPrimary" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/content_spacing_small"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/pdf_success_banner_title"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/text_pdf_success_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_success_banner_text_spacing"
+                android:maxLines="1"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="5 страниц · 3,4 МБ" />
+        </LinearLayout>
+
+    </LinearLayout>
+</com.desperadoboi.imagetopdf.ui.result.PdfSuccessBanner>

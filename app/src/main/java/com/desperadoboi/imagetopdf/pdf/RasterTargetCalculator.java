@@ -22,8 +22,33 @@ public final class RasterTargetCalculator {
             float contentHeight,
             ImagePlacementMode placementMode
     ) {
+        return calculate(
+                orientedSourceWidth,
+                orientedSourceHeight,
+                contentLeft,
+                contentTop,
+                contentWidth,
+                contentHeight,
+                placementMode,
+                TARGET_DPI
+        );
+    }
+
+    public static RasterTarget calculate(
+            int orientedSourceWidth,
+            int orientedSourceHeight,
+            float contentLeft,
+            float contentTop,
+            float contentWidth,
+            float contentHeight,
+            ImagePlacementMode placementMode,
+            int targetDpi
+    ) {
         Objects.requireNonNull(placementMode, "placementMode is required");
         validateSourceDimensions(orientedSourceWidth, orientedSourceHeight);
+        if (targetDpi <= 0) {
+            throw new IllegalArgumentException("targetDpi must be positive");
+        }
 
         ImagePlacementCalculator.ImageDrawPlan drawPlan =
                 ImagePlacementCalculator.calculateDrawPlan(
@@ -36,8 +61,8 @@ public final class RasterTargetCalculator {
                         placementMode
                 );
         ImagePlacementCalculator.PlacementRect destination = drawPlan.getDestinationRect();
-        long destinationTargetWidth = pointsToPixelsCeil(destination.getWidth());
-        long destinationTargetHeight = pointsToPixelsCeil(destination.getHeight());
+        long destinationTargetWidth = pointsToPixelsCeil(destination.getWidth(), targetDpi);
+        long destinationTargetHeight = pointsToPixelsCeil(destination.getHeight(), targetDpi);
 
         if (placementMode == ImagePlacementMode.FILL) {
             return calculateFillTarget(
@@ -143,11 +168,11 @@ public final class RasterTargetCalculator {
         );
     }
 
-    private static long pointsToPixelsCeil(float points) {
+    private static long pointsToPixelsCeil(float points, int targetDpi) {
         if (!Float.isFinite(points) || points <= 0f) {
             throw new IllegalArgumentException("Destination dimensions must be positive");
         }
-        return ceilMultiply(points, TARGET_DPI / (double) PDF_POINTS_PER_INCH);
+        return ceilMultiply(points, targetDpi / (double) PDF_POINTS_PER_INCH);
     }
 
     private static long ceilMultiply(double value, double multiplier) {

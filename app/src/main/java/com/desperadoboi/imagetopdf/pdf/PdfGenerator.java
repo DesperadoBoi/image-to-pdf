@@ -26,6 +26,7 @@ import com.desperadoboi.imagetopdf.model.PdfOptions;
 import com.desperadoboi.imagetopdf.util.ImagePlacementCalculator;
 
 import java.io.IOException;
+import java.io.FilterOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
@@ -55,8 +56,15 @@ public class PdfGenerator {
         Objects.requireNonNull(cancellationToken, "cancellationToken is required");
         backgroundExecutor.execute(() -> {
             try {
-                generateInternal(pageItems, pdfOptions, outputUri, cancellationToken, callbackExecutor, callback);
-                callbackExecutor.execute(() -> callback.onSuccess(outputUri));
+                long sizeBytes = generateInternal(
+                        pageItems,
+                        pdfOptions,
+                        outputUri,
+                        cancellationToken,
+                        callbackExecutor,
+                        callback
+                );
+                callbackExecutor.execute(() -> callback.onSuccess(outputUri, sizeBytes));
             } catch (PdfGenerationCancelledException exception) {
                 deletePartialOutput(outputUri);
                 callbackExecutor.execute(callback::onCancelled);
@@ -67,7 +75,7 @@ public class PdfGenerator {
         });
     }
 
-    private void generateInternal(
+    private long generateInternal(
             List<PageItem> pageItems,
             PdfOptions pdfOptions,
             Uri outputUri,
@@ -88,7 +96,9 @@ public class PdfGenerator {
         int totalPages = pageItems.size();
         notifyProgress(callbackExecutor, callback, 0, totalPages);
         PdfDocument pdfDocument = new PdfDocument();
-        try (OutputStream outputStream = openOutputStream(outputUri)) {
+        try (CountingOutputStream outputStream = new CountingOutputStream(
+                openOutputStream(outputUri)
+        )) {
             for (int index = 0; index < totalPages; index++) {
                 throwIfCancelled(cancellationToken);
 
@@ -122,7 +132,8 @@ public class PdfGenerator {
                         pageLayout.getContentTop(),
                         pageLayout.getContentWidth(),
                         pageLayout.getContentHeight(),
-                        placementMode
+                        placementMode,
+                        pdfOptions.getQualityProfile().getTargetDpi()
                 );
                 EditedImageGeometryCalculator.Dimensions sourceTarget =
                         SourceResolutionCalculator.calculateForOutputTarget(
@@ -182,6 +193,7 @@ public class PdfGenerator {
             throwIfCancelled(cancellationToken);
             pdfDocument.writeTo(outputStream);
             throwIfCancelled(cancellationToken);
+            return outputStream.getCount();
         } finally {
             pdfDocument.close();
         }
@@ -338,6 +350,30 @@ public class PdfGenerator {
                 return this;
             }
             return new ImageBounds(height, width);
+        }
+    }
+
+    private static final class CountingOutputStream extends FilterOutputStream {
+        private long count;
+
+        private CountingOutputStream(OutputStream outputStream) {
+            super(outputStream);
+        }
+
+        @Override
+        public void write(int value) throws IOException {
+            out.write(value);
+            count++;
+        }
+
+        @Override
+        public void write(byte[] values, int offset, int length) throws IOException {
+            out.write(values, offset, length);
+            count += length;
+        }
+
+        private long getCount() {
+            return count;
         }
     }
 }

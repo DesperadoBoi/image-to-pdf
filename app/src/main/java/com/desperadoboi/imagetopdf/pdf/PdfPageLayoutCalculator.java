@@ -1,6 +1,7 @@
 package com.desperadoboi.imagetopdf.pdf;
 
 import com.desperadoboi.imagetopdf.model.PageSizeMode;
+import com.desperadoboi.imagetopdf.model.PdfOrientationMode;
 import com.desperadoboi.imagetopdf.model.PdfOptions;
 
 import java.util.Objects;
@@ -25,20 +26,54 @@ public final class PdfPageLayoutCalculator {
 
         int margin = pdfOptions.getMarginPreset().getMarginPoints();
         if (pdfOptions.getPageSizeMode() == PageSizeMode.A4) {
-            return calculateA4(margin);
+            return calculateA4(
+                    margin,
+                    resolveLandscape(
+                            pdfOptions.getOrientationMode(),
+                            orientedImageWidth,
+                            orientedImageHeight
+                    )
+            );
         }
-        return calculateImageSized(orientedImageWidth, orientedImageHeight, margin);
+        boolean landscape = resolveLandscape(
+                pdfOptions.getOrientationMode(),
+                orientedImageWidth,
+                orientedImageHeight
+        );
+        int layoutWidth = orientedImageWidth;
+        int layoutHeight = orientedImageHeight;
+        if (landscape != (orientedImageWidth >= orientedImageHeight)) {
+            layoutWidth = orientedImageHeight;
+            layoutHeight = orientedImageWidth;
+        }
+        return calculateImageSized(layoutWidth, layoutHeight, margin);
     }
 
-    private static PdfPageLayout calculateA4(int margin) {
+    private static PdfPageLayout calculateA4(int margin, boolean landscape) {
+        int pageWidth = landscape ? A4_HEIGHT_POINTS : A4_WIDTH_POINTS;
+        int pageHeight = landscape ? A4_WIDTH_POINTS : A4_HEIGHT_POINTS;
         return new PdfPageLayout(
-                A4_WIDTH_POINTS,
-                A4_HEIGHT_POINTS,
+                pageWidth,
+                pageHeight,
                 margin,
                 margin,
-                A4_WIDTH_POINTS - margin,
-                A4_HEIGHT_POINTS - margin
+                pageWidth - margin,
+                pageHeight - margin
         );
+    }
+
+    private static boolean resolveLandscape(
+            PdfOrientationMode orientationMode,
+            int imageWidth,
+            int imageHeight
+    ) {
+        if (orientationMode == PdfOrientationMode.LANDSCAPE) {
+            return true;
+        }
+        if (orientationMode == PdfOrientationMode.PORTRAIT) {
+            return false;
+        }
+        return imageWidth > imageHeight;
     }
 
     private static PdfPageLayout calculateImageSized(int imageWidth, int imageHeight, int margin) {

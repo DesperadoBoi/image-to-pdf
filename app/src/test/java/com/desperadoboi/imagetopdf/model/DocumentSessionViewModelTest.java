@@ -11,6 +11,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -175,6 +176,166 @@ public class DocumentSessionViewModelTest {
     }
 
     @Test
+    public void successfulGenerationQueuesSuccessEventOnlyOnce() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        Uri pdfUri = FakeUri.create("content://test/result.pdf");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+
+        PdfResult result = new PdfResult(pdfUri, "result.pdf", 1024L, 1);
+        viewModel.completeGenerationSuccess(operation.getOperationId(), result);
+
+        PdfSuccessEvent event = viewModel.consumePendingPdfSuccessEvent(result);
+        assertEquals(operation.getOperationId(), event.getOperationId());
+        assertSame(result, event.getResult());
+        assertNull(viewModel.consumePendingPdfSuccessEvent(result));
+        assertSame(pdfUri, viewModel.getLastPdfResult().getUri());
+        assertTrue(viewModel.getLastPdfResult().hasKnownSize());
+    }
+
+    @Test
+    public void sameSuccessfulOperationDoesNotEmitTwice() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        Uri pdfUri = FakeUri.create("content://test/result.pdf");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+        PdfResult result = new PdfResult(pdfUri, "result.pdf", 1024L, 1);
+
+        viewModel.completeGenerationSuccess(operation.getOperationId(), result);
+        viewModel.consumePendingPdfSuccessEvent(result);
+        viewModel.completeGenerationSuccess(operation.getOperationId(), result);
+
+        assertNull(viewModel.consumePendingPdfSuccessEvent(result));
+    }
+
+    @Test
+    public void newSuccessfulOperationEmitsNewEvent() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        DocumentSessionViewModel.GenerationOperation first = viewModel.startGeneration(1);
+        PdfResult firstResult = new PdfResult(
+                FakeUri.create("content://test/first.pdf"),
+                "first.pdf",
+                10L,
+                1
+        );
+        viewModel.completeGenerationSuccess(
+                first.getOperationId(),
+                firstResult
+        );
+        viewModel.consumePendingPdfSuccessEvent(firstResult);
+
+        DocumentSessionViewModel.GenerationOperation second = viewModel.startGeneration(1);
+        PdfResult secondResult = new PdfResult(
+                FakeUri.create("content://test/second.pdf"),
+                "second.pdf",
+                20L,
+                1
+        );
+        viewModel.completeGenerationSuccess(
+                second.getOperationId(),
+                secondResult
+        );
+
+        PdfSuccessEvent secondEvent = viewModel.consumePendingPdfSuccessEvent(secondResult);
+        assertEquals(second.getOperationId(), secondEvent.getOperationId());
+        assertNotEquals(first.getOperationId(), secondEvent.getOperationId());
+    }
+
+    @Test
+    public void observerReattachmentDoesNotDuplicateConsumedSuccessEvent() {
+        Uri imageUri = FakeUri.create("content://test/image");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(imageUri));
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+        PdfResult result = new PdfResult(
+                FakeUri.create("content://test/result.pdf"),
+                "result.pdf",
+                10L,
+                1
+        );
+        viewModel.completeGenerationSuccess(
+                operation.getOperationId(),
+                result
+        );
+        viewModel.consumePendingPdfSuccessEvent(result);
+        int[] observations = {0};
+
+        viewModel.addPdfGenerationStateObserver(state -> observations[0]++);
+
+        assertEquals(1, observations[0]);
+        assertNull(viewModel.consumePendingPdfSuccessEvent(result));
+    }
+
+    @Test
+    public void editorObserverDoesNotConsumeSuccessEvent() {
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(FakeUri.create("content://test/image")));
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+        PdfResult result = new PdfResult(
+                FakeUri.create("content://test/result.pdf"),
+                "result.pdf",
+                10L,
+                1
+        );
+        viewModel.completeGenerationSuccess(operation.getOperationId(), result);
+
+        viewModel.addPdfGenerationStateObserver(viewModel::resolvePdfResultNavigation);
+
+        assertNotNull(viewModel.peekPendingPdfSuccessEvent());
+        assertFalse(viewModel.peekPendingPdfSuccessEvent().isConsumed());
+    }
+
+    @Test
+    public void openingOlderResultDoesNotConsumeNewSuccessEvent() {
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(FakeUri.create("content://test/image")));
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+        PdfResult newResult = new PdfResult(
+                FakeUri.create("content://test/new.pdf"),
+                "new.pdf",
+                10L,
+                1,
+                2L,
+                ""
+        );
+        PdfResult oldResult = new PdfResult(
+                FakeUri.create("content://test/old.pdf"),
+                "old.pdf",
+                10L,
+                1,
+                1L,
+                ""
+        );
+        viewModel.completeGenerationSuccess(operation.getOperationId(), newResult);
+
+        assertNull(viewModel.consumePendingPdfSuccessEvent(oldResult));
+        assertFalse(viewModel.peekPendingPdfSuccessEvent().isConsumed());
+        assertNotNull(viewModel.consumePendingPdfSuccessEvent(newResult));
+    }
+
+    @Test
+    public void pageEditsKeepLastSuccessfulPdfResult() {
+        Uri firstImageUri = FakeUri.create("content://test/first");
+        Uri secondImageUri = FakeUri.create("content://test/second");
+        Uri pdfUri = FakeUri.create("content://test/result.pdf");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(firstImageUri, secondImageUri));
+        PdfResult previousResult = new PdfResult(pdfUri, "result.pdf", 1024L, 2);
+        viewModel.setLastPdfResult(previousResult);
+
+        viewModel.rotatePage(0);
+        viewModel.movePage(0, 1);
+        viewModel.deletePage(1);
+
+        assertSame(previousResult, viewModel.getLastPdfResult());
+        assertEquals(1, viewModel.getPageCount());
+    }
+
+    @Test
     public void oldOperationCallbackDoesNotChangeNewGenerationState() {
         Uri imageUri = FakeUri.create("content://test/image");
         DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
@@ -316,5 +477,30 @@ public class DocumentSessionViewModelTest {
 
         assertEquals(PageSource.FILES, viewModel.getPages().get(0).getSource());
         assertSame(filesUri, viewModel.getPages().get(0).getImageUri());
+    }
+
+    @Test
+    public void mixedPickerImportKeepsSelectionOrderAndSources() {
+        Uri mediaUri = FakeUri.create("content://test/media");
+        Uri cameraUri = FakeUri.create("content://test/camera");
+        Uri filesUri = FakeUri.create("content://test/files");
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+
+        ImageImportResult result = viewModel.importImages(
+                ImageImportMode.NEW_DOCUMENT,
+                Arrays.asList(
+                        ImageImportEntry.external(mediaUri, ImageImportSource.IN_APP_GALLERY),
+                        ImageImportEntry.camera(cameraUri, "capture_picker.jpg"),
+                        ImageImportEntry.external(filesUri, ImageImportSource.FILES)
+                )
+        );
+
+        assertEquals(3, result.getInsertedCount());
+        assertSame(mediaUri, viewModel.getPages().get(0).getImageUri());
+        assertEquals(PageSource.GALLERY, viewModel.getPages().get(0).getSource());
+        assertSame(cameraUri, viewModel.getPages().get(1).getImageUri());
+        assertEquals(PageSource.CAMERA, viewModel.getPages().get(1).getSource());
+        assertSame(filesUri, viewModel.getPages().get(2).getImageUri());
+        assertEquals(PageSource.FILES, viewModel.getPages().get(2).getSource());
     }
 }

@@ -22,4 +22,12 @@
     </style>
 
     <style name="Theme.ImageToPDF" parent="Base.Theme.ImageToPDF" />
+
+    <style name="ShapeAppearance.ImageToPDF.PdfSuccessBanner" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">0dp</item>
+        <item name="cornerSizeTopRight">0dp</item>
+        <item name="cornerSizeBottomLeft">18dp</item>
+        <item name="cornerSizeBottomRight">18dp</item>
+    </style>
 </resources>

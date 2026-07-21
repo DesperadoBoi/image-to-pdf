@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
 import com.desperadoboi.imagetopdf.model.PageItem;
+import com.desperadoboi.imagetopdf.model.PageDragStartGate;
 
 import java.util.List;
 
@@ -32,6 +33,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
     private final List<PageItem> pageItems;
     private final ThumbnailLoader thumbnailLoader;
     private final PageActionCallback callback;
+    private final PageDragStartGate dragStartGate = new PageDragStartGate();
     private boolean actionsEnabled = true;
 
     public PageAdapter(
@@ -64,6 +66,13 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
         holder.dragHandleButton.setOnTouchListener((touchedView, event) ->
                 handleDragTouch(holder, event)
         );
+        holder.itemView.setOnLongClickListener(pressedView -> startDragFromLongPress(holder));
+        holder.thumbnailImageView.setOnLongClickListener(
+                pressedView -> startDragFromLongPress(holder)
+        );
+        holder.dragHandleButton.setOnLongClickListener(pressedView -> true);
+        holder.rotateButton.setOnLongClickListener(pressedView -> true);
+        holder.deleteButton.setOnLongClickListener(pressedView -> true);
         return holder;
     }
 
@@ -242,11 +251,36 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
 
     private void startDragFromHandle(PageViewHolder holder) {
         int adapterPosition = holder.getBindingAdapterPosition();
-        if (!actionsEnabled || adapterPosition == RecyclerView.NO_POSITION) {
+        if (!canStartDrag(holder, adapterPosition)) {
             return;
         }
         holder.dragHandleButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-        callback.onDragStart(holder);
+        if (!callback.onDragStart(holder)) {
+            dragStartGate.finish(holder.getItemId());
+        }
+    }
+
+    private boolean startDragFromLongPress(PageViewHolder holder) {
+        int adapterPosition = holder.getBindingAdapterPosition();
+        if (!canStartDrag(holder, adapterPosition)) {
+            return false;
+        }
+        holder.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        boolean started = callback.onDragStart(holder);
+        if (!started) {
+            dragStartGate.finish(holder.getItemId());
+        }
+        return started;
+    }
+
+    private boolean canStartDrag(PageViewHolder holder, int adapterPosition) {
+        return actionsEnabled
+                && adapterPosition != RecyclerView.NO_POSITION
+                && dragStartGate.tryStart(holder.getItemId());
+    }
+
+    public void onDragFinished(RecyclerView.ViewHolder viewHolder) {
+        dragStartGate.finish(viewHolder.getItemId());
     }
 
     private void configureMoveAccessibilityActions(PageViewHolder holder) {
@@ -299,7 +333,7 @@ public final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageView
 
         void onPreview(int position);
 
-        void onDragStart(RecyclerView.ViewHolder viewHolder);
+        boolean onDragStart(RecyclerView.ViewHolder viewHolder);
 
         boolean onMoveUp(int position);
 

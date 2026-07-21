@@ -6,11 +6,29 @@ public final class PdfOptions {
     private final PageSizeMode pageSizeMode;
     private final ImagePlacementMode imagePlacementMode;
     private final MarginPreset marginPreset;
+    private final PdfQualityProfile qualityProfile;
+    private final PdfOrientationMode orientationMode;
 
     public PdfOptions(
             PageSizeMode pageSizeMode,
             ImagePlacementMode imagePlacementMode,
             MarginPreset marginPreset
+    ) {
+        this(
+                pageSizeMode,
+                imagePlacementMode,
+                marginPreset,
+                PdfQualityProfile.BALANCED,
+                PdfOrientationMode.AUTO
+        );
+    }
+
+    public PdfOptions(
+            PageSizeMode pageSizeMode,
+            ImagePlacementMode imagePlacementMode,
+            MarginPreset marginPreset,
+            PdfQualityProfile qualityProfile,
+            PdfOrientationMode orientationMode
     ) {
         this.pageSizeMode = Objects.requireNonNull(pageSizeMode, "pageSizeMode is required");
         this.imagePlacementMode = Objects.requireNonNull(
@@ -18,6 +36,14 @@ public final class PdfOptions {
                 "imagePlacementMode is required"
         );
         this.marginPreset = Objects.requireNonNull(marginPreset, "marginPreset is required");
+        this.qualityProfile = Objects.requireNonNull(
+                qualityProfile,
+                "qualityProfile is required"
+        );
+        this.orientationMode = Objects.requireNonNull(
+                orientationMode,
+                "orientationMode is required"
+        );
     }
 
     public static PdfOptions defaults() {
@@ -38,5 +64,13 @@ public final class PdfOptions {
 
     public MarginPreset getMarginPreset() {
         return marginPreset;
+    }
+
+    public PdfQualityProfile getQualityProfile() {
+        return qualityProfile;
+    }
+
+    public PdfOrientationMode getOrientationMode() {
+        return orientationMode;
     }
 }

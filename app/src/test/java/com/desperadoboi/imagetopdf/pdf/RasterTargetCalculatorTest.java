@@ -185,6 +185,16 @@ public class RasterTargetCalculatorTest {
         );
     }
 
+    @Test
+    public void qualityDpiChangesRasterTarget() {
+        RasterTarget compact = calculateFitAtDpi(4000, 6000, 547f, 794f, 96);
+        RasterTarget balanced = calculateFitAtDpi(4000, 6000, 547f, 794f, 144);
+        RasterTarget high = calculateFitAtDpi(4000, 6000, 547f, 794f, 216);
+
+        assertTrue(compact.getTargetWidthPixels() < balanced.getTargetWidthPixels());
+        assertTrue(balanced.getTargetWidthPixels() < high.getTargetWidthPixels());
+    }
+
     private RasterTarget calculateFit(int sourceWidth, int sourceHeight, float contentWidth, float contentHeight) {
         return RasterTargetCalculator.calculate(
                 sourceWidth,
@@ -206,6 +216,25 @@ public class RasterTargetCalculatorTest {
                 contentWidth,
                 contentHeight,
                 ImagePlacementMode.FILL
+        );
+    }
+
+    private RasterTarget calculateFitAtDpi(
+            int sourceWidth,
+            int sourceHeight,
+            float contentWidth,
+            float contentHeight,
+            int targetDpi
+    ) {
+        return RasterTargetCalculator.calculate(
+                sourceWidth,
+                sourceHeight,
+                0f,
+                0f,
+                contentWidth,
+                contentHeight,
+                ImagePlacementMode.FIT,
+                targetDpi
         );
     }
 

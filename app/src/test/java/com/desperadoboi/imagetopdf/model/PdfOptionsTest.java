@@ -13,6 +13,8 @@ public class PdfOptionsTest {
         assertEquals(PageSizeMode.A4, options.getPageSizeMode());
         assertEquals(ImagePlacementMode.FIT, options.getImagePlacementMode());
         assertEquals(MarginPreset.STANDARD, options.getMarginPreset());
+        assertEquals(PdfQualityProfile.BALANCED, options.getQualityProfile());
+        assertEquals(PdfOrientationMode.AUTO, options.getOrientationMode());
     }
 
     @Test
@@ -20,12 +22,16 @@ public class PdfOptionsTest {
         PdfOptions options = new PdfOptions(
                 PageSizeMode.IMAGE,
                 ImagePlacementMode.FILL,
-                MarginPreset.SMALL
+                MarginPreset.SMALL,
+                PdfQualityProfile.HIGH,
+                PdfOrientationMode.LANDSCAPE
         );
 
         assertEquals(PageSizeMode.IMAGE, options.getPageSizeMode());
         assertEquals(ImagePlacementMode.FILL, options.getImagePlacementMode());
         assertEquals(MarginPreset.SMALL, options.getMarginPreset());
+        assertEquals(PdfQualityProfile.HIGH, options.getQualityProfile());
+        assertEquals(PdfOrientationMode.LANDSCAPE, options.getOrientationMode());
     }
 
     @Test
