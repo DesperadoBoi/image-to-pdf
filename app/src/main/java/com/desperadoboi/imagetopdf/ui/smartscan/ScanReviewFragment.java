@@ -42,8 +42,8 @@ public final class ScanReviewFragment extends Fragment {
     private TextView errorView;
     private ProgressBar progressBar;
     private MaterialButton addButton;
-    private MaterialButton autoButton;
-    private MaterialButton originalButton;
+    private View autoButton;
+    private View originalButton;
 
     private Bitmap currentBitmap;
     private String activeLoadKey;

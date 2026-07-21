@@ -140,7 +140,8 @@
     <dimen name="scan_frame_corner_stroke">4dp</dimen>
     <dimen name="scan_grid_stroke">1dp</dimen>
     <dimen name="scan_hint_margin">14dp</dimen>
-    <dimen name="scan_controls_padding">12dp</dimen>
+    <dimen name="scan_controls_horizontal_padding">0dp</dimen>
+    <dimen name="scan_controls_vertical_padding">12dp</dimen>
     <dimen name="scan_controls_spacing">6dp</dimen>
     <dimen name="scan_level_width">116dp</dimen>
     <dimen name="scan_level_height">24dp</dimen>
@@ -148,8 +149,13 @@
     <dimen name="scan_level_point_radius">5dp</dimen>
     <dimen name="scan_shutter_size">78dp</dimen>
     <dimen name="scan_shutter_progress_size">30dp</dimen>
-    <dimen name="scan_bottom_side_width">112dp</dimen>
+    <dimen name="scan_bottom_safe_gap">4dp</dimen>
+    <dimen name="scan_done_horizontal_padding">4dp</dimen>
+    <dimen name="scan_gallery_label_spacing">2dp</dimen>
     <dimen name="scan_permission_max_width">420dp</dimen>
     <dimen name="scan_permission_padding">24dp</dimen>
     <dimen name="scan_review_tools_spacing">4dp</dimen>
+    <dimen name="scan_review_action_height">64dp</dimen>
+    <dimen name="scan_review_action_horizontal_padding">0dp</dimen>
+    <dimen name="scan_review_action_label_spacing">3dp</dimen>
 </resources>

@@ -41,11 +41,13 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
+import com.desperadoboi.imagetopdf.util.PageCountFormatter;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 
 public final class SmartScanFragment extends Fragment implements SensorEventListener {
@@ -67,7 +69,6 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     private View gridOverlay;
     private TextView permissionText;
     private TextView cameraStatusText;
-    private TextView pageCountText;
     private ImageButton torchButton;
     private ImageButton gridButton;
     private ImageButton shutterButton;
@@ -76,6 +77,7 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     private MaterialButton settingsButton;
     private ProgressBar captureProgress;
     private LevelIndicatorView levelIndicator;
+    private PageCountFormatter.Labels pageCountLabels;
 
     private ProcessCameraProvider cameraProvider;
     private boolean cameraProviderRequestPending;
@@ -140,6 +142,11 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
+        pageCountLabels = new PageCountFormatter.Labels(
+                getString(R.string.smart_scan_page_word_one),
+                getString(R.string.smart_scan_page_word_few),
+                getString(R.string.smart_scan_page_word_many)
+        );
         configureActions(view);
         ScanPage interrupted = sessionViewModel.recoverInterruptedCapture();
         deleteIfAppOwned(interrupted);
@@ -197,7 +204,6 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         gridOverlay = null;
         permissionText = null;
         cameraStatusText = null;
-        pageCountText = null;
         torchButton = null;
         gridButton = null;
         shutterButton = null;
@@ -206,6 +212,7 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         settingsButton = null;
         captureProgress = null;
         levelIndicator = null;
+        pageCountLabels = null;
         super.onDestroyView();
     }
 
@@ -273,7 +280,6 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         gridOverlay = view.findViewById(R.id.view_scan_grid);
         permissionText = view.findViewById(R.id.text_scan_permission);
         cameraStatusText = view.findViewById(R.id.text_scan_camera_status);
-        pageCountText = view.findViewById(R.id.text_scan_page_count);
         torchButton = view.findViewById(R.id.button_scan_torch);
         gridButton = view.findViewById(R.id.button_scan_grid);
         shutterButton = view.findViewById(R.id.button_scan_shutter);
@@ -311,17 +317,26 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         boolean cameraReady = imageCapture != null && hasCameraPermission();
         shutterButton.setEnabled(cameraReady && !capturing);
         captureProgress.setVisibility(capturing ? View.VISIBLE : View.GONE);
-        pageCountText.setVisibility(pageCount > 0 ? View.VISIBLE : View.GONE);
-        doneButton.setVisibility(pageCount > 0 ? View.VISIBLE : View.GONE);
-        if (pageCount > 0) {
-            pageCountText.setText(getString(R.string.smart_scan_page_count, pageCount));
-            doneButton.setText(getString(R.string.smart_scan_done, pageCount));
-        }
+        SmartScanDoneFormatter.State doneState = SmartScanDoneFormatter.format(
+                pageCount,
+                currentLocale(),
+                getString(R.string.smart_scan_done),
+                getString(R.string.smart_scan_done_content_description),
+                pageCountLabels
+        );
+        doneButton.setVisibility(doneState.isVisible() ? View.VISIBLE : View.GONE);
+        doneButton.setEnabled(doneState.isVisible());
+        doneButton.setText(doneState.getLabel());
+        doneButton.setContentDescription(doneState.getContentDescription());
         gridOverlay.setVisibility(cameraState.isGridEnabled() ? View.VISIBLE : View.GONE);
         gridButton.setSelected(cameraState.isGridEnabled());
         torchButton.setEnabled(cameraState.isFlashAvailable() && cameraReady);
         torchButton.setSelected(cameraState.isTorchEnabled());
         openReviewIfReady();
+    }
+
+    private Locale currentLocale() {
+        return getResources().getConfiguration().getLocales().get(0);
     }
 
     private void renderPermissionState() {
