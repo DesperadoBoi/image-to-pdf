@@ -84,6 +84,7 @@ CameraX scan flow, ручная перспектива и ownership времен
 
 - [PRODUCT.md](PRODUCT.md) - продуктовые рамки и MVP.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - целевая архитектура и технические ограничения.
+- [docs/BRANDING.md](docs/BRANDING.md) - фирменный знак, палитра и правила launcher/splash assets.
 - [CONTRIBUTING.md](CONTRIBUTING.md) - правила совместной работы.
 
 ## Оптимизация PDF
