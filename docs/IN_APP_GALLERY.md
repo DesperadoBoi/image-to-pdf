@@ -19,6 +19,13 @@
 
 `MediaAlbumAggregator` группирует уникальные media ID по bucket, считает изображения, выбирает самое новое cover и применяет локализованный fallback для отсутствующего bucket name. Camera, Screenshots и Download получают предсказуемый приоритет, если такие реальные buckets присутствуют.
 
+`ImagePickerViewModel` хранит явный `GalleryUiState`: `LOADING`, `CONTENT`, `EMPTY`,
+`PERMISSION_REQUIRED` и `ERROR`. Первоначальный и повторный MediaStore query начинаются с
+`LOADING`; `EMPTY` публикуется только после успешного ответа с нулём изображений. При
+фоновом обновлении последнее `CONTENT` остаётся видимым. Каждый query получает operation ID,
+поэтому поздний результат старого запроса не может заменить более новое содержимое.
+Уход с экрана, `onStop` и PDF export не очищают content и не переводят состояние в `EMPTY`.
+
 ## Миниатюры и выбор
 
 `GalleryThumbnailLoader` использует ограниченный пул из трёх потоков, bounds decode, `inSampleSize`, EXIF transform и финальное уменьшение до размера View. Ключ запроса содержит `Uri` и размер. Adapter проверяет ключ recycled ViewHolder и освобождает stale bitmap; loader закрывается вместе с Fragment.
@@ -32,3 +39,6 @@
 «Проводник» запускает `OpenMultipleDocuments(image/*)`, сохраняет порядок provider и best-effort persistable read grant. Photo Picker остаётся fallback без широкого доступа к медиатеке.
 
 Selection и source metadata хранятся отдельно: это позволяет импортировать смешанный порядок MediaStore, Photo Picker, Camera и Files. `NEW_DOCUMENT` заменяет session и удаляет только старые app-owned camera-файлы. `APPEND_TO_DOCUMENT` добавляет страницы в конец, сохраняет предыдущий PDF result и прокручивает Editor к первой новой странице.
+
+После импорта picker атомарно заменяется Editor и не добавляется в export/result back stack.
+Переход `Editor → PdfResultFragment` не проходит через `ImagePickerFragment`.

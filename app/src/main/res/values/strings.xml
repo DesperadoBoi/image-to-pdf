@@ -161,7 +161,9 @@
     <string name="gallery_access_permanently_denied_message">Доступ отключён в настройках приложения. Системный выбор изображений и Проводник по-прежнему доступны.</string>
     <string name="gallery_empty_title">Доступных изображений нет</string>
     <string name="gallery_empty_message">Добавьте изображения через системный выбор или Проводник.</string>
+    <string name="gallery_load_error_title">Не удалось загрузить галерею</string>
     <string name="gallery_load_error">Не удалось прочитать доступные изображения. Попробуйте ещё раз или используйте системный выбор.</string>
+    <string name="action_retry_gallery_load">Повторить</string>
     <string name="action_allow_gallery_access">Разрешить доступ</string>
     <string name="action_change_gallery_access">Изменить доступ</string>
     <string name="action_add_more_images">Добавить ещё изображения</string>
@@ -219,13 +221,15 @@
     <string name="action_change_pdf_location_content_description">Изменить расположение PDF</string>
     <string name="action_convert_pdf_content_description">Конвертировать изображения в PDF</string>
     <string name="pdf_file_name_base_template">ImageToPDF_%1$s</string>
-    <string name="pdf_result_title">PDF готов</string>
     <string name="pdf_result_unavailable">Результат недоступен</string>
     <string name="pdf_result_preview_content_description">Предпросмотр первой страницы PDF</string>
     <string name="pdf_result_size_unknown">Размер неизвестен</string>
     <string name="pdf_result_location">Сохранено в: %1$s</string>
     <string name="pdf_result_location_unknown">Сохранено в выбранной папке</string>
-    <string name="pdf_result_latest_title">Последний PDF</string>
+    <string name="pdf_result_page_badge">%1$d стр.</string>
+    <string name="pdf_page_word_one">страница</string>
+    <string name="pdf_page_word_few">страницы</string>
+    <string name="pdf_page_word_many">страниц</string>
     <string name="action_open_pdf_short">Открыть</string>
     <string name="action_return_to_pdf_pages">Вернуться к страницам</string>
     <string name="action_new_pdf_document">Создать новый документ</string>
@@ -233,12 +237,9 @@
     <string name="action_open_pdf_content_description">Открыть PDF</string>
     <string name="action_return_to_pdf_pages_content_description">Вернуться к страницам</string>
     <string name="action_new_pdf_document_content_description">Создать новый документ</string>
-    <string name="action_share_latest_pdf_content_description">Поделиться последним PDF</string>
-    <string name="action_open_latest_pdf_content_description">Открыть последний PDF</string>
     <string name="pdf_success_banner_title">PDF готов</string>
     <string name="pdf_success_banner_content_description">PDF успешно создан</string>
     <string name="pdf_success_banner_announcement">PDF успешно создан. %1$s</string>
-    <string name="action_open_created_pdf_content_description">Открыть созданный PDF</string>
 
     <plurals name="gallery_album_image_count">
         <item quantity="one">%1$d изображение</item>
@@ -254,17 +255,4 @@
         <item quantity="other">Выбрано %1$d изображения</item>
     </plurals>
 
-    <plurals name="pdf_result_pages_count">
-        <item quantity="one">%1$d страница</item>
-        <item quantity="few">%1$d страницы</item>
-        <item quantity="many">%1$d страниц</item>
-        <item quantity="other">%1$d страницы</item>
-    </plurals>
-
-    <plurals name="pdf_latest_result_pages_count">
-        <item quantity="one">%1$d стр.</item>
-        <item quantity="few">%1$d стр.</item>
-        <item quantity="many">%1$d стр.</item>
-        <item quantity="other">%1$d стр.</item>
-    </plurals>
 </resources>

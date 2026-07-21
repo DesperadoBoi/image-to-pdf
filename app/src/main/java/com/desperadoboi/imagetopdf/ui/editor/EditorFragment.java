@@ -1,6 +1,5 @@
 package com.desperadoboi.imagetopdf.ui.editor;
 
-import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
@@ -32,17 +31,14 @@ import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.model.PdfGenerationState;
 import com.desperadoboi.imagetopdf.model.PdfExportDraft;
 import com.desperadoboi.imagetopdf.model.PdfExportRequest;
-import com.desperadoboi.imagetopdf.model.PdfFileNameFormatter;
 import com.desperadoboi.imagetopdf.model.PdfOptions;
 import com.desperadoboi.imagetopdf.model.PdfResult;
-import com.desperadoboi.imagetopdf.model.PdfSuccessEvent;
+import com.desperadoboi.imagetopdf.model.PdfResultNavigationCoordinator;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerator;
 import com.desperadoboi.imagetopdf.pdf.PdfLocationLabelResolver;
 import com.desperadoboi.imagetopdf.pdf.PdfResultMetadataReader;
 import com.desperadoboi.imagetopdf.ui.export.PdfExportSheet;
-import com.desperadoboi.imagetopdf.ui.result.PdfIntentFactory;
-import com.desperadoboi.imagetopdf.util.PdfResultSizeFormatter;
 import com.google.android.material.button.MaterialButton;
 
 import java.io.InterruptedIOException;
@@ -66,12 +62,6 @@ public final class EditorFragment extends Fragment {
     private TextView selectedImagesTextView;
     private TextView reorderHintTextView;
     private TextView operationStatusTextView;
-    private View pdfResultLayout;
-    private TextView latestPdfNameTextView;
-    private TextView latestPdfSummaryTextView;
-    private Button shareLatestPdfButton;
-    private Button openPdfResultButton;
-    private PdfSuccessBanner pdfSuccessBanner;
     private ProgressBar progressBar;
     private TextView generationProgressTextView;
     private Button cancelGenerationButton;
@@ -132,7 +122,7 @@ public final class EditorFragment extends Fragment {
         configureClickListeners();
         pdfGenerationStateObserver = generationState -> {
             updateUiState();
-            showPendingPdfSuccess();
+            handlePdfResultNavigation(generationState);
         };
         sessionViewModel.addPdfGenerationStateObserver(pdfGenerationStateObserver);
         updateUiState();
@@ -143,9 +133,6 @@ public final class EditorFragment extends Fragment {
         if (sessionViewModel != null && pdfGenerationStateObserver != null) {
             sessionViewModel.removePdfGenerationStateObserver(pdfGenerationStateObserver);
             pdfGenerationStateObserver = null;
-        }
-        if (pdfSuccessBanner != null) {
-            pdfSuccessBanner.hideImmediately();
         }
         super.onDestroyView();
     }
@@ -168,12 +155,6 @@ public final class EditorFragment extends Fragment {
         selectedImagesTextView = view.findViewById(R.id.text_selection_status);
         reorderHintTextView = view.findViewById(R.id.text_reorder_hint);
         operationStatusTextView = view.findViewById(R.id.text_operation_status);
-        pdfResultLayout = view.findViewById(R.id.layout_pdf_result);
-        latestPdfNameTextView = view.findViewById(R.id.text_latest_pdf_name);
-        latestPdfSummaryTextView = view.findViewById(R.id.text_latest_pdf_summary);
-        shareLatestPdfButton = view.findViewById(R.id.button_share_latest_pdf);
-        openPdfResultButton = view.findViewById(R.id.button_open_pdf_result);
-        pdfSuccessBanner = view.findViewById(R.id.banner_pdf_success);
         progressBar = view.findViewById(R.id.progress_generation);
         generationProgressTextView = view.findViewById(R.id.text_generation_progress);
         cancelGenerationButton = view.findViewById(R.id.button_cancel_generation);
@@ -246,8 +227,6 @@ public final class EditorFragment extends Fragment {
         });
         addImagesButton.setOnClickListener(v -> openImagePicker());
         createPdfButton.setOnClickListener(v -> showPdfExportSheet());
-        shareLatestPdfButton.setOnClickListener(v -> shareLatestPdf());
-        openPdfResultButton.setOnClickListener(v -> openPdfResult());
         cancelGenerationButton.setOnClickListener(v -> cancelPdfGeneration());
     }
 
@@ -493,12 +472,6 @@ public final class EditorFragment extends Fragment {
         updateUiState();
     }
 
-    private void openPdfResult() {
-        if (sessionViewModel.getLastPdfResult() != null && navigationCallback != null) {
-            navigationCallback.onPdfResultRequested();
-        }
-    }
-
     private String buildSuggestedFileName() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
         String timestamp = formatter.format(new Date());
@@ -536,7 +509,6 @@ public final class EditorFragment extends Fragment {
         operationStatusTextView.setVisibility(
                 operationStatus.isEmpty() ? View.GONE : View.VISIBLE
         );
-        updatePdfResultState(controlsEnabled);
     }
 
     private void updateGenerationProgressState(PdfGenerationState generationState) {
@@ -558,25 +530,6 @@ public final class EditorFragment extends Fragment {
         );
         generationProgressTextView.setVisibility(View.VISIBLE);
         cancelGenerationButton.setVisibility(View.VISIBLE);
-    }
-
-    private void updatePdfResultState(boolean controlsEnabled) {
-        PdfResult result = sessionViewModel.getLastPdfResult();
-        boolean hasResult = result != null;
-        pdfResultLayout.setVisibility(hasResult ? View.VISIBLE : View.GONE);
-        shareLatestPdfButton.setEnabled(hasResult && controlsEnabled);
-        openPdfResultButton.setEnabled(hasResult && controlsEnabled);
-        if (!hasResult) {
-            return;
-        }
-        String displayName = result.getDisplayName().isEmpty()
-                ? getString(R.string.pdf_result_unknown_name)
-                : result.getDisplayName();
-        latestPdfNameTextView.setText(result.getDisplayName().isEmpty()
-                ? displayName
-                : PdfFileNameFormatter.toDisplayTitle(displayName));
-        latestPdfNameTextView.setContentDescription(displayName);
-        latestPdfSummaryTextView.setText(buildPdfResultSummary(result, true));
     }
 
     private String buildSelectionStatusText() {
@@ -605,51 +558,13 @@ public final class EditorFragment extends Fragment {
         return transientStatusMessage;
     }
 
-    private void showPendingPdfSuccess() {
-        PdfSuccessEvent event = sessionViewModel.consumePendingPdfSuccessEvent();
-        if (event == null || pdfSuccessBanner == null) {
+    private void handlePdfResultNavigation(PdfGenerationState generationState) {
+        if (navigationCallback == null
+                || sessionViewModel.resolvePdfResultNavigation(generationState)
+                        != PdfResultNavigationCoordinator.Decision.NAVIGATE_TO_RESULT) {
             return;
         }
-        pdfSuccessBanner.showResult(
-                buildPdfResultSummary(event.getResult(), false),
-                clicked -> openPdfResult()
-        );
-    }
-
-    private String buildPdfResultSummary(PdfResult result, boolean compactPageCount) {
-        int pageCount = result.getPageCount();
-        String pages = getResources().getQuantityString(
-                compactPageCount
-                        ? R.plurals.pdf_latest_result_pages_count
-                        : R.plurals.pdf_result_pages_count,
-                pageCount,
-                pageCount
-        );
-        String size = PdfResultSizeFormatter.format(
-                result,
-                Locale.getDefault(),
-                getString(R.string.pdf_result_size_unknown)
-        );
-        return getString(R.string.pdf_result_summary, pages, size);
-    }
-
-    private void shareLatestPdf() {
-        PdfResult result = sessionViewModel.getLastPdfResult();
-        if (result == null) {
-            return;
-        }
-        try {
-            startActivity(PdfIntentFactory.createShareIntent(
-                    requireContext().getContentResolver(),
-                    result,
-                    getString(R.string.pdf_share_chooser_title)
-            ));
-        } catch (ActivityNotFoundException | SecurityException exception) {
-            sessionViewModel.setTransientStatusMessage(
-                    getString(R.string.status_pdf_share_error)
-            );
-            updateUiState();
-        }
+        navigationCallback.onPdfResultRequested();
     }
 
     private void deleteCapturedFileIfNeeded(PageItem pageItem) {

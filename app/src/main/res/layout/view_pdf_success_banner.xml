@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.desperadoboi.imagetopdf.ui.editor.PdfSuccessBanner xmlns:android="http://schemas.android.com/apk/res/android"
+<com.desperadoboi.imagetopdf.ui.result.PdfSuccessBanner xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:accessibilityLiveRegion="polite"
-    android:clickable="true"
     android:contentDescription="@string/pdf_success_banner_content_description"
-    android:focusable="true"
     android:minHeight="@dimen/pdf_success_banner_min_height"
     android:visibility="gone"
     app:cardBackgroundColor="?attr/colorSurface"
-    app:cardCornerRadius="@dimen/standard_card_corner_radius"
     app:cardElevation="@dimen/pdf_success_banner_elevation"
+    app:shapeAppearance="@style/ShapeAppearance.ImageToPDF.PdfSuccessBanner"
     app:strokeColor="?attr/colorOutline"
     app:strokeWidth="@dimen/standard_outline_width"
     tools:visibility="visible">
@@ -20,6 +18,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:baselineAligned="false"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="@dimen/pdf_success_banner_padding"
@@ -27,12 +26,21 @@
         android:paddingEnd="@dimen/pdf_success_banner_action_padding"
         android:paddingBottom="@dimen/content_spacing_small">
 
-        <ImageView
-            android:layout_width="@dimen/editor_action_icon_size"
-            android:layout_height="@dimen/editor_action_icon_size"
-            android:importantForAccessibility="no"
-            android:src="@drawable/ic_action_check_circle_24"
-            app:tint="?attr/colorPrimary" />
+        <FrameLayout
+            android:layout_width="@dimen/pdf_success_icon_container_size"
+            android:layout_height="@dimen/pdf_success_icon_container_size"
+            android:background="@drawable/bg_success_icon_container"
+            android:importantForAccessibility="no">
+
+            <ImageView
+                android:layout_width="@dimen/editor_action_icon_size"
+                android:layout_height="@dimen/editor_action_icon_size"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_action_check_circle_24"
+                app:tint="?attr/colorPrimary" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"
@@ -60,13 +68,5 @@
                 tools:text="5 страниц · 3,4 МБ" />
         </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_pdf_success_open"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="@dimen/touch_target"
-            android:contentDescription="@string/action_open_created_pdf_content_description"
-            android:minWidth="0dp"
-            android:text="@string/action_open_pdf_short" />
     </LinearLayout>
-</com.desperadoboi.imagetopdf.ui.editor.PdfSuccessBanner>
+</com.desperadoboi.imagetopdf.ui.result.PdfSuccessBanner>

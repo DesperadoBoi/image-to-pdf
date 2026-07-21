@@ -107,9 +107,10 @@ rows и single-choice dialogs. Отдельной кнопки «Обзор» н
 «Конвертировать» запускает системный `CreateDocument` и продолжает генерацию после выбора.
 В sheet нет фиктивных password/signature/encryption опций.
 
-Success оставляет пользователя в Editor, один раз показывает `PdfSuccessBanner` и обновляет
-компактную карточку последнего PDF с Share/Open. `PdfResultFragment` открывается только по
-явному действию, показывает bounded preview, page badge, имя максимум в две строки,
+Success автоматически открывает `PdfResultFragment`; переход идёт напрямую из Editor и не
+проходит через gallery. Editor не показывает `PdfSuccessBanner` и карточку последнего PDF.
+Result screen один раз consume-ит operation-bound success event, показывает верхний banner,
+крупный preview, page badge, имя максимум в две строки,
 объединённые page count/size и human-readable location. Share является primary, Open —
 secondary, возврат к страницам и новый документ — компактные text actions. Контракт
 зафиксирован в [PDF_RESULT_SCREEN.md](PDF_RESULT_SCREEN.md).

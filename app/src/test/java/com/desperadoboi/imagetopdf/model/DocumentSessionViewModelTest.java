@@ -11,6 +11,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -185,10 +186,10 @@ public class DocumentSessionViewModelTest {
         PdfResult result = new PdfResult(pdfUri, "result.pdf", 1024L, 1);
         viewModel.completeGenerationSuccess(operation.getOperationId(), result);
 
-        PdfSuccessEvent event = viewModel.consumePendingPdfSuccessEvent();
+        PdfSuccessEvent event = viewModel.consumePendingPdfSuccessEvent(result);
         assertEquals(operation.getOperationId(), event.getOperationId());
         assertSame(result, event.getResult());
-        assertNull(viewModel.consumePendingPdfSuccessEvent());
+        assertNull(viewModel.consumePendingPdfSuccessEvent(result));
         assertSame(pdfUri, viewModel.getLastPdfResult().getUri());
         assertTrue(viewModel.getLastPdfResult().hasKnownSize());
     }
@@ -203,10 +204,10 @@ public class DocumentSessionViewModelTest {
         PdfResult result = new PdfResult(pdfUri, "result.pdf", 1024L, 1);
 
         viewModel.completeGenerationSuccess(operation.getOperationId(), result);
-        viewModel.consumePendingPdfSuccessEvent();
+        viewModel.consumePendingPdfSuccessEvent(result);
         viewModel.completeGenerationSuccess(operation.getOperationId(), result);
 
-        assertNull(viewModel.consumePendingPdfSuccessEvent());
+        assertNull(viewModel.consumePendingPdfSuccessEvent(result));
     }
 
     @Test
@@ -215,19 +216,31 @@ public class DocumentSessionViewModelTest {
         DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
         viewModel.replacePages(Arrays.asList(imageUri));
         DocumentSessionViewModel.GenerationOperation first = viewModel.startGeneration(1);
+        PdfResult firstResult = new PdfResult(
+                FakeUri.create("content://test/first.pdf"),
+                "first.pdf",
+                10L,
+                1
+        );
         viewModel.completeGenerationSuccess(
                 first.getOperationId(),
-                new PdfResult(FakeUri.create("content://test/first.pdf"), "first.pdf", 10L, 1)
+                firstResult
         );
-        viewModel.consumePendingPdfSuccessEvent();
+        viewModel.consumePendingPdfSuccessEvent(firstResult);
 
         DocumentSessionViewModel.GenerationOperation second = viewModel.startGeneration(1);
+        PdfResult secondResult = new PdfResult(
+                FakeUri.create("content://test/second.pdf"),
+                "second.pdf",
+                20L,
+                1
+        );
         viewModel.completeGenerationSuccess(
                 second.getOperationId(),
-                new PdfResult(FakeUri.create("content://test/second.pdf"), "second.pdf", 20L, 1)
+                secondResult
         );
 
-        PdfSuccessEvent secondEvent = viewModel.consumePendingPdfSuccessEvent();
+        PdfSuccessEvent secondEvent = viewModel.consumePendingPdfSuccessEvent(secondResult);
         assertEquals(second.getOperationId(), secondEvent.getOperationId());
         assertNotEquals(first.getOperationId(), secondEvent.getOperationId());
     }
@@ -238,17 +251,70 @@ public class DocumentSessionViewModelTest {
         DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
         viewModel.replacePages(Arrays.asList(imageUri));
         DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+        PdfResult result = new PdfResult(
+                FakeUri.create("content://test/result.pdf"),
+                "result.pdf",
+                10L,
+                1
+        );
         viewModel.completeGenerationSuccess(
                 operation.getOperationId(),
-                new PdfResult(FakeUri.create("content://test/result.pdf"), "result.pdf", 10L, 1)
+                result
         );
-        viewModel.consumePendingPdfSuccessEvent();
+        viewModel.consumePendingPdfSuccessEvent(result);
         int[] observations = {0};
 
         viewModel.addPdfGenerationStateObserver(state -> observations[0]++);
 
         assertEquals(1, observations[0]);
-        assertNull(viewModel.consumePendingPdfSuccessEvent());
+        assertNull(viewModel.consumePendingPdfSuccessEvent(result));
+    }
+
+    @Test
+    public void editorObserverDoesNotConsumeSuccessEvent() {
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(FakeUri.create("content://test/image")));
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+        PdfResult result = new PdfResult(
+                FakeUri.create("content://test/result.pdf"),
+                "result.pdf",
+                10L,
+                1
+        );
+        viewModel.completeGenerationSuccess(operation.getOperationId(), result);
+
+        viewModel.addPdfGenerationStateObserver(viewModel::resolvePdfResultNavigation);
+
+        assertNotNull(viewModel.peekPendingPdfSuccessEvent());
+        assertFalse(viewModel.peekPendingPdfSuccessEvent().isConsumed());
+    }
+
+    @Test
+    public void openingOlderResultDoesNotConsumeNewSuccessEvent() {
+        DocumentSessionViewModel viewModel = new DocumentSessionViewModel();
+        viewModel.replacePages(Arrays.asList(FakeUri.create("content://test/image")));
+        DocumentSessionViewModel.GenerationOperation operation = viewModel.startGeneration(1);
+        PdfResult newResult = new PdfResult(
+                FakeUri.create("content://test/new.pdf"),
+                "new.pdf",
+                10L,
+                1,
+                2L,
+                ""
+        );
+        PdfResult oldResult = new PdfResult(
+                FakeUri.create("content://test/old.pdf"),
+                "old.pdf",
+                10L,
+                1,
+                1L,
+                ""
+        );
+        viewModel.completeGenerationSuccess(operation.getOperationId(), newResult);
+
+        assertNull(viewModel.consumePendingPdfSuccessEvent(oldResult));
+        assertFalse(viewModel.peekPendingPdfSuccessEvent().isConsumed());
+        assertNotNull(viewModel.consumePendingPdfSuccessEvent(newResult));
     }
 
     @Test

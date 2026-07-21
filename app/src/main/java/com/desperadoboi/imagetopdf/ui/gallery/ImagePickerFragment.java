@@ -282,7 +282,14 @@ public final class ImagePickerFragment extends Fragment {
         view.findViewById(R.id.row_gallery_files).setOnClickListener(
                 clicked -> filesLauncher.launch(new String[]{"image/*"})
         );
-        permissionButton.setOnClickListener(clicked -> requestGalleryAccess());
+        permissionButton.setOnClickListener(clicked -> {
+            if (pickerViewModel.getGalleryUiState() == GalleryUiState.ERROR
+                    && pickerViewModel.getAccessState().canReadMediaStore()) {
+                loadGallery();
+            } else {
+                requestGalleryAccess();
+            }
+        });
         photoPickerButton.setOnClickListener(clicked -> launchPhotoPicker());
         settingsButton.setOnClickListener(clicked -> openAppSettings());
         importButton.setOnClickListener(clicked -> importSelection());
@@ -293,7 +300,11 @@ public final class ImagePickerFragment extends Fragment {
         GalleryAccessState state = resolveAccessState();
         pickerViewModel.setAccessState(state);
         if (state.canReadMediaStore()
-                && (!fromResume || previousState != state || pickerViewModel.getImages().isEmpty())) {
+                && !pickerViewModel.isGalleryLoadInProgress()
+                && (!fromResume
+                        || previousState != state
+                        || pickerViewModel.hasCompletedGalleryLoad()
+                        || pickerViewModel.getGalleryUiState() == GalleryUiState.ERROR)) {
             loadGallery();
         }
         render();
@@ -361,30 +372,33 @@ public final class ImagePickerFragment extends Fragment {
     }
 
     private void loadGallery() {
-        if (pickerViewModel.isLoading()) {
+        if (pickerViewModel.isGalleryLoadInProgress()) {
             return;
         }
-        pickerViewModel.setLoading(true);
-        renderLoading();
+        long operationId = pickerViewModel.beginGalleryLoad();
+        render();
         galleryRepository.load(
                 ContextCompat.getMainExecutor(requireContext()),
                 new MediaGalleryRepository.Callback() {
                     @Override
                     public void onLoaded(List<MediaImage> images, List<MediaAlbum> albums) {
-                        if (viewDestroyed) {
+                        if (!pickerViewModel.completeGalleryLoad(
+                                operationId,
+                                images,
+                                albums
+                        ) || viewDestroyed) {
                             return;
                         }
-                        pickerViewModel.setGalleryData(images, albums);
                         render();
                     }
 
                     @Override
                     public void onError(RuntimeException exception) {
-                        if (viewDestroyed) {
+                        if (!pickerViewModel.failGalleryLoad(operationId, exception)
+                                || viewDestroyed) {
                             return;
                         }
-                        pickerViewModel.setLoading(false);
-                        showGalleryError();
+                        render();
                     }
                 }
         );
@@ -395,14 +409,15 @@ public final class ImagePickerFragment extends Fragment {
             return;
         }
         GalleryAccessState state = pickerViewModel.getAccessState();
-        boolean readable = state.canReadMediaStore();
-        boolean hasImages = !pickerViewModel.getImages().isEmpty();
-        modeButton.setEnabled(readable && hasImages);
-        renderAccessPanel(state, hasImages);
-        recentTitle.setVisibility(readable && hasImages ? View.VISIBLE : View.GONE);
-        recentRecyclerView.setVisibility(readable && hasImages ? View.VISIBLE : View.GONE);
-        albumsTitle.setVisibility(readable && hasImages ? View.VISIBLE : View.GONE);
-        albumsRecyclerView.setVisibility(readable && hasImages ? View.VISIBLE : View.GONE);
+        GalleryUiState uiState = pickerViewModel.getGalleryUiState();
+        boolean hasContent = uiState == GalleryUiState.CONTENT
+                && !pickerViewModel.getImages().isEmpty();
+        modeButton.setEnabled(state.canReadMediaStore() && hasContent);
+        renderAccessPanel(state, uiState);
+        recentTitle.setVisibility(hasContent ? View.VISIBLE : View.GONE);
+        recentRecyclerView.setVisibility(hasContent ? View.VISIBLE : View.GONE);
+        albumsTitle.setVisibility(hasContent ? View.VISIBLE : View.GONE);
+        albumsRecyclerView.setVisibility(hasContent ? View.VISIBLE : View.GONE);
 
         List<MediaImage> recent = pickerViewModel.getImages().subList(
                 0,
@@ -420,8 +435,9 @@ public final class ImagePickerFragment extends Fragment {
         renderLoading();
     }
 
-    private void renderAccessPanel(GalleryAccessState state, boolean hasImages) {
-        if (state == GalleryAccessState.FULL && hasImages) {
+    private void renderAccessPanel(GalleryAccessState state, GalleryUiState uiState) {
+        if (uiState == GalleryUiState.LOADING
+                || (uiState == GalleryUiState.CONTENT && state == GalleryAccessState.FULL)) {
             accessPanel.setVisibility(View.GONE);
             return;
         }
@@ -429,24 +445,36 @@ public final class ImagePickerFragment extends Fragment {
         settingsButton.setVisibility(View.GONE);
         permissionButton.setVisibility(View.VISIBLE);
         photoPickerButton.setVisibility(View.VISIBLE);
-        if (state == GalleryAccessState.PARTIAL) {
-            accessTitle.setText(R.string.gallery_access_partial_title);
-            accessMessage.setText(hasImages
-                    ? R.string.gallery_access_partial_message
-                    : R.string.gallery_empty_message);
-            permissionButton.setText(R.string.action_change_gallery_access);
-            photoPickerButton.setText(R.string.action_add_more_images);
+        photoPickerButton.setText(R.string.action_select_individual_images);
+        if (uiState == GalleryUiState.ERROR) {
+            accessTitle.setText(R.string.gallery_load_error_title);
+            accessMessage.setText(R.string.gallery_load_error);
+            permissionButton.setText(R.string.action_retry_gallery_load);
             return;
         }
-        if (state == GalleryAccessState.FULL) {
+        if (uiState == GalleryUiState.EMPTY) {
             accessTitle.setText(R.string.gallery_empty_title);
             accessMessage.setText(R.string.gallery_empty_message);
-            permissionButton.setVisibility(View.GONE);
+            if (state == GalleryAccessState.PARTIAL) {
+                permissionButton.setText(R.string.action_change_gallery_access);
+                photoPickerButton.setText(R.string.action_add_more_images);
+            } else {
+                permissionButton.setVisibility(View.GONE);
+                photoPickerButton.setText(R.string.action_select_individual_images);
+            }
+            return;
+        }
+        if (uiState == GalleryUiState.CONTENT && state == GalleryAccessState.PARTIAL) {
+            accessTitle.setText(R.string.gallery_access_partial_title);
+            accessMessage.setText(R.string.gallery_access_partial_message);
+            permissionButton.setText(R.string.action_change_gallery_access);
+            photoPickerButton.setText(R.string.action_add_more_images);
             return;
         }
         accessTitle.setText(state == GalleryAccessState.NOT_REQUESTED
                 ? R.string.gallery_access_required_title
                 : R.string.gallery_access_denied_title);
+        photoPickerButton.setText(R.string.action_select_individual_images);
         accessMessage.setText(pickerViewModel.isPermanentlyDenied()
                 ? R.string.gallery_access_permanently_denied_message
                 : (state == GalleryAccessState.NOT_REQUESTED
@@ -459,20 +487,13 @@ public final class ImagePickerFragment extends Fragment {
         }
     }
 
-    private void showGalleryError() {
-        accessPanel.setVisibility(View.VISIBLE);
-        accessTitle.setText(R.string.gallery_access_denied_title);
-        accessMessage.setText(R.string.gallery_load_error);
-        permissionButton.setText(R.string.action_allow_gallery_access);
-        permissionButton.setVisibility(View.VISIBLE);
-        photoPickerButton.setVisibility(View.VISIBLE);
-        settingsButton.setVisibility(View.GONE);
-        renderLoading();
-    }
-
     private void renderLoading() {
         if (progressBar != null) {
-            progressBar.setVisibility(pickerViewModel.isLoading() ? View.VISIBLE : View.GONE);
+            progressBar.setVisibility(
+                    pickerViewModel.getGalleryUiState() == GalleryUiState.LOADING
+                            ? View.VISIBLE
+                            : View.GONE
+            );
         }
     }
 
@@ -508,8 +529,8 @@ public final class ImagePickerFragment extends Fragment {
     }
 
     private void renderDisplayMode() {
-        boolean albumsMode = pickerViewModel.getDisplayMode()
-                == ImagePickerViewModel.DisplayMode.ALBUMS;
+        boolean albumsMode = pickerViewModel.getGalleryUiState() != GalleryUiState.CONTENT
+                || pickerViewModel.getDisplayMode() == ImagePickerViewModel.DisplayMode.ALBUMS;
         albumScreen.setVisibility(albumsMode ? View.VISIBLE : View.GONE);
         gridRecyclerView.setVisibility(albumsMode ? View.GONE : View.VISIBLE);
         modeButton.setImageResource(albumsMode

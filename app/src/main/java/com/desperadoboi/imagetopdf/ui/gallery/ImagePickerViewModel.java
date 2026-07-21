@@ -33,7 +33,10 @@ public final class ImagePickerViewModel extends ViewModel {
     private String currentAlbumName;
     private boolean permissionRequested;
     private boolean permanentlyDenied;
-    private boolean loading;
+    private GalleryUiState galleryUiState = GalleryUiState.LOADING;
+    private RuntimeException galleryLoadError;
+    private long nextGalleryLoadOperationId = 1L;
+    private long activeGalleryLoadOperationId;
 
     public ImageSelection getSelection() {
         return selection;
@@ -107,10 +110,46 @@ public final class ImagePickerViewModel extends ViewModel {
         return albums;
     }
 
-    public void setGalleryData(List<MediaImage> images, List<MediaAlbum> albums) {
+    public long beginGalleryLoad() {
+        long operationId = nextGalleryLoadOperationId++;
+        activeGalleryLoadOperationId = operationId;
+        galleryLoadError = null;
+        if (images.isEmpty() || galleryUiState != GalleryUiState.CONTENT) {
+            galleryUiState = GalleryUiState.LOADING;
+        }
+        return operationId;
+    }
+
+    public boolean completeGalleryLoad(
+            long operationId,
+            List<MediaImage> images,
+            List<MediaAlbum> albums
+    ) {
+        if (operationId != activeGalleryLoadOperationId) {
+            return false;
+        }
         this.images = Collections.unmodifiableList(new ArrayList<>(images));
         this.albums = Collections.unmodifiableList(new ArrayList<>(albums));
-        loading = false;
+        activeGalleryLoadOperationId = 0L;
+        galleryLoadError = null;
+        galleryUiState = this.images.isEmpty()
+                ? GalleryUiState.EMPTY
+                : GalleryUiState.CONTENT;
+        return true;
+    }
+
+    public boolean failGalleryLoad(long operationId, RuntimeException exception) {
+        if (operationId != activeGalleryLoadOperationId) {
+            return false;
+        }
+        activeGalleryLoadOperationId = 0L;
+        galleryLoadError = exception;
+        if (images.isEmpty()) {
+            galleryUiState = GalleryUiState.ERROR;
+        } else {
+            galleryUiState = GalleryUiState.CONTENT;
+        }
+        return true;
     }
 
     public GalleryAccessState getAccessState() {
@@ -119,6 +158,11 @@ public final class ImagePickerViewModel extends ViewModel {
 
     public void setAccessState(GalleryAccessState accessState) {
         this.accessState = accessState;
+        if (!accessState.canReadMediaStore()) {
+            activeGalleryLoadOperationId = 0L;
+            galleryLoadError = null;
+            galleryUiState = GalleryUiState.PERMISSION_REQUIRED;
+        }
     }
 
     public DisplayMode getDisplayMode() {
@@ -159,11 +203,20 @@ public final class ImagePickerViewModel extends ViewModel {
         this.permanentlyDenied = permanentlyDenied;
     }
 
-    public boolean isLoading() {
-        return loading;
+    public GalleryUiState getGalleryUiState() {
+        return galleryUiState;
     }
 
-    public void setLoading(boolean loading) {
-        this.loading = loading;
+    public RuntimeException getGalleryLoadError() {
+        return galleryLoadError;
+    }
+
+    public boolean isGalleryLoadInProgress() {
+        return activeGalleryLoadOperationId != 0L;
+    }
+
+    public boolean hasCompletedGalleryLoad() {
+        return galleryUiState == GalleryUiState.CONTENT
+                || galleryUiState == GalleryUiState.EMPTY;
     }
 }

@@ -34,6 +34,8 @@ public final class DocumentSessionViewModel extends ViewModel {
     private long nextGenerationOperationId = PdfGenerationState.NO_OPERATION_ID + 1L;
     private PdfSuccessEvent pendingPdfSuccessEvent;
     private CancellationToken activeCancellationToken;
+    private final PdfResultNavigationCoordinator pdfResultNavigationCoordinator =
+            new PdfResultNavigationCoordinator();
 
     public List<PageItem> getPages() {
         return pages;
@@ -221,6 +223,7 @@ public final class DocumentSessionViewModel extends ViewModel {
         pendingPdfOutputSelectionMode = null;
         pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
         pendingPdfSuccessEvent = null;
+        pdfResultNavigationCoordinator.reset();
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;
@@ -336,6 +339,7 @@ public final class DocumentSessionViewModel extends ViewModel {
         activeCancellationToken = new CancellationToken();
         pendingPdfSuccessEvent = null;
         transientStatusMessage = null;
+        pdfResultNavigationCoordinator.onOperationStarted(operationId);
         setPdfGenerationState(PdfGenerationState.running(operationId, totalPages));
         return new GenerationOperation(operationId, activeCancellationToken);
     }
@@ -424,8 +428,20 @@ public final class DocumentSessionViewModel extends ViewModel {
         pendingEditorScrollPosition = position;
     }
 
-    public PdfSuccessEvent consumePendingPdfSuccessEvent() {
-        if (pendingPdfSuccessEvent == null || !pendingPdfSuccessEvent.consume()) {
+    public PdfResultNavigationCoordinator.Decision resolvePdfResultNavigation(
+            PdfGenerationState state
+    ) {
+        return pdfResultNavigationCoordinator.onGenerationStateChanged(state);
+    }
+
+    public PdfSuccessEvent peekPendingPdfSuccessEvent() {
+        return pendingPdfSuccessEvent;
+    }
+
+    public PdfSuccessEvent consumePendingPdfSuccessEvent(PdfResult currentResult) {
+        if (pendingPdfSuccessEvent == null
+                || !pendingPdfSuccessEvent.matches(currentResult)
+                || !pendingPdfSuccessEvent.consume()) {
             return null;
         }
         return pendingPdfSuccessEvent;
@@ -506,6 +522,7 @@ public final class DocumentSessionViewModel extends ViewModel {
         pendingPdfOutputSelectionMode = null;
         pendingEditorScrollPosition = ImageImportResult.NO_POSITION;
         pendingPdfSuccessEvent = null;
+        pdfResultNavigationCoordinator.reset();
         cancelActiveGeneration();
         setPdfGenerationState(PdfGenerationState.idle());
         awaitingSaveLocation = false;

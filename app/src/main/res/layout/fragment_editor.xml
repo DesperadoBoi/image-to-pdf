@@ -102,74 +102,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <LinearLayout
-            android:id="@+id/layout_pdf_result"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/content_spacing_small"
-            android:background="@drawable/bg_surface_panel"
-            android:orientation="vertical"
-            android:padding="@dimen/pdf_latest_result_padding"
-            android:visibility="gone"
-            tools:visibility="visible">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/pdf_result_latest_title"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorOnSurface"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/text_latest_pdf_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/pdf_result_details_spacing"
-                android:ellipsize="middle"
-                android:maxLines="1"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurface"
-                tools:text="ImageToPDF_20260721_041622.pdf" />
-
-            <TextView
-                android:id="@+id/text_latest_pdf_summary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/pdf_result_details_spacing"
-                android:maxLines="1"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="5 стр. · 3,4 МБ" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/pdf_latest_result_action_spacing"
-                android:gravity="end|center_vertical"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_share_latest_pdf"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="@dimen/touch_target"
-                    android:contentDescription="@string/action_share_latest_pdf_content_description"
-                    android:minWidth="0dp"
-                    android:text="@string/action_share_pdf" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_open_pdf_result"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="@dimen/touch_target"
-                    android:layout_marginStart="@dimen/content_spacing_small"
-                    android:contentDescription="@string/action_open_latest_pdf_content_description"
-                    android:minWidth="0dp"
-                    android:text="@string/action_open_pdf_short" />
-            </LinearLayout>
-        </LinearLayout>
-
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/button_create_pdf"
             android:layout_width="match_parent"
@@ -231,15 +163,5 @@
             tools:text="PDF успешно создан" />
 
     </LinearLayout>
-
-    <include
-        android:id="@+id/banner_pdf_success"
-        layout="@layout/view_pdf_success_banner"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/content_spacing_small"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/text_editor_title" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

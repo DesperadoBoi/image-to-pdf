@@ -34,4 +34,14 @@ public final class PdfSuccessEvent {
         consumed = true;
         return true;
     }
+
+    public boolean matches(PdfResult candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        return result == candidate
+                || (result.getUri() == candidate.getUri()
+                        && result.getTimestamp() == candidate.getTimestamp()
+                        && result.getPageCount() == candidate.getPageCount());
+    }
 }

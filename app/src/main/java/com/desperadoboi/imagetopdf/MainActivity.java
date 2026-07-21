@@ -8,6 +8,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
@@ -86,20 +88,20 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onPdfResultClosed() {
-        if (sessionViewModel.hasPages()) {
-            showEditor();
-        } else {
-            showHome();
-        }
+        closePdfResult();
     }
 
     @Override
     public void onEditPdfPagesRequested() {
-        showEditor();
+        closePdfResult();
     }
 
     @Override
     public void onNewPdfDocumentRequested() {
+        getSupportFragmentManager().popBackStackImmediate(
+                PdfResultFragment.TAG,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
         showHome();
     }
 
@@ -111,6 +113,7 @@ public class MainActivity extends AppCompatActivity
         }
         getSupportFragmentManager()
                 .beginTransaction()
+                .setReorderingAllowed(true)
                 .add(
                         R.id.fragment_container,
                         PageEditFragment.newInstance(pageId),
@@ -122,7 +125,10 @@ public class MainActivity extends AppCompatActivity
 
     private void configureWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (view, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets systemBars = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                            | WindowInsetsCompat.Type.displayCutout()
+            );
             int contentPadding = getResources().getDimensionPixelSize(R.dimen.screen_content_padding);
             view.setPadding(
                     systemBars.left + contentPadding,
@@ -138,20 +144,19 @@ public class MainActivity extends AppCompatActivity
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                PdfResultFragment resultFragment = (PdfResultFragment)
-                        getSupportFragmentManager().findFragmentByTag(PdfResultFragment.TAG);
+                PdfResultFragment resultFragment = findVisibleFragment(PdfResultFragment.TAG);
                 if (resultFragment != null) {
                     resultFragment.handleBackPressed();
                     return;
                 }
-                ImagePickerFragment imagePickerFragment = (ImagePickerFragment)
-                        getSupportFragmentManager().findFragmentByTag(ImagePickerFragment.TAG);
+                ImagePickerFragment imagePickerFragment = findVisibleFragment(
+                        ImagePickerFragment.TAG
+                );
                 if (imagePickerFragment != null) {
                     imagePickerFragment.handleBackPressed();
                     return;
                 }
-                PageEditFragment pageEditFragment = (PageEditFragment)
-                        getSupportFragmentManager().findFragmentByTag(PageEditFragment.TAG);
+                PageEditFragment pageEditFragment = findVisibleFragment(PageEditFragment.TAG);
                 if (pageEditFragment != null) {
                     pageEditFragment.handleBackPressed();
                     return;
@@ -175,6 +180,7 @@ public class MainActivity extends AppCompatActivity
     private void showHome() {
         getSupportFragmentManager()
                 .beginTransaction()
+                .setReorderingAllowed(true)
                 .replace(R.id.fragment_container, new HomeFragment(), HomeFragment.TAG)
                 .commit();
     }
@@ -182,13 +188,15 @@ public class MainActivity extends AppCompatActivity
     private void showEditor() {
         getSupportFragmentManager()
                 .beginTransaction()
+                .setReorderingAllowed(true)
                 .replace(R.id.fragment_container, new EditorFragment(), EditorFragment.TAG)
-                .commit();
+                .commitNow();
     }
 
     private void showImagePicker(ImageImportMode mode) {
         getSupportFragmentManager()
                 .beginTransaction()
+                .setReorderingAllowed(true)
                 .replace(
                         R.id.fragment_container,
                         ImagePickerFragment.newInstance(mode),
@@ -198,24 +206,54 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void showPdfResult() {
-        if (sessionViewModel.getLastPdfResult() == null) {
+        if (sessionViewModel.getLastPdfResult() == null
+                || getSupportFragmentManager().findFragmentByTag(PdfResultFragment.TAG) != null) {
             return;
         }
         getSupportFragmentManager()
                 .beginTransaction()
+                .setReorderingAllowed(true)
+                .setCustomAnimations(
+                        R.anim.pdf_result_enter,
+                        R.anim.pdf_result_exit,
+                        R.anim.pdf_result_pop_enter,
+                        R.anim.pdf_result_pop_exit
+                )
                 .replace(
                         R.id.fragment_container,
                         new PdfResultFragment(),
                         PdfResultFragment.TAG
                 )
+                .addToBackStack(PdfResultFragment.TAG)
                 .commit();
+    }
+
+    private void closePdfResult() {
+        boolean popped = getSupportFragmentManager().popBackStackImmediate(
+                PdfResultFragment.TAG,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
+        if (!popped) {
+            if (sessionViewModel.hasPages()) {
+                showEditor();
+            } else {
+                showHome();
+            }
+        }
     }
 
     private void showAllTools() {
         getSupportFragmentManager()
                 .beginTransaction()
+                .setReorderingAllowed(true)
                 .replace(R.id.fragment_container, new AllToolsFragment(), AllToolsFragment.TAG)
                 .addToBackStack(AllToolsFragment.TAG)
                 .commit();
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends Fragment> T findVisibleFragment(String tag) {
+        Fragment fragment = getSupportFragmentManager().findFragmentByTag(tag);
+        return fragment != null && fragment.isVisible() ? (T) fragment : null;
     }
 }

@@ -24,8 +24,10 @@ import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.PdfFileNameFormatter;
 import com.desperadoboi.imagetopdf.model.PdfResult;
+import com.desperadoboi.imagetopdf.model.PdfSuccessEvent;
 import com.desperadoboi.imagetopdf.pdf.PdfPreviewLoader;
 import com.desperadoboi.imagetopdf.pdf.PdfResultMetadataReader;
+import com.desperadoboi.imagetopdf.util.PageCountFormatter;
 import com.desperadoboi.imagetopdf.util.PdfResultSizeFormatter;
 import com.google.android.material.button.MaterialButton;
 
@@ -53,6 +55,8 @@ public final class PdfResultFragment extends Fragment {
     private MaterialButton openButton;
     private MaterialButton editPagesButton;
     private MaterialButton newDocumentButton;
+    private PdfSuccessBanner successBanner;
+    private PageCountFormatter.Labels pageCountLabels;
 
     private Bitmap previewBitmap;
     private long viewGeneration;
@@ -97,9 +101,15 @@ public final class PdfResultFragment extends Fragment {
         viewGeneration++;
         bindViews(view);
         configureActions(view);
+        pageCountLabels = new PageCountFormatter.Labels(
+                getString(R.string.pdf_page_word_one),
+                getString(R.string.pdf_page_word_few),
+                getString(R.string.pdf_page_word_many)
+        );
         PdfResult result = sessionViewModel.getLastPdfResult();
         renderResult(result);
         if (result != null) {
+            showPendingSuccess(result);
             loadMetadata(result, viewGeneration);
             loadPreview(result);
         }
@@ -108,6 +118,9 @@ public final class PdfResultFragment extends Fragment {
     @Override
     public void onDestroyView() {
         viewGeneration++;
+        if (successBanner != null) {
+            successBanner.hideImmediately();
+        }
         previewLoader.clear();
         if (previewImage != null) {
             previewImage.setImageDrawable(null);
@@ -123,6 +136,8 @@ public final class PdfResultFragment extends Fragment {
         openButton = null;
         editPagesButton = null;
         newDocumentButton = null;
+        successBanner = null;
+        pageCountLabels = null;
         super.onDestroyView();
     }
 
@@ -155,6 +170,7 @@ public final class PdfResultFragment extends Fragment {
         openButton = view.findViewById(R.id.button_pdf_result_open);
         editPagesButton = view.findViewById(R.id.button_pdf_result_edit_pages);
         newDocumentButton = view.findViewById(R.id.button_pdf_result_new_document);
+        successBanner = view.findViewById(R.id.banner_pdf_success);
     }
 
     private void configureActions(View view) {
@@ -195,6 +211,7 @@ public final class PdfResultFragment extends Fragment {
                 }
                 recyclePreviewBitmap();
                 previewBitmap = bitmap;
+                previewImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 previewImage.setImageBitmap(bitmap);
                 previewProgress.setVisibility(View.GONE);
             }
@@ -204,6 +221,7 @@ public final class PdfResultFragment extends Fragment {
                 if (previewImage == null) {
                     return;
                 }
+                previewImage.setScaleType(ImageView.ScaleType.CENTER);
                 previewImage.setImageResource(R.drawable.ic_action_create_pdf_24);
                 previewProgress.setVisibility(View.GONE);
             }
@@ -232,18 +250,10 @@ public final class PdfResultFragment extends Fragment {
                 ? displayName
                 : PdfFileNameFormatter.toDisplayTitle(displayName));
         fileNameText.setContentDescription(displayName);
-        pageBadge.setText(String.valueOf(result.getPageCount()));
-        pageBadge.setContentDescription(getResources().getQuantityString(
-                R.plurals.pdf_result_pages_count,
-                result.getPageCount(),
-                result.getPageCount()
-        ));
+        pageBadge.setText(getString(R.string.pdf_result_page_badge, result.getPageCount()));
+        pageBadge.setContentDescription(formatPageCount(result.getPageCount()));
         pageBadge.setVisibility(View.VISIBLE);
-        String pages = getResources().getQuantityString(
-                R.plurals.pdf_result_pages_count,
-                result.getPageCount(),
-                result.getPageCount()
-        );
+        String pages = formatPageCount(result.getPageCount());
         String size = PdfResultSizeFormatter.format(
                 result,
                 Locale.getDefault(),
@@ -259,6 +269,31 @@ public final class PdfResultFragment extends Fragment {
             locationText.setText(getString(R.string.pdf_result_location, location));
         }
         locationText.setVisibility(View.VISIBLE);
+    }
+
+    private void showPendingSuccess(PdfResult result) {
+        PdfSuccessEvent event = sessionViewModel.consumePendingPdfSuccessEvent(result);
+        if (event == null || successBanner == null) {
+            return;
+        }
+        successBanner.showResult(buildSummary(event.getResult()));
+    }
+
+    private String buildSummary(PdfResult result) {
+        String size = PdfResultSizeFormatter.format(
+                result,
+                Locale.getDefault(),
+                getString(R.string.pdf_result_size_unknown)
+        );
+        return getString(
+                R.string.pdf_result_summary,
+                formatPageCount(result.getPageCount()),
+                size
+        );
+    }
+
+    private String formatPageCount(int pageCount) {
+        return PageCountFormatter.format(pageCount, pageCountLabels);
     }
 
     private void sharePdf() {
