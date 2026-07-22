@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -69,6 +70,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
 
     private final ExecutorService loadExecutor = Executors.newSingleThreadExecutor();
     private final AtomicLong generations = new AtomicLong();
+    private final Runnable hideZoomIndicatorAction = this::hideZoomIndicator;
 
     private TemporaryDocumentStore temporaryDocumentStore;
     private IncomingDocument currentDocument;
@@ -87,7 +89,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
 
     private TextView titleView;
     private View shareButton;
-    private View fitWidthButton;
+    private View moreButton;
     private View loadingState;
     private TextView loadingText;
     private View errorState;
@@ -103,6 +105,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private RecyclerView textContent;
     private View spreadsheetContent;
     private SpreadsheetViewport spreadsheetViewport;
+    private TextView zoomIndicator;
     private View sheetControls;
     private TextView sheetNameView;
     private Spinner sheetSpinner;
@@ -173,6 +176,9 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         cancelActiveWork();
+        if (zoomIndicator != null) {
+            zoomIndicator.removeCallbacks(hideZoomIndicatorAction);
+        }
         closeRenderers();
         loadExecutor.shutdownNow();
         if (!isChangingConfigurations()) {
@@ -190,7 +196,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private void bindViews() {
         titleView = findViewById(R.id.text_viewer_title);
         shareButton = findViewById(R.id.button_viewer_share);
-        fitWidthButton = findViewById(R.id.button_viewer_fit_width);
+        moreButton = findViewById(R.id.button_viewer_more);
         loadingState = findViewById(R.id.state_viewer_loading);
         loadingText = findViewById(R.id.text_viewer_loading);
         errorState = findViewById(R.id.state_viewer_error);
@@ -206,23 +212,31 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         textContent = findViewById(R.id.content_viewer_text);
         spreadsheetContent = findViewById(R.id.content_viewer_spreadsheet);
         spreadsheetViewport = findViewById(R.id.viewport_viewer_spreadsheet);
+        zoomIndicator = findViewById(R.id.text_viewer_zoom_indicator);
         sheetControls = findViewById(R.id.layout_viewer_sheet_controls);
         sheetNameView = findViewById(R.id.text_viewer_sheet_name);
         sheetSpinner = findViewById(R.id.spinner_viewer_sheets);
         noticeView = findViewById(R.id.text_viewer_notice);
         textContent.setLayoutManager(new LinearLayoutManager(this));
         textContent.setAdapter(new TextLineAdapter());
-        spreadsheetViewport.setOnZoomChangeListener((scale, fitWidth, finished, userInitiated) -> {
-            if (userInitiated && !fitWidth) {
+        spreadsheetViewport.setOnZoomChangeListener((scale, zoomMode, finished, userInitiated) -> {
+            if (userInitiated && zoomMode == ZoomController.ZoomMode.MANUAL) {
                 spreadsheetStateStore.recordManualZoom(selectedSheet, scale);
             }
-            fitWidthButton.setSelected(fitWidth);
             if (finished) {
                 saveCurrentSpreadsheetState();
+                showZoomIndicator(scale);
                 spreadsheetViewport.announceForAccessibility(getString(
                         R.string.viewer_zoom_announcement,
                         Math.round(scale * 100f)
                 ));
+                if (userInitiated && zoomMode == ZoomController.ZoomMode.FIT_WIDTH) {
+                    Toast.makeText(
+                            this,
+                            R.string.viewer_fit_width_applied,
+                            Toast.LENGTH_SHORT
+                    ).show();
+                }
             }
         });
         sheetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -257,8 +271,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private void configureActions() {
         findViewById(R.id.button_viewer_back).setOnClickListener(ignored -> finish());
         shareButton.setOnClickListener(ignored -> shareDocument());
-        fitWidthButton.setOnClickListener(ignored -> spreadsheetViewport.fitToWidth());
-        findViewById(R.id.button_viewer_more).setOnClickListener(ignored -> showFileInfo());
+        moreButton.setOnClickListener(ignored -> showOverflowMenu());
         findViewById(R.id.button_viewer_cancel_loading).setOnClickListener(ignored -> finish());
         findViewById(R.id.button_viewer_close_error).setOnClickListener(ignored -> finish());
         previousPageButton.setOnClickListener(ignored -> changePage(-1));
@@ -677,7 +690,6 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             SpreadsheetViewportState state
     ) {
         spreadsheetViewport.submit(data, state);
-        fitWidthButton.setSelected(state.isFitWidth());
     }
 
     private void saveCurrentSpreadsheetState() {
@@ -776,6 +788,55 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 .setView(dialogView)
                 .setPositiveButton(R.string.viewer_action_done, null)
                 .show();
+    }
+
+    private void showOverflowMenu() {
+        PopupMenu popupMenu = new PopupMenu(this, moreButton);
+        popupMenu.inflate(R.menu.document_viewer_overflow);
+        boolean spreadsheetVisible = spreadsheetContent.getVisibility() == View.VISIBLE;
+        popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
+                .setVisible(spreadsheetVisible);
+        popupMenu.getMenu().findItem(R.id.action_viewer_fit_width)
+                .setVisible(spreadsheetVisible);
+        if (spreadsheetVisible) {
+            ZoomController.ZoomMode zoomMode = spreadsheetViewport.getZoomMode();
+            popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
+                    .setChecked(zoomMode == ZoomController.ZoomMode.ZOOM_100);
+            popupMenu.getMenu().findItem(R.id.action_viewer_fit_width)
+                    .setChecked(zoomMode == ZoomController.ZoomMode.FIT_WIDTH);
+        }
+        popupMenu.setOnMenuItemClickListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.action_viewer_zoom_100) {
+                spreadsheetViewport.zoomToNormal();
+                return true;
+            }
+            if (itemId == R.id.action_viewer_fit_width) {
+                spreadsheetViewport.fitToWidth();
+                return true;
+            }
+            if (itemId == R.id.action_viewer_file_info) {
+                showFileInfo();
+                return true;
+            }
+            return false;
+        });
+        popupMenu.show();
+    }
+
+    private void showZoomIndicator(float scale) {
+        zoomIndicator.setText(getString(
+                R.string.viewer_zoom_indicator,
+                Math.round(scale * 100f)
+        ));
+        zoomIndicator.setVisibility(View.VISIBLE);
+        zoomIndicator.bringToFront();
+        zoomIndicator.removeCallbacks(hideZoomIndicatorAction);
+        zoomIndicator.postDelayed(hideZoomIndicatorAction, 1_000L);
+    }
+
+    private void hideZoomIndicator() {
+        zoomIndicator.setVisibility(View.GONE);
     }
 
     private void bindInfoRow(
@@ -895,7 +956,6 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private void showOnly(View content) {
         hideAllStates();
         content.setVisibility(View.VISIBLE);
-        fitWidthButton.setVisibility(content == spreadsheetContent ? View.VISIBLE : View.GONE);
     }
 
     private void hideAllStates() {
@@ -905,7 +965,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         imageContent.setVisibility(View.GONE);
         textContent.setVisibility(View.GONE);
         spreadsheetContent.setVisibility(View.GONE);
-        fitWidthButton.setVisibility(View.GONE);
+        zoomIndicator.setVisibility(View.GONE);
         noticeView.setVisibility(View.GONE);
     }
 

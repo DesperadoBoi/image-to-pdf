@@ -35,8 +35,11 @@ final class SpreadsheetRowAdapter
     private float horizontalOffset;
     private int rowHeaderWidth;
     private int baseRowHeight;
+    private int minimumManualRowHeight;
     private int basePadding;
     private float baseTextSize;
+    private float minimumManualTextSize;
+    private ZoomController.ZoomMode zoomMode = ZoomController.ZoomMode.ZOOM_100;
     @Nullable private RecyclerView recyclerView;
 
     void submit(SpreadsheetData data, ViewGroup parent) {
@@ -50,10 +53,14 @@ final class SpreadsheetRowAdapter
         if (currentCount > 0) notifyItemRangeInserted(0, currentCount);
     }
 
-    void setScale(float scale) {
-        float clampedScale = ZoomController.clampZoom(scale);
-        if (Math.abs(this.scale - clampedScale) < 0.0001f) return;
+    void setZoom(float scale, ZoomController.ZoomMode zoomMode) {
+        float clampedScale = ZoomController.clampZoom(scale, zoomMode);
+        if (Math.abs(this.scale - clampedScale) < 0.0001f
+                && this.zoomMode == zoomMode) {
+            return;
+        }
         this.scale = clampedScale;
+        this.zoomMode = zoomMode;
         updateScaledColumnWidths();
         updateAttachedRows(true);
         if (recyclerView != null) recyclerView.requestLayout();
@@ -77,7 +84,14 @@ final class SpreadsheetRowAdapter
     }
 
     int getScaledRowHeight() {
-        return Math.max(1, Math.round(baseRowHeight * scale));
+        int scaledHeight = Math.max(1, Math.round(baseRowHeight * scale));
+        if (zoomMode == ZoomController.ZoomMode.FIT_WIDTH) return scaledHeight;
+        return Math.max(minimumManualRowHeight, scaledHeight);
+    }
+
+    float getVerticalScale() {
+        if (baseRowHeight <= 0) return scale;
+        return getScaledRowHeight() / (float) baseRowHeight;
     }
 
     int getUnscaledSheetWidth() {
@@ -96,12 +110,17 @@ final class SpreadsheetRowAdapter
         return scaledColumnWidths;
     }
 
-    int getBasePadding() {
-        return basePadding;
+    int getScaledPadding() {
+        float minimumScale = zoomMode == ZoomController.ZoomMode.FIT_WIDTH ? 0.35f : 0.60f;
+        float paddingScale = Math.max(minimumScale, Math.min(2f, scale));
+        return Math.max(1, Math.round(basePadding * paddingScale));
     }
 
-    float getBaseTextSize() {
-        return baseTextSize;
+    float getScaledTextSize() {
+        float textScale = Math.max(0.65f, Math.min(2f, scale));
+        float scaledSize = baseTextSize * textScale;
+        if (zoomMode == ZoomController.ZoomMode.FIT_WIDTH) return scaledSize;
+        return Math.max(minimumManualTextSize, scaledSize);
     }
 
     @Override
@@ -183,8 +202,14 @@ final class SpreadsheetRowAdapter
                 R.dimen.viewer_row_header_width
         );
         baseRowHeight = parent.getResources().getDimensionPixelSize(R.dimen.viewer_cell_height);
+        minimumManualRowHeight = parent.getResources().getDimensionPixelSize(
+                R.dimen.viewer_cell_manual_min_height
+        );
         basePadding = parent.getResources().getDimensionPixelSize(R.dimen.viewer_cell_padding);
-        baseTextSize = 14f * parent.getResources().getDisplayMetrics().scaledDensity;
+        baseTextSize = parent.getResources().getDimension(R.dimen.viewer_cell_text_size);
+        minimumManualTextSize = parent.getResources().getDimension(
+                R.dimen.viewer_cell_manual_min_text_size
+        );
     }
 
     private void calculateColumnWidths(ViewGroup parent) {
@@ -230,16 +255,6 @@ final class SpreadsheetRowAdapter
         for (int index = 0; index < baseColumnWidths.length; index++) {
             scaledColumnWidths[index] = Math.max(1, Math.round(baseColumnWidths[index] * scale));
         }
-    }
-
-    private int scaledPadding() {
-        float paddingScale = Math.max(0.35f, Math.min(2f, scale));
-        return Math.max(1, Math.round(basePadding * paddingScale));
-    }
-
-    private float scaledTextSize() {
-        float textScale = Math.max(0.65f, Math.min(2f, scale));
-        return baseTextSize * textScale;
     }
 
     final class ViewHolder extends RecyclerView.ViewHolder {
@@ -295,9 +310,9 @@ final class SpreadsheetRowAdapter
                     getScaledRowHeight()
             );
             rowNumberView.setLayoutParams(rowNumberParams);
-            rowNumberView.setTextSize(TypedValue.COMPLEX_UNIT_PX, scaledTextSize());
+            rowNumberView.setTextSize(TypedValue.COMPLEX_UNIT_PX, getScaledTextSize());
 
-            int padding = scaledPadding();
+            int padding = getScaledPadding();
             for (int column = 0; column < scaledColumnWidths.length; column++) {
                 TextView cell = (TextView) cellContainer.getChildAt(column);
                 cell.setLayoutParams(new LinearLayout.LayoutParams(
@@ -305,7 +320,7 @@ final class SpreadsheetRowAdapter
                         ViewGroup.LayoutParams.MATCH_PARENT
                 ));
                 cell.setPadding(padding, 0, padding, 0);
-                cell.setTextSize(TypedValue.COMPLEX_UNIT_PX, scaledTextSize());
+                cell.setTextSize(TypedValue.COMPLEX_UNIT_PX, getScaledTextSize());
             }
         }
 

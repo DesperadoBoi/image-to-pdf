@@ -6,7 +6,7 @@ final class SpreadsheetViewportState {
     private final float verticalOffset;
     private final float centerContentX;
     private final float centerContentY;
-    private final boolean fitWidth;
+    private final ZoomController.ZoomMode zoomMode;
     private final boolean hasViewportPosition;
 
     private SpreadsheetViewportState(
@@ -15,20 +15,28 @@ final class SpreadsheetViewportState {
             float verticalOffset,
             float centerContentX,
             float centerContentY,
-            boolean fitWidth,
+            ZoomController.ZoomMode zoomMode,
             boolean hasViewportPosition
     ) {
-        this.scale = ZoomController.clampZoom(scale);
+        this.zoomMode = zoomMode;
+        this.scale = ZoomController.clampZoom(scale, zoomMode);
         this.horizontalOffset = Math.max(0f, horizontalOffset);
         this.verticalOffset = Math.max(0f, verticalOffset);
         this.centerContentX = Math.max(0f, centerContentX);
         this.centerContentY = Math.max(0f, centerContentY);
-        this.fitWidth = fitWidth;
         this.hasViewportPosition = hasViewportPosition;
     }
 
-    static SpreadsheetViewportState initialFitWidth() {
-        return new SpreadsheetViewportState(1f, 0f, 0f, 0f, 0f, true, false);
+    static SpreadsheetViewportState initialNormal() {
+        return new SpreadsheetViewportState(
+                ZoomController.NORMAL_ZOOM,
+                0f,
+                0f,
+                0f,
+                0f,
+                ZoomController.ZoomMode.ZOOM_100,
+                false
+        );
     }
 
     static SpreadsheetViewportState positioned(
@@ -37,7 +45,7 @@ final class SpreadsheetViewportState {
             float verticalOffset,
             float centerContentX,
             float centerContentY,
-            boolean fitWidth
+            ZoomController.ZoomMode zoomMode
     ) {
         return new SpreadsheetViewportState(
                 scale,
@@ -45,7 +53,7 @@ final class SpreadsheetViewportState {
                 verticalOffset,
                 centerContentX,
                 centerContentY,
-                fitWidth,
+                zoomMode,
                 true
         );
     }
@@ -57,7 +65,7 @@ final class SpreadsheetViewportState {
                 verticalOffset,
                 centerContentX,
                 centerContentY,
-                false,
+                ZoomController.ZoomMode.MANUAL,
                 hasViewportPosition
         );
     }
@@ -82,8 +90,8 @@ final class SpreadsheetViewportState {
         return centerContentY;
     }
 
-    boolean isFitWidth() {
-        return fitWidth;
+    ZoomController.ZoomMode getZoomMode() {
+        return zoomMode;
     }
 
     boolean hasViewportPosition() {

@@ -303,7 +303,7 @@
     <string name="viewer_title_default">Просмотр документа</string>
     <string name="viewer_back_content_description">Назад</string>
     <string name="viewer_share_content_description">Поделиться документом</string>
-    <string name="viewer_more_content_description">Информация о файле</string>
+    <string name="viewer_more_content_description">Другие действия</string>
     <string name="viewer_loading_content_description">Документ загружается</string>
     <string name="viewer_loading_title">Открываем документ</string>
     <string name="viewer_loading_opening">Проверяем и открываем файл…</string>
@@ -323,8 +323,11 @@
     <string name="viewer_image_content_description">Изображение. Доступны масштабирование и перемещение</string>
     <string name="viewer_text_content_description">Текст документа</string>
     <string name="viewer_table_content_description">Таблица документа</string>
+    <string name="viewer_zoom_100">Масштаб 100%</string>
     <string name="viewer_fit_width">Вписать по ширине</string>
     <string name="viewer_fit_width_content_description">Вписать таблицу по ширине</string>
+    <string name="viewer_fit_width_applied">Таблица вписана по ширине</string>
+    <string name="viewer_zoom_indicator">%1$d%%</string>
     <string name="viewer_zoom_announcement">Масштаб %1$d процентов</string>
     <string name="viewer_column_header_content_description">Столбец %1$s</string>
     <string name="viewer_sheet_selector_content_description">Выбор листа книги XLSX</string>
@@ -367,6 +370,7 @@
     <string name="viewer_share_chooser">Поделиться документом</string>
     <string name="viewer_share_unavailable">Нет приложения для отправки файла</string>
     <string name="viewer_share_failed">Не удалось подготовить файл для отправки</string>
+    <string name="viewer_file_info_action">Информация о файле</string>
     <string name="viewer_info_title">Информация о файле</string>
     <string name="viewer_info_name_label">Имя</string>
     <string name="viewer_info_type_label">Тип</string>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="@dimen/viewer_zoom_indicator_corner_radius" />
+    <solid android:color="?attr/colorPrimaryContainer" />
+    <padding
+        android:left="@dimen/viewer_zoom_indicator_horizontal_padding"
+        android:top="@dimen/viewer_zoom_indicator_vertical_padding"
+        android:right="@dimen/viewer_zoom_indicator_horizontal_padding"
+        android:bottom="@dimen/viewer_zoom_indicator_vertical_padding" />
+</shape>

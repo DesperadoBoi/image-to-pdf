@@ -3,6 +3,7 @@ package com.desperadoboi.imagetopdf.ui.viewer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 import org.w3c.dom.Document;
@@ -61,18 +62,75 @@ public final class DocumentViewerVisualContractTest {
     }
 
     @Test
-    public void spreadsheetUsesUnifiedTwoDimensionalViewport() throws Exception {
+    public void spreadsheetUsesUnifiedTwoDimensionalViewportAndTransientZoomIndicator()
+            throws Exception {
         Document document = parse(repositoryRoot().resolve(
                 "app/src/main/res/layout/activity_document_viewer.xml"
         ));
         Element viewport = byId(document, "@+id/viewport_viewer_spreadsheet");
-        Element fitWidth = byId(document, "@+id/button_viewer_fit_width");
+        Element indicator = byId(document, "@+id/text_viewer_zoom_indicator");
 
         assertEquals("com.desperadoboi.imagetopdf.ui.viewer.SpreadsheetViewport",
                 viewport.getTagName());
-        assertEquals("@string/viewer_fit_width_content_description",
-                fitWidth.getAttributeNS(ANDROID, "contentDescription"));
+        assertEquals("false", indicator.getAttributeNS(ANDROID, "clickable"));
+        assertEquals("no", indicator.getAttributeNS(ANDROID, "importantForAccessibility"));
         assertEquals(0, document.getElementsByTagName("HorizontalScrollView").getLength());
+    }
+
+    @Test
+    public void toolbarKeepsOnlyNavigationTitleShareAndOverflow() throws Exception {
+        Document document = parse(repositoryRoot().resolve(
+                "app/src/main/res/layout/activity_document_viewer.xml"
+        ));
+
+        assertNotNull(findById(document, "@+id/button_viewer_back"));
+        assertNotNull(findById(document, "@+id/text_viewer_title"));
+        assertNotNull(findById(document, "@+id/button_viewer_share"));
+        assertNotNull(findById(document, "@+id/button_viewer_more"));
+        assertNull(findById(document, "@+id/button_viewer_fit_width"));
+    }
+
+    @Test
+    public void overflowContainsLocalizedSpreadsheetZoomCommands() throws Exception {
+        Document menu = parse(repositoryRoot().resolve(
+                "app/src/main/res/menu/document_viewer_overflow.xml"
+        ));
+        assertEquals(
+                "@string/viewer_zoom_100",
+                byId(menu, "@+id/action_viewer_zoom_100").getAttributeNS(ANDROID, "title")
+        );
+        assertEquals(
+                "@string/viewer_fit_width",
+                byId(menu, "@+id/action_viewer_fit_width").getAttributeNS(ANDROID, "title")
+        );
+
+        Document russian = parse(repositoryRoot().resolve(
+                "app/src/main/res/values/strings.xml"
+        ));
+        Document english = parse(repositoryRoot().resolve(
+                "app/src/main/res/values-en/viewer_strings.xml"
+        ));
+        assertEquals("Масштаб 100%", namedText(russian, "viewer_zoom_100"));
+        assertEquals("Вписать по ширине", namedText(russian, "viewer_fit_width"));
+        assertEquals("Zoom to 100%", namedText(english, "viewer_zoom_100"));
+        assertEquals("Fit to width", namedText(english, "viewer_fit_width"));
+    }
+
+    @Test
+    public void manualZoomKeepsReadableCellFloors() throws Exception {
+        Document dimensions = parse(repositoryRoot().resolve(
+                "app/src/main/res/values/dimens.xml"
+        ));
+
+        assertEquals("14sp", namedText(dimensions, "viewer_cell_text_size"));
+        assertEquals("10.5sp", namedText(
+                dimensions,
+                "viewer_cell_manual_min_text_size"
+        ));
+        assertEquals("40dp", namedText(
+                dimensions,
+                "viewer_cell_manual_min_height"
+        ));
     }
 
     @Test
@@ -100,12 +158,18 @@ public final class DocumentViewerVisualContractTest {
     }
 
     private static Element byId(Document document, String id) {
+        Element element = findById(document, id);
+        if (element != null) return element;
+        throw new AssertionError("Missing view " + id);
+    }
+
+    private static Element findById(Document document, String id) {
         NodeList elements = document.getElementsByTagName("*");
         for (int index = 0; index < elements.getLength(); index++) {
             Element element = (Element) elements.item(index);
             if (id.equals(element.getAttributeNS(ANDROID, "id"))) return element;
         }
-        throw new AssertionError("Missing view " + id);
+        return null;
     }
 
     private static Element findNamed(Document document, String tag, String name) {
@@ -115,6 +179,13 @@ public final class DocumentViewerVisualContractTest {
             if (name.equals(element.getAttribute("name"))) return element;
         }
         return null;
+    }
+
+    private static String namedText(Document document, String name) {
+        Element element = findNamed(document, "string", name);
+        if (element == null) element = findNamed(document, "dimen", name);
+        if (element == null) throw new AssertionError("Missing resource " + name);
+        return element.getTextContent();
     }
 
     private static Document parse(Path path) throws Exception {

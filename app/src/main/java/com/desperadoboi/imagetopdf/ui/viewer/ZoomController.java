@@ -1,9 +1,16 @@
 package com.desperadoboi.imagetopdf.ui.viewer;
 
 public final class ZoomController {
-    public static final float MIN_ZOOM = 0.25f;
+    public static final float MIN_ZOOM = 0.60f;
+    public static final float MIN_OVERVIEW_ZOOM = 0.25f;
     public static final float NORMAL_ZOOM = 1f;
     public static final float MAX_ZOOM = 3f;
+
+    enum ZoomMode {
+        MANUAL,
+        ZOOM_100,
+        FIT_WIDTH
+    }
 
     private ZoomController() {
     }
@@ -11,6 +18,17 @@ public final class ZoomController {
     public static float clampZoom(float zoom) {
         if (!Float.isFinite(zoom)) return NORMAL_ZOOM;
         return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+    }
+
+    static float clampZoom(float zoom, ZoomMode mode) {
+        if (mode == ZoomMode.ZOOM_100) return NORMAL_ZOOM;
+        if (mode == ZoomMode.FIT_WIDTH) return clampOverviewZoom(zoom);
+        return clampZoom(zoom);
+    }
+
+    static float clampOverviewZoom(float zoom) {
+        if (!Float.isFinite(zoom)) return NORMAL_ZOOM;
+        return Math.max(MIN_OVERVIEW_ZOOM, Math.min(MAX_ZOOM, zoom));
     }
 
     public static float calculateFitScale(float availableContentWidth, float sheetWidth) {
@@ -39,12 +57,12 @@ public final class ZoomController {
     ) {
         if (!Float.isFinite(sheetWidth) || sheetWidth <= 0f) return NORMAL_ZOOM;
         if (!Float.isFinite(availableContentWidth) || availableContentWidth <= 0f) {
-            return MIN_ZOOM;
+            return MIN_OVERVIEW_ZOOM;
         }
-        float fitLimit = clampZoom(maximumFitScale);
+        float fitLimit = clampOverviewZoom(maximumFitScale);
         return Math.max(
-                MIN_ZOOM,
-                Math.min(fitLimit, clampZoom(availableContentWidth / sheetWidth))
+                MIN_OVERVIEW_ZOOM,
+                Math.min(fitLimit, clampOverviewZoom(availableContentWidth / sheetWidth))
         );
     }
 

@@ -52,7 +52,7 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
     private boolean scaling;
     private boolean pinchInGesture;
     private boolean skipNextPan;
-    private boolean fitWidthMode = true;
+    private ZoomController.ZoomMode zoomMode = ZoomController.ZoomMode.ZOOM_100;
     private boolean hasData;
     @Nullable private SpreadsheetViewportState pendingState;
     @Nullable private OnZoomChangeListener zoomChangeListener;
@@ -107,6 +107,8 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         horizontalOffset = 0f;
         rowAdapter.setHorizontalOffset(0f);
         bodyLayoutManager.scrollToPositionWithOffset(0, 0);
+        zoomMode = state.getZoomMode();
+        rowAdapter.setZoom(state.getScale(), zoomMode);
         rowAdapter.submit(data, this);
         hasData = !data.getRows().isEmpty();
         rebuildColumnHeaders();
@@ -121,29 +123,46 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         float contentWidth = getContentViewportWidth();
         float bodyHeight = bodyRecycler.getHeight();
         float centerX = (horizontalOffset + (contentWidth / 2f)) / scale;
-        float centerY = (verticalOffset + (bodyHeight / 2f)) / scale;
+        float centerY = (verticalOffset + (bodyHeight / 2f))
+                / rowAdapter.getVerticalScale();
         return SpreadsheetViewportState.positioned(
                 scale,
                 horizontalOffset,
                 verticalOffset,
                 centerX,
                 centerY,
-                fitWidthMode
+                zoomMode
         );
     }
 
     void fitToWidth() {
         if (!hasData || getWidth() <= 0) return;
         stopMotion();
-        fitWidthMode = true;
         float nextScale = calculateFitScale();
-        applyScaleImmediately(nextScale, getWidth() / 2f, getHeight() / 2f);
+        applyScaleImmediately(
+                nextScale,
+                getWidth() / 2f,
+                getHeight() / 2f,
+                ZoomController.ZoomMode.FIT_WIDTH
+        );
         setHorizontalOffset(0f);
         notifyZoomChanged(true, true);
     }
 
-    boolean isFitWidthMode() {
-        return fitWidthMode;
+    void zoomToNormal() {
+        if (!hasData || getWidth() <= 0) return;
+        stopMotion();
+        applyScaleImmediately(
+                ZoomController.NORMAL_ZOOM,
+                getWidth() / 2f,
+                getHeight() / 2f,
+                ZoomController.ZoomMode.ZOOM_100
+        );
+        notifyZoomChanged(true, true);
+    }
+
+    ZoomController.ZoomMode getZoomMode() {
+        return zoomMode;
     }
 
     float getZoom() {
@@ -194,8 +213,9 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
                 horizontalOffset,
                 getVerticalOffset(),
                 (horizontalOffset + (oldContentWidth / 2f)) / scale,
-                (getVerticalOffset() + (oldBodyHeight / 2f)) / scale,
-                fitWidthMode
+                (getVerticalOffset() + (oldBodyHeight / 2f))
+                        / rowAdapter.getVerticalScale(),
+                zoomMode
         );
         pendingState = state;
         post(this::restorePendingState);
@@ -259,9 +279,11 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         SpreadsheetViewportState state = pendingState;
         if (state == null || getWidth() <= 0 || bodyRecycler.getHeight() <= 0) return;
         pendingState = null;
-        fitWidthMode = state.isFitWidth();
-        float scale = fitWidthMode ? calculateFitScale() : state.getScale();
-        rowAdapter.setScale(scale);
+        zoomMode = state.getZoomMode();
+        float scale = zoomMode == ZoomController.ZoomMode.FIT_WIDTH
+                ? calculateFitScale()
+                : state.getScale();
+        rowAdapter.setZoom(scale, zoomMode);
         targetScale = scale;
         updateHeaderMetrics();
 
@@ -270,7 +292,7 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         if (state.hasViewportPosition()) {
             horizontal = (state.getCenterContentX() * scale)
                     - (getContentViewportWidth() / 2f);
-            vertical = (state.getCenterContentY() * scale)
+            vertical = (state.getCenterContentY() * rowAdapter.getVerticalScale())
                     - (bodyRecycler.getHeight() / 2f);
         }
         setHorizontalOffset(horizontal);
@@ -316,13 +338,8 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
     private void updateHeaderMetrics() {
         int rowHeaderWidth = rowAdapter.getRowHeaderWidth();
         int headerHeight = rowAdapter.getHeaderHeight();
-        int padding = Math.max(
-                1,
-                Math.round(rowAdapter.getBasePadding()
-                        * Math.max(0.35f, Math.min(2f, rowAdapter.getScale())))
-        );
-        float textSize = rowAdapter.getBaseTextSize()
-                * Math.max(0.65f, Math.min(2f, rowAdapter.getScale()));
+        int padding = rowAdapter.getScaledPadding();
+        float textSize = rowAdapter.getScaledTextSize();
 
         FrameLayout.LayoutParams columnsParams = new FrameLayout.LayoutParams(
                 rowAdapter.getScaledSheetWidth(),
@@ -361,14 +378,27 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         if (Float.isNaN(pendingScale)) return;
         float scale = pendingScale;
         pendingScale = Float.NaN;
-        applyScaleImmediately(scale, pendingFocusX, pendingFocusY);
+        applyScaleImmediately(
+                scale,
+                pendingFocusX,
+                pendingFocusY,
+                ZoomController.ZoomMode.MANUAL
+        );
         notifyZoomChanged(false, true);
     }
 
-    private void applyScaleImmediately(float scale, float focusX, float focusY) {
+    private void applyScaleImmediately(
+            float scale,
+            float focusX,
+            float focusY,
+            ZoomController.ZoomMode nextZoomMode
+    ) {
         float oldScale = rowAdapter.getScale();
-        float newScale = ZoomController.clampZoom(scale);
-        if (Math.abs(oldScale - newScale) < 0.0001f) return;
+        float oldVerticalScale = rowAdapter.getVerticalScale();
+        float newScale = ZoomController.clampZoom(scale, nextZoomMode);
+        boolean scaleChanged = Math.abs(oldScale - newScale) >= 0.0001f;
+        boolean modeChanged = zoomMode != nextZoomMode;
+        if (!scaleChanged && !modeChanged) return;
 
         float localFocusX = clamp(
                 focusX - rowAdapter.getRowHeaderWidth(),
@@ -386,14 +416,14 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
                 newScale,
                 localFocusX
         );
+        zoomMode = nextZoomMode;
+        rowAdapter.setZoom(newScale, zoomMode);
         float nextVerticalOffset = ZoomController.preserveFocalPoint(
                 getVerticalOffset(),
-                oldScale,
-                newScale,
+                oldVerticalScale,
+                rowAdapter.getVerticalScale(),
                 localFocusY
         );
-
-        rowAdapter.setScale(newScale);
         targetScale = newScale;
         updateHeaderMetrics();
         requestLayout();
@@ -510,7 +540,7 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         if (zoomChangeListener != null) {
             zoomChangeListener.onZoomChanged(
                     rowAdapter.getScale(),
-                    fitWidthMode,
+                    zoomMode,
                     finished,
                     userInitiated
             );
@@ -528,8 +558,13 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
             scaling = true;
             pinchInGesture = true;
             skipNextPan = true;
-            fitWidthMode = false;
-            targetScale = rowAdapter.getScale();
+            targetScale = ZoomController.clampZoom(rowAdapter.getScale());
+            applyScaleImmediately(
+                    targetScale,
+                    detector.getFocusX(),
+                    detector.getFocusY(),
+                    ZoomController.ZoomMode.MANUAL
+            );
             notifyZoomChanged(false, true);
             return true;
         }
@@ -589,21 +624,21 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         @Override
         public boolean onDoubleTap(MotionEvent event) {
             stopMotion();
-            if (fitWidthMode) {
-                fitWidthMode = false;
-                applyScaleImmediately(
-                        ZoomController.NORMAL_ZOOM,
-                        event.getX(),
-                        event.getY()
-                );
-            } else {
-                fitWidthMode = true;
+            if (zoomMode == ZoomController.ZoomMode.ZOOM_100) {
                 applyScaleImmediately(
                         calculateFitScale(),
                         event.getX(),
-                        event.getY()
+                        event.getY(),
+                        ZoomController.ZoomMode.FIT_WIDTH
                 );
                 setHorizontalOffset(0f);
+            } else {
+                applyScaleImmediately(
+                        ZoomController.NORMAL_ZOOM,
+                        event.getX(),
+                        event.getY(),
+                        ZoomController.ZoomMode.ZOOM_100
+                );
             }
             notifyZoomChanged(true, true);
             return true;
@@ -756,7 +791,7 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
     interface OnZoomChangeListener {
         void onZoomChanged(
                 float scale,
-                boolean fitWidth,
+                ZoomController.ZoomMode zoomMode,
                 boolean finished,
                 boolean userInitiated
         );
