@@ -3,7 +3,7 @@ package com.desperadoboi.imagetopdf.document;
 public enum DocumentType {
     PDF("application/pdf", true),
     XLS("application/vnd.ms-excel", false),
-    XLSX("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", false),
+    XLSX("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", true),
     CSV("text/csv", true),
     TSV("text/tab-separated-values", true),
     TEXT("text/plain", true),

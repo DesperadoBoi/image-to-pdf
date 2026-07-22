@@ -21,7 +21,7 @@ public final class DocumentViewerCatalogPresentationTest {
     private static final String DESCRIPTION_KEY = "tool_document_viewer_description";
 
     @Test
-    public void localizedDescriptionsListSupportedCategoriesWithoutExcel() throws Exception {
+    public void localizedDescriptionsListExactSupportedFormatsWithoutExcel() throws Exception {
         String ru = readString(
                 repositoryRoot().resolve("app/src/main/res/values/strings.xml"),
                 DESCRIPTION_KEY
@@ -33,8 +33,16 @@ public final class DocumentViewerCatalogPresentationTest {
 
         assertFalse(ru.toLowerCase(Locale.ROOT).contains("excel"));
         assertFalse(en.toLowerCase(Locale.ROOT).contains("excel"));
-        assertContainsAll(ru.toLowerCase(Locale.ROOT), "pdf", "текст", "таблиц", "изображен");
-        assertContainsAll(en.toLowerCase(Locale.ROOT), "pdf", "text", "table", "image");
+        assertContainsAll(
+                ru.toLowerCase(Locale.ROOT),
+                "pdf", "xlsx", "csv", "текст", "изображен"
+        );
+        assertContainsAll(
+                en.toLowerCase(Locale.ROOT),
+                "pdf", "xlsx", "csv", "text", "image"
+        );
+        assertFalse(ru.toLowerCase(Locale.ROOT).contains("таблиц"));
+        assertFalse(en.toLowerCase(Locale.ROOT).contains("table"));
     }
 
     @Test
@@ -42,6 +50,17 @@ public final class DocumentViewerCatalogPresentationTest {
         assertEquals(
                 ToolAvailability.AVAILABLE,
                 ToolCatalog.get(ToolId.DOCUMENT_VIEWER).getAvailability()
+        );
+    }
+
+    @Test
+    public void oldXlsMessageIsExplicitAndActionable() throws Exception {
+        assertEquals(
+                "Старый формат XLS пока не поддерживается. Сохраните файл как XLSX.",
+                readString(
+                        repositoryRoot().resolve("app/src/main/res/values/strings.xml"),
+                        "viewer_error_xls_not_supported"
+                )
         );
     }
 

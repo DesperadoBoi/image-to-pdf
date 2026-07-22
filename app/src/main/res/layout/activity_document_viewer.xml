@@ -281,20 +281,48 @@
             android:paddingBottom="@dimen/content_spacing_large"
             android:visibility="gone" />
 
-        <HorizontalScrollView
+        <LinearLayout
             android:id="@+id/content_viewer_spreadsheet"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fillViewport="true"
-            android:scrollbars="horizontal"
+            android:orientation="vertical"
             android:visibility="gone">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_viewer_spreadsheet"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:contentDescription="@string/viewer_table_content_description" />
-        </HorizontalScrollView>
+            <TextView
+                android:id="@+id/text_viewer_sheet_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/viewer_content_margin"
+                android:paddingTop="@dimen/viewer_content_margin"
+                android:paddingEnd="@dimen/viewer_content_margin"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnSurface"
+                android:visibility="gone"
+                tools:text="Лист: Данные" />
+
+            <Spinner
+                android:id="@+id/spinner_viewer_sheets"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/touch_target"
+                android:layout_marginStart="@dimen/viewer_content_margin"
+                android:layout_marginEnd="@dimen/viewer_content_margin"
+                android:contentDescription="@string/viewer_sheet_selector_content_description"
+                android:visibility="gone" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true"
+                android:scrollbars="horizontal">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_viewer_spreadsheet"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/viewer_table_content_description" />
+            </HorizontalScrollView>
+        </LinearLayout>
 
         <TextView
             android:id="@+id/text_viewer_notice"

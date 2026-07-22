@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="tool_document_viewer">Document viewer</string>
-    <string name="tool_document_viewer_description">PDFs, text, tables, and images</string>
+    <string name="tool_document_viewer_description">PDFs, XLSX, CSV, text, and images</string>
+    <string name="viewer_loading_xlsx">Checking and reading XLSX…</string>
+    <string name="viewer_sheet_selector_content_description">Select an XLSX workbook sheet</string>
+    <string name="viewer_current_sheet">Sheet: %1$s</string>
+    <string name="viewer_current_sheet_content_description">Sheet %1$s, %2$d of %3$d</string>
+    <string name="viewer_notice_xlsx_truncated">Showing a safe portion of the large XLSX workbook</string>
+    <string name="viewer_error_xls_not_supported">The old XLS format is not supported yet. Save the file as XLSX.</string>
+    <string name="viewer_error_xlsx_corrupted">The XLSX workbook is damaged, encrypted, or uses an unsupported structure</string>
+    <string name="viewer_error_xlsx_too_large">The XLSX workbook exceeds safe local viewing limits</string>
 </resources>

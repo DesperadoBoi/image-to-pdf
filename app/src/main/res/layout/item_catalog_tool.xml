@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/catalog_tool_item_height"
+    android:layout_height="wrap_content"
     android:layout_margin="@dimen/tool_grid_half_gap"
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
@@ -58,7 +58,6 @@
         android:includeFontPadding="false"
         android:importantForAccessibility="no"
         android:maxLines="2"
-        android:minLines="2"
         android:textAppearance="?attr/textAppearanceLabelLarge"
         android:textColor="?attr/colorOnSurface"
         tools:text="Изображение в PDF" />

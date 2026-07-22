@@ -1,28 +1,40 @@
 package com.desperadoboi.imagetopdf.document;
 
-import org.junit.Test;
+import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxTestFixtures;
 
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import static org.junit.Assert.assertEquals;
 
-public class DocumentTypeResolverTest {
+public final class DocumentTypeResolverTest {
+    @Rule
+    public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
     private final DocumentTypeResolver resolver = new DocumentTypeResolver();
 
     @Test
     public void resolvesSupportedMimeTypes() {
-        assertEquals(DocumentType.PDF, resolveMime("application/pdf"));
-        assertEquals(DocumentType.XLS, resolveMime("application/vnd.ms-excel"));
-        assertEquals(DocumentType.XLSX, resolveMime(
+        assertEquals(DocumentType.PDF, resolver.fromMimeType("application/pdf"));
+        assertEquals(DocumentType.XLS, resolver.fromMimeType("application/vnd.ms-excel"));
+        assertEquals(DocumentType.XLSX, resolver.fromMimeType(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ));
-        assertEquals(DocumentType.CSV, resolveMime("application/csv"));
-        assertEquals(DocumentType.TSV, resolveMime("text/tab-separated-values"));
-        assertEquals(DocumentType.TEXT, resolveMime("text/plain"));
-        assertEquals(DocumentType.JPEG, resolveMime("image/jpeg"));
+        assertEquals(DocumentType.CSV, resolver.fromMimeType("application/csv"));
+        assertEquals(DocumentType.TSV, resolver.fromMimeType("text/tab-separated-values"));
+        assertEquals(DocumentType.TEXT, resolver.fromMimeType("text/plain"));
+        assertEquals(DocumentType.JPEG, resolver.fromMimeType("image/jpeg"));
     }
 
     @Test
@@ -45,24 +57,88 @@ public class DocumentTypeResolverTest {
     }
 
     @Test
-    public void resolvesXlsxOnlyWithRequiredWorkbookEntries() {
-        byte[] zip = new byte[]{'P', 'K', 3, 4};
-        assertEquals(DocumentType.XLSX, resolver.resolve(
-                null,
-                zip,
-                new HashSet<>(Arrays.asList("[Content_Types].xml", "xl/workbook.xml")),
-                "unknown.bin"
+    public void resolvesOnlyStructurallyValidXlsx() throws Exception {
+        Path xlsx = XlsxTestFixtures.minimalWorkbook(
+                fixture("valid.xlsx").toPath(),
+                XlsxTestFixtures.worksheet(
+                        "<sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c></row></sheetData>"
+                )
+        );
+        assertEquals(DocumentType.XLSX, resolveFile(
+                xlsx.toFile(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "valid.xlsx"
         ));
-        assertEquals(DocumentType.UNKNOWN, resolver.resolve(
-                null,
-                zip,
-                Collections.singleton("word/document.xml"),
-                "unknown.bin"
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                xlsx.toFile(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "macro.xlsm"
+        ));
+
+        Map<String, byte[]> ordinaryEntries = new LinkedHashMap<>();
+        ordinaryEntries.put("word/document.xml", XlsxTestFixtures.bytes("<document/>"));
+        File ordinaryZip = fixture("ordinary.zip");
+        XlsxTestFixtures.writeStoredZip(ordinaryZip.toPath(), ordinaryEntries);
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                ordinaryZip,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "renamed.xlsx"
+        ));
+
+        Map<String, byte[]> incompleteEntries = new LinkedHashMap<>();
+        incompleteEntries.put("[Content_Types].xml", XlsxTestFixtures.bytes("<Types/>"));
+        File incomplete = fixture("incomplete.xlsx");
+        XlsxTestFixtures.writeStoredZip(incomplete.toPath(), incompleteEntries);
+        assertEquals(DocumentType.UNKNOWN, resolveFile(incomplete, null, "incomplete.xlsx"));
+
+        Map<String, byte[]> invalidContentTypes = readEntries(xlsx.toFile());
+        invalidContentTypes.put(
+                "[Content_Types].xml",
+                XlsxTestFixtures.bytes(
+                        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+                                + "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/xml\"/>"
+                                + "</Types>"
+                )
+        );
+        File wrongContentTypes = fixture("wrong-content-types.xlsx");
+        XlsxTestFixtures.writeStoredZip(wrongContentTypes.toPath(), invalidContentTypes);
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                wrongContentTypes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "wrong-content-types.xlsx"
+        ));
+
+        Map<String, byte[]> externalWorkbookRelationship = readEntries(xlsx.toFile());
+        externalWorkbookRelationship.put(
+                "xl/_rels/workbook.xml.rels",
+                XlsxTestFixtures.bytes(
+                        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                                + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"https://example.invalid/sheet.xml\" TargetMode=\"External\"/>"
+                                + "</Relationships>"
+                )
+        );
+        File externalSheet = fixture("external-sheet.xlsx");
+        XlsxTestFixtures.writeStoredZip(externalSheet.toPath(), externalWorkbookRelationship);
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                externalSheet,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "external-sheet.xlsx"
         ));
     }
 
     @Test
-    public void extensionIsFallback() {
+    public void xlsxMimeAndExtensionNeverOverrideWrongSignature() throws Exception {
+        File text = fixture("wrong.xlsx");
+        Files.write(text.toPath(), bytes("plain text"));
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                text,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "wrong.xlsx"
+        ));
+    }
+
+    @Test
+    public void extensionIsFallbackForTextFormats() {
         assertEquals(DocumentType.CSV, resolver.resolve(
                 null,
                 bytes("a,b"),
@@ -97,17 +173,31 @@ public class DocumentTypeResolverTest {
         ));
     }
 
-    private DocumentType resolveMime(String mimeType) {
-        return resolver.resolve(
-                mimeType,
-                bytes("plain preview"),
-                Collections.emptySet(),
-                "file"
-        );
+    private DocumentType resolveFile(File file, String mime, String displayName) throws Exception {
+        byte[] contents = Files.readAllBytes(file.toPath());
+        byte[] prefix = new byte[Math.min(8 * 1024, contents.length)];
+        System.arraycopy(contents, 0, prefix, 0, prefix.length);
+        return resolver.resolve(mime, prefix, file, displayName);
     }
 
     private DocumentType resolve(byte[] signature, String displayName) {
         return resolver.resolve(null, signature, Collections.emptySet(), displayName);
+    }
+
+    private File fixture(String name) throws Exception {
+        return temporaryFolder.newFile(name);
+    }
+
+    private Map<String, byte[]> readEntries(File file) throws Exception {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        try (ZipFile zipFile = new ZipFile(file)) {
+            java.util.Enumeration<? extends ZipEntry> enumeration = zipFile.entries();
+            while (enumeration.hasMoreElements()) {
+                ZipEntry entry = enumeration.nextElement();
+                entries.put(entry.getName(), zipFile.getInputStream(entry).readAllBytes());
+            }
+        }
+        return entries;
     }
 
     private byte[] bytes(String value) {

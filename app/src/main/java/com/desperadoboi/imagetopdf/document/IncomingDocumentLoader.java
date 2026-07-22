@@ -9,13 +9,9 @@ import android.provider.OpenableColumns;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipException;
-import java.util.zip.ZipFile;
+
+import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxParseException;
 
 public final class IncomingDocumentLoader {
     private static final int SIGNATURE_BYTES = 8 * 1024;
@@ -57,13 +53,10 @@ public final class IncomingDocumentLoader {
         long actualSize = cachedFile.length();
         try {
             byte[] prefix = readPrefix(cachedFile);
-            Set<String> zipEntries = isZip(prefix)
-                    ? inspectZip(cachedFile)
-                    : java.util.Collections.emptySet();
             DocumentType documentType = documentTypeResolver.resolve(
                     sourceMimeType,
                     prefix,
-                    zipEntries,
+                    cachedFile,
                     metadata.displayName
             );
             if (!DocumentLimits.isAllowedKnownSize(actualSize, documentType)) {
@@ -83,6 +76,15 @@ public final class IncomingDocumentLoader {
         } catch (DocumentLoadException exception) {
             temporaryDocumentStore.delete(cachedFile);
             throw exception;
+        } catch (XlsxParseException exception) {
+            temporaryDocumentStore.delete(cachedFile);
+            throw new DocumentLoadException(
+                    exception.getReason() == XlsxParseException.Reason.TOO_LARGE
+                            ? DocumentLoadException.Reason.TOO_LARGE
+                            : DocumentLoadException.Reason.CORRUPTED,
+                    "Unable to inspect XLSX package",
+                    exception
+            );
         } catch (IOException | RuntimeException exception) {
             temporaryDocumentStore.delete(cachedFile);
             throw new DocumentLoadException(
@@ -146,62 +148,6 @@ public final class IncomingDocumentLoader {
             System.arraycopy(bytes, 0, shortened, 0, offset);
             return shortened;
         }
-    }
-
-    private Set<String> inspectZip(File file) throws DocumentLoadException {
-        Set<String> entries = new HashSet<>();
-        int entryCount = 0;
-        long uncompressedTotal = 0L;
-        try (ZipFile zipFile = new ZipFile(file)) {
-            java.util.Enumeration<? extends ZipEntry> enumeration = zipFile.entries();
-            while (enumeration.hasMoreElements()) {
-                ZipEntry entry = enumeration.nextElement();
-                entryCount++;
-                if (entryCount > DocumentLimits.MAX_ZIP_ENTRIES) {
-                    throw zipLimitException();
-                }
-                long size = entry.getSize();
-                long compressedSize = entry.getCompressedSize();
-                if (size > 0L) {
-                    uncompressedTotal += size;
-                    if (uncompressedTotal > DocumentLimits.MAX_ZIP_UNCOMPRESSED_BYTES) {
-                        throw zipLimitException();
-                    }
-                    if (compressedSize > 0L
-                            && size / Math.max(1L, compressedSize) > DocumentLimits.MAX_ZIP_RATIO) {
-                        throw zipLimitException();
-                    }
-                }
-                String normalized = entry.getName().replace('\\', '/');
-                if (!normalized.startsWith("/") && !normalized.contains("../")) {
-                    entries.add(normalized);
-                }
-            }
-            return entries;
-        } catch (ZipException exception) {
-            throw new DocumentLoadException(
-                    DocumentLoadException.Reason.CORRUPTED,
-                    "Invalid ZIP package",
-                    exception
-            );
-        } catch (IOException exception) {
-            throw new DocumentLoadException(
-                    DocumentLoadException.Reason.CORRUPTED,
-                    "Unable to inspect ZIP package",
-                    exception
-            );
-        }
-    }
-
-    private DocumentLoadException zipLimitException() {
-        return new DocumentLoadException(
-                DocumentLoadException.Reason.TOO_LARGE,
-                "Compressed document exceeds safe limits"
-        );
-    }
-
-    private boolean isZip(byte[] bytes) {
-        return bytes.length >= 4 && bytes[0] == 'P' && bytes[1] == 'K';
     }
 
     private static final class Metadata {

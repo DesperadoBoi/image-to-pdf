@@ -50,6 +50,13 @@ com.desperadoboi.imagetopdf
 участвует в fragment navigation `MainActivity`, не получает общий editor ViewModel и не
 импортирует внешние документы в текущую сессию.
 
+XLSX обрабатывается из app-cache копии через изолированный `SpreadsheetParser`:
+`XlsxPackageInspector` проверяет ZIP/OOXML package и relationships, а
+`XlsxSpreadsheetParser` потоково читает workbook, shared strings, styles и worksheets через
+`XmlPullParser`. UI переиспользует виртуализированный spreadsheet `RecyclerView`, хранит
+выбранный лист при rotation и не создаёт View для всей книги. Старый XLS остаётся отдельным
+будущим этапом.
+
 ## Целевая UI-архитектура
 
 - одна `Activity` как контейнер;

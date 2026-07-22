@@ -4,9 +4,13 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.io.File;
 import java.util.Collections;
 import java.util.Locale;
 import java.util.Set;
+
+import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxPackageInspector;
+import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxParseException;
 
 public final class DocumentTypeResolver {
     private static final byte[] PDF = {'%', 'P', 'D', 'F'};
@@ -25,10 +29,7 @@ public final class DocumentTypeResolver {
             String displayName
     ) {
         byte[] safePrefix = prefix == null ? new byte[0] : prefix;
-        Set<String> safeZipEntries = zipEntryNames == null
-                ? Collections.emptySet()
-                : zipEntryNames;
-        DocumentType signatureType = fromSignature(safePrefix, safeZipEntries);
+        DocumentType signatureType = fromSignature(safePrefix);
         if (signatureType != DocumentType.UNKNOWN) {
             return signatureType;
         }
@@ -52,6 +53,36 @@ public final class DocumentTypeResolver {
             return extensionType;
         }
         return isLikelyUtfText(safePrefix) ? DocumentType.TEXT : DocumentType.UNKNOWN;
+    }
+
+    public DocumentType resolve(
+            String mimeType,
+            byte[] prefix,
+            File cachedFile,
+            String displayName
+    ) throws XlsxParseException {
+        byte[] safePrefix = prefix == null ? new byte[0] : prefix;
+        if (isZip(safePrefix)) {
+            String safeName = SafeDisplayName.sanitize(displayName).toLowerCase(Locale.ROOT);
+            if (safeName.endsWith(".xlsm")
+                    || safeName.endsWith(".xlsb")
+                    || safeName.endsWith(".xlam")) {
+                return DocumentType.UNKNOWN;
+            }
+            return XlsxPackageInspector.inspect(cachedFile).isXlsx()
+                    ? DocumentType.XLSX
+                    : DocumentType.UNKNOWN;
+        }
+        DocumentType resolved = resolve(
+                mimeType,
+                safePrefix,
+                Collections.emptySet(),
+                displayName
+        );
+        if (resolved == DocumentType.XLSX) {
+            return DocumentType.UNKNOWN;
+        }
+        return resolved;
     }
 
     public DocumentType fromMimeType(String mimeType) {
@@ -86,7 +117,7 @@ public final class DocumentTypeResolver {
         }
     }
 
-    private DocumentType fromSignature(byte[] bytes, Set<String> zipEntries) {
+    private DocumentType fromSignature(byte[] bytes) {
         if (startsWith(bytes, PDF)) {
             return DocumentType.PDF;
         }
@@ -109,11 +140,6 @@ public final class DocumentTypeResolver {
         }
         if (isHeif(bytes)) {
             return DocumentType.HEIC;
-        }
-        if (isZip(bytes)
-                && zipEntries.contains("[Content_Types].xml")
-                && zipEntries.contains("xl/workbook.xml")) {
-            return DocumentType.XLSX;
         }
         return DocumentType.UNKNOWN;
     }

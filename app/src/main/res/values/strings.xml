@@ -298,7 +298,7 @@
     </plurals>
 
     <string name="tool_document_viewer">Просмотр документов</string>
-    <string name="tool_document_viewer_description">PDF, текст, таблицы и изображения</string>
+    <string name="tool_document_viewer_description">PDF, XLSX, CSV, текст и изображения</string>
 
     <string name="viewer_title_default">Просмотр документа</string>
     <string name="viewer_back_content_description">Назад</string>
@@ -312,6 +312,7 @@
     <string name="viewer_loading_image">Открываем изображение…</string>
     <string name="viewer_loading_text">Читаем текст…</string>
     <string name="viewer_loading_table">Читаем таблицу…</string>
+    <string name="viewer_loading_xlsx">Проверяем и читаем XLSX…</string>
     <string name="viewer_previous_page">Назад</string>
     <string name="viewer_next_page">Далее</string>
     <string name="viewer_page_counter">%1$d из %2$d</string>
@@ -322,13 +323,17 @@
     <string name="viewer_image_content_description">Изображение. Доступны масштабирование и перемещение</string>
     <string name="viewer_text_content_description">Текст документа</string>
     <string name="viewer_table_content_description">Таблица документа</string>
+    <string name="viewer_sheet_selector_content_description">Выбор листа книги XLSX</string>
+    <string name="viewer_current_sheet">Лист: %1$s</string>
+    <string name="viewer_current_sheet_content_description">Лист %1$s, %2$d из %3$d</string>
     <string name="viewer_cell_content_description">Строка %1$d, столбец %2$s: %3$s</string>
     <string name="viewer_notice_text_truncated">Показана безопасная часть большого текстового файла</string>
     <string name="viewer_notice_table_truncated">Показана безопасная часть большой таблицы</string>
+    <string name="viewer_notice_xlsx_truncated">Показана безопасная часть большой книги XLSX</string>
 
     <string name="viewer_error_unsupported_title">Формат не поддерживается</string>
-    <string name="viewer_error_invalid_request">Можно открыть только переданный PDF, текст, таблицу CSV или изображение</string>
-    <string name="viewer_error_excel_not_supported">Просмотр XLS и XLSX пока недоступен в этой версии</string>
+    <string name="viewer_error_invalid_request">Можно открыть только переданный PDF, XLSX, CSV, текст или изображение</string>
+    <string name="viewer_error_xls_not_supported">Старый формат XLS пока не поддерживается. Сохраните файл как XLSX.</string>
     <string name="viewer_error_unknown_format">Не удалось безопасно определить формат файла</string>
     <string name="viewer_error_permission_title">Нет доступа к файлу</string>
     <string name="viewer_error_permission">Разрешение на чтение потеряно. Выберите файл ещё раз</string>
@@ -351,6 +356,8 @@
     <string name="viewer_error_image_corrupted">Изображение повреждено или не декодируется на этом устройстве</string>
     <string name="viewer_error_text_corrupted">Не удалось безопасно прочитать текст</string>
     <string name="viewer_error_table_corrupted">Структура таблицы повреждена или слишком сложна</string>
+    <string name="viewer_error_xlsx_corrupted">Книга XLSX повреждена, зашифрована или содержит неподдерживаемую структуру</string>
+    <string name="viewer_error_xlsx_too_large">Книга XLSX превышает безопасные пределы локального просмотра</string>
 
     <string name="viewer_share_chooser">Поделиться документом</string>
     <string name="viewer_share_unavailable">Нет приложения для отправки файла</string>
@@ -376,8 +383,8 @@
     <string name="viewer_type_png">PNG</string>
     <string name="viewer_type_webp">WebP</string>
     <string name="viewer_type_heic">HEIC/HEIF</string>
-    <string name="viewer_type_xls">Excel XLS</string>
-    <string name="viewer_type_xlsx">Excel XLSX</string>
+    <string name="viewer_type_xls">XLS</string>
+    <string name="viewer_type_xlsx">XLSX</string>
     <string name="viewer_type_unknown">Неизвестный</string>
 
     <plurals name="viewer_pages_count">

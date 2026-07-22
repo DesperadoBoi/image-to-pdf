@@ -29,14 +29,14 @@ public class DocumentViewerManifestTest {
         assertViewerResolves("text/csv");
         assertViewerResolves("text/tab-separated-values");
         assertViewerResolves("application/csv");
+        assertViewerResolves(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
         assertViewerResolves("image/jpeg");
         assertViewerResolves("image/png");
         assertViewerResolves("image/webp");
         assertViewerDoesNotResolve("application/octet-stream");
         assertViewerDoesNotResolve("application/vnd.ms-excel");
-        assertViewerDoesNotResolve(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        );
     }
 
     private void assertViewerResolves(String mimeType) {
