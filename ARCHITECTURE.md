@@ -39,12 +39,15 @@ com.desperadoboi.imagetopdf
 └── util
 ```
 
-`MainActivity` сейчас является контейнером экранов. `HomeFragment` является dashboard, `ImagePickerFragment` показывает внутреннюю MediaStore-галерею и системные fallback-источники, `AllToolsFragment` показывает секционный каталог инструментов, `EditorFragment` отвечает за страницы и генерацию, а `PdfResultFragment` — за отдельный успешный сценарий.
+`MainActivity` сейчас является контейнером экранов. `HomeFragment` является dashboard, `ImagePickerFragment` показывает внутреннюю MediaStore-галерею и системные fallback-источники, `AllToolsFragment` показывает секционный каталог инструментов, `EditorFragment` отвечает за страницы и генерацию, `PdfResultFragment` — за отдельный успешный сценарий, а `AboutFragment` и `PrivacyPolicyFragment` — за публикационную информацию и локальную политику конфиденциальности.
 
 ## Целевая UI-архитектура
 
 - одна `Activity` как контейнер;
 - отдельные `Fragment` для домашнего dashboard, полного каталога и редактора страниц;
+- `AboutFragment` и локальный scrollable `PrivacyPolicyFragment` открываются из Home через
+  обычный FragmentManager и back stack; внешний URL передаётся браузеру через `ACTION_VIEW`,
+  поэтому приложению не требуется `INTERNET` permission;
 - `HomeFragment` показывает четыре колонки из восьми инструментов, не содержит фиктивной истории, поиска или настроек;
 - `AllToolsFragment` использует один секционный `RecyclerView` и существующий fragment-контейнер без новой Activity и Navigation Component;
 - immutable `ToolCatalog` является единственной точкой истины для `ToolId`, category, availability, title/icon resources и порядка Home/каталога;

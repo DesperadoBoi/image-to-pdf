@@ -90,6 +90,9 @@ public final class HomeFragment extends Fragment {
         ));
         toolsRecyclerView.setAdapter(adapter);
         adapter.submitList(ToolCatalog.getHomeTools());
+        view.findViewById(R.id.button_home_about).setOnClickListener(
+                ignored -> openAbout()
+        );
         configureCatalogToolResult();
     }
 
@@ -144,6 +147,12 @@ public final class HomeFragment extends Fragment {
     private void openImagePicker() {
         if (navigationCallback != null) {
             navigationCallback.onImagePickerRequested(ImageImportMode.NEW_DOCUMENT);
+        }
+    }
+
+    private void openAbout() {
+        if (navigationCallback != null) {
+            navigationCallback.onAboutRequested();
         }
     }
 
@@ -236,6 +245,8 @@ public final class HomeFragment extends Fragment {
         void onImagesSelectedForEditing();
 
         void onAllToolsRequested();
+
+        void onAboutRequested();
 
         void onImagePickerRequested(ImageImportMode mode);
 

@@ -1,12 +1,12 @@
 # ImageToPDF Privacy Policy
 
-Effective date: **[POLICY EFFECTIVE DATE]**
+Effective date: **July 22, 2026**
 
-Developer: **[DEVELOPER NAME]**
+Developer: **DesperadoBoi**
 
-Contact email: **[CONTACT EMAIL]**
+Contact email: **mihaelkruspe@gmail.com**
 
-Public policy URL: **[PUBLIC POLICY URL]**
+Public policy URL: **https://desperadoboi.github.io/image-to-pdf/privacy/en/**
 
 ## Scope
 
