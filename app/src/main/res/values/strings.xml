@@ -1,4 +1,5 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="MissingTranslation">
     <string name="app_name">ImageToPDF</string>
     <string name="home_subtitle">Работа с изображениями и PDF</string>
     <string name="tools_title">Инструменты</string>
@@ -297,13 +298,14 @@
     </plurals>
 
     <string name="tool_document_viewer">Просмотр документов</string>
-    <string name="tool_document_viewer_description">Открывайте PDF, таблицы, текст и изображения</string>
+    <string name="tool_document_viewer_description">PDF, текст, таблицы и изображения</string>
 
     <string name="viewer_title_default">Просмотр документа</string>
-    <string name="viewer_back_content_description">Закрыть просмотр документа</string>
+    <string name="viewer_back_content_description">Назад</string>
     <string name="viewer_share_content_description">Поделиться документом</string>
     <string name="viewer_more_content_description">Информация о файле</string>
     <string name="viewer_loading_content_description">Документ загружается</string>
+    <string name="viewer_loading_title">Открываем документ</string>
     <string name="viewer_loading_opening">Проверяем и открываем файл…</string>
     <string name="viewer_loading_pdf">Открываем PDF…</string>
     <string name="viewer_loading_page">Готовим страницу…</string>
@@ -314,8 +316,8 @@
     <string name="viewer_next_page">Далее</string>
     <string name="viewer_page_counter">%1$d из %2$d</string>
     <string name="viewer_page_announcement">Страница %1$d из %2$d</string>
-    <string name="viewer_previous_page_content_description">Перейти к странице %1$d</string>
-    <string name="viewer_next_page_content_description">Перейти к странице %1$d</string>
+    <string name="viewer_previous_page_content_description">Предыдущая страница, перейти к странице %1$d</string>
+    <string name="viewer_next_page_content_description">Следующая страница, перейти к странице %1$d</string>
     <string name="viewer_pdf_page_content_description">Страница PDF. Доступны масштабирование и перемещение</string>
     <string name="viewer_image_content_description">Изображение. Доступны масштабирование и перемещение</string>
     <string name="viewer_text_content_description">Текст документа</string>
@@ -343,6 +345,8 @@
     <string name="viewer_error_empty_text">В текстовом файле нет содержимого</string>
     <string name="viewer_error_empty_table">В таблице нет строк</string>
     <string name="viewer_error_pdf_corrupted_or_encrypted">PDF повреждён либо защищён паролем</string>
+    <string name="viewer_error_encrypted_title">PDF защищён паролем</string>
+    <string name="viewer_error_encrypted">Откройте незашифрованную копию документа</string>
     <string name="viewer_error_pdf_page">Не удалось отобразить эту страницу PDF</string>
     <string name="viewer_error_image_corrupted">Изображение повреждено или не декодируется на этом устройстве</string>
     <string name="viewer_error_text_corrupted">Не удалось безопасно прочитать текст</string>
@@ -352,7 +356,16 @@
     <string name="viewer_share_unavailable">Нет приложения для отправки файла</string>
     <string name="viewer_share_failed">Не удалось подготовить файл для отправки</string>
     <string name="viewer_info_title">Информация о файле</string>
-    <string name="viewer_info_message">Имя: %1$s\nТип: %2$s\nРазмер: %3$s\nСтраницы: %4$s\nРежим: %5$s</string>
+    <string name="viewer_info_name_label">Имя</string>
+    <string name="viewer_info_type_label">Тип</string>
+    <string name="viewer_info_size_label">Размер</string>
+    <string name="viewer_info_pages_label">Страницы</string>
+    <string name="viewer_info_mode_label">Режим</string>
+    <string name="viewer_info_row_content_description">%1$s: %2$s</string>
+    <string name="viewer_action_cancel">Отмена</string>
+    <string name="viewer_action_close">Закрыть</string>
+    <string name="viewer_action_done">Готово</string>
+    <string name="viewer_state_announcement">%1$s. %2$s</string>
     <string name="viewer_info_not_available">Нет данных</string>
     <string name="viewer_read_only">Только чтение</string>
     <string name="viewer_type_pdf">PDF</string>

@@ -12,6 +12,12 @@
     <color name="app_secondary_text">#FF656B7A</color>
     <color name="app_outline">#FFC5CAD4</color>
     <color name="editor_preview_background">#FF111722</color>
+    <color name="viewer_preview_background">#FFE8EBF1</color>
+    <color name="viewer_tool_tile_background">#FF0B1428</color>
+    <color name="viewer_tool_tile_border">#FF2B3B63</color>
+    <color name="viewer_tool_document">#FF5A7FF0</color>
+    <color name="viewer_tool_document_fold">#FF91AEFF</color>
+    <color name="viewer_tool_view_accent">#FF9B8CFF</color>
     <color name="editor_overlay_button_background">#E6FFFFFF</color>
     <color name="source_gallery_icon">#FF5450C8</color>
     <color name="source_gallery_container">#FFE8E7FF</color>

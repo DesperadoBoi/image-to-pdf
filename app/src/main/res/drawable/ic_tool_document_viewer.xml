@@ -5,9 +5,23 @@
     android:viewportWidth="60"
     android:viewportHeight="60">
     <path
-        android:fillColor="@color/app_accent_container"
-        android:pathData="M12,5h28l8,8v42h-36z" />
+        android:fillColor="@color/viewer_tool_tile_background"
+        android:pathData="M14,1.5h32c6.9,0 12.5,5.6 12.5,12.5v32c0,6.9 -5.6,12.5 -12.5,12.5h-32c-6.9,0 -12.5,-5.6 -12.5,-12.5v-32c0,-6.9 5.6,-12.5 12.5,-12.5z"
+        android:strokeColor="@color/viewer_tool_tile_border"
+        android:strokeWidth="1" />
     <path
-        android:fillColor="@color/app_accent"
-        android:pathData="M40,5v10h8zM19,24h22v3h-22zM19,32h22v3h-22zM19,40h15v3h-15z" />
+        android:fillColor="@color/viewer_tool_document"
+        android:pathData="M20,12h14l7,7v27c0,2.2 -1.8,4 -4,4h-17c-2.2,0 -4,-1.8 -4,-4v-30c0,-2.2 1.8,-4 4,-4z" />
+    <path
+        android:fillColor="@color/viewer_tool_document_fold"
+        android:pathData="M34,12v7h7z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M20.5,33c2.4,-3.3 5.2,-5 8.5,-5s6.1,1.7 8.5,5c-2.4,3.3 -5.2,5 -8.5,5s-6.1,-1.7 -8.5,-5z"
+        android:strokeColor="@color/viewer_tool_view_accent"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.2" />
+    <path
+        android:fillColor="@color/viewer_tool_view_accent"
+        android:pathData="M29,30.5a2.5,2.5 0,1 1,0 5a2.5,2.5 0,1 1,0 -5z" />
 </vector>

@@ -8,11 +8,14 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
@@ -69,10 +72,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private int knownPageCount;
 
     private TextView titleView;
-    private MaterialButton shareButton;
+    private View shareButton;
     private View loadingState;
     private TextView loadingText;
     private View errorState;
+    private ImageView errorIcon;
     private TextView errorTitle;
     private TextView errorMessage;
     private View pdfContent;
@@ -156,6 +160,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         loadingState = findViewById(R.id.state_viewer_loading);
         loadingText = findViewById(R.id.text_viewer_loading);
         errorState = findViewById(R.id.state_viewer_error);
+        errorIcon = findViewById(R.id.image_viewer_error);
         errorTitle = findViewById(R.id.text_viewer_error_title);
         errorMessage = findViewById(R.id.text_viewer_error_message);
         pdfContent = findViewById(R.id.content_viewer_pdf);
@@ -190,6 +195,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         findViewById(R.id.button_viewer_back).setOnClickListener(ignored -> finish());
         shareButton.setOnClickListener(ignored -> shareDocument());
         findViewById(R.id.button_viewer_more).setOnClickListener(ignored -> showFileInfo());
+        findViewById(R.id.button_viewer_cancel_loading).setOnClickListener(ignored -> finish());
+        findViewById(R.id.button_viewer_close_error).setOnClickListener(ignored -> finish());
         previousPageButton.setOnClickListener(ignored -> changePage(-1));
         nextPageButton.setOnClickListener(ignored -> changePage(1));
         pdfImage.setOnSwipeListener(new ZoomableImageView.OnSwipeListener() {
@@ -206,6 +213,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         Uri uri = validateIntent(intent);
         if (uri == null) {
             showError(
+                    R.drawable.ic_viewer_state_unsupported_48,
                     R.string.viewer_error_unsupported_title,
                     R.string.viewer_error_invalid_request
             );
@@ -238,7 +246,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             } catch (OutOfMemoryError error) {
                 runOnUiThread(() -> {
                     if (generation == generations.get()) {
-                        showError(R.string.viewer_error_memory_title, R.string.viewer_error_memory);
+                        showError(
+                                R.drawable.ic_viewer_state_too_large_48,
+                                R.string.viewer_error_memory_title,
+                                R.string.viewer_error_memory
+                        );
                     }
                 });
             }
@@ -264,6 +276,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         shareButton.setEnabled(type.isViewable());
         if (!type.isViewable()) {
             showError(
+                    R.drawable.ic_viewer_state_unsupported_48,
                     R.string.viewer_error_unsupported_title,
                     type == DocumentType.XLS || type == DocumentType.XLSX
                             ? R.string.viewer_error_excel_not_supported
@@ -290,7 +303,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             public void onOpened(int pageCount) {
                 knownPageCount = pageCount;
                 if (pageCount <= 0) {
-                    showError(R.string.viewer_error_empty_title, R.string.viewer_error_empty_pdf);
+                    showError(
+                            R.drawable.ic_viewer_state_unsupported_48,
+                            R.string.viewer_error_empty_title,
+                            R.string.viewer_error_empty_pdf
+                    );
                     return;
                 }
                 pdfPageState = new PdfPageState(pageCount, restoredPage);
@@ -299,10 +316,19 @@ public final class DocumentViewerActivity extends AppCompatActivity {
 
             @Override
             public void onError(Exception exception) {
-                showError(
-                        R.string.viewer_error_corrupted_title,
-                        R.string.viewer_error_pdf_corrupted_or_encrypted
-                );
+                if (isSecurityFailure(exception)) {
+                    showError(
+                            R.drawable.ic_viewer_state_encrypted_48,
+                            R.string.viewer_error_encrypted_title,
+                            R.string.viewer_error_encrypted
+                    );
+                } else {
+                    showError(
+                            R.drawable.ic_viewer_state_corrupted_48,
+                            R.string.viewer_error_corrupted_title,
+                            R.string.viewer_error_pdf_corrupted_or_encrypted
+                    );
+                }
             }
         });
     }
@@ -335,6 +361,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                     @Override
                     public void onError(Exception exception) {
                         showError(
+                                R.drawable.ic_viewer_state_corrupted_48,
                                 R.string.viewer_error_corrupted_title,
                                 R.string.viewer_error_pdf_page
                         );
@@ -354,6 +381,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         int current = pdfPageState.getCurrentPage() + 1;
         int total = pdfPageState.getPageCount();
         pageCounter.setText(getString(R.string.viewer_page_counter, current, total));
+        pageCounter.setContentDescription(getString(
+                R.string.viewer_page_announcement,
+                current,
+                total
+        ));
         previousPageButton.setEnabled(pdfPageState.hasPrevious());
         nextPageButton.setEnabled(pdfPageState.hasNext());
         previousPageButton.setContentDescription(getString(
@@ -389,6 +421,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                     @Override
                     public void onError(Exception exception) {
                         showError(
+                                R.drawable.ic_viewer_state_corrupted_48,
                                 R.string.viewer_error_corrupted_title,
                                 R.string.viewer_error_image_corrupted
                         );
@@ -406,7 +439,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (generation != generations.get()) return;
                     if (preview.getLines().isEmpty()) {
-                        showError(R.string.viewer_error_empty_title, R.string.viewer_error_empty_text);
+                        showError(
+                                R.drawable.ic_viewer_state_unsupported_48,
+                                R.string.viewer_error_empty_title,
+                                R.string.viewer_error_empty_text
+                        );
                         return;
                     }
                     ((TextLineAdapter) textContent.getAdapter()).submit(preview.getLines());
@@ -416,6 +453,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 });
             } catch (Exception exception) {
                 runOnUiThread(() -> showError(
+                        R.drawable.ic_viewer_state_corrupted_48,
                         R.string.viewer_error_corrupted_title,
                         R.string.viewer_error_text_corrupted
                 ));
@@ -443,7 +481,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (generation != generations.get()) return;
                     if (data.getRows().isEmpty()) {
-                        showError(R.string.viewer_error_empty_title, R.string.viewer_error_empty_table);
+                        showError(
+                                R.drawable.ic_viewer_state_unsupported_48,
+                                R.string.viewer_error_empty_title,
+                                R.string.viewer_error_empty_table
+                        );
                         return;
                     }
                     SpreadsheetRowAdapter adapter =
@@ -458,6 +500,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 });
             } catch (Exception exception) {
                 runOnUiThread(() -> showError(
+                        R.drawable.ic_viewer_state_corrupted_48,
                         R.string.viewer_error_corrupted_title,
                         R.string.viewer_error_table_corrupted
                 ));
@@ -505,19 +548,74 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                         knownPageCount
                 )
                 : getString(R.string.viewer_info_not_available);
-        String message = getString(
-                R.string.viewer_info_message,
-                currentDocument.getDisplayName(),
-                typeLabel(currentDocument.getDocumentType()),
-                FileSizeFormatter.format(currentDocument.getSizeBytes(), Locale.getDefault()),
-                pages,
+        View dialogView = getLayoutInflater().inflate(
+                R.layout.dialog_viewer_file_info,
+                null,
+                false
+        );
+        bindInfoRow(
+                dialogView,
+                R.id.row_viewer_info_name,
+                R.id.text_viewer_info_name,
+                R.string.viewer_info_name_label,
+                currentDocument.getDisplayName()
+        );
+        bindInfoRow(
+                dialogView,
+                R.id.row_viewer_info_type,
+                R.id.text_viewer_info_type,
+                R.string.viewer_info_type_label,
+                typeLabel(currentDocument.getDocumentType())
+        );
+        bindInfoRow(
+                dialogView,
+                R.id.row_viewer_info_size,
+                R.id.text_viewer_info_size,
+                R.string.viewer_info_size_label,
+                FileSizeFormatter.format(currentDocument.getSizeBytes(), Locale.getDefault())
+        );
+        bindInfoRow(
+                dialogView,
+                R.id.row_viewer_info_pages,
+                R.id.text_viewer_info_pages,
+                R.string.viewer_info_pages_label,
+                pages
+        );
+        bindInfoRow(
+                dialogView,
+                R.id.row_viewer_info_mode,
+                R.id.text_viewer_info_mode,
+                R.string.viewer_info_mode_label,
                 getString(R.string.viewer_read_only)
         );
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.viewer_info_title)
-                .setMessage(message)
-                .setPositiveButton(android.R.string.ok, null)
+                .setView(dialogView)
+                .setPositiveButton(R.string.viewer_action_done, null)
                 .show();
+    }
+
+    private void bindInfoRow(
+            View dialogView,
+            int rowId,
+            int valueId,
+            @StringRes int labelResId,
+            CharSequence value
+    ) {
+        ViewGroup row = dialogView.findViewById(rowId);
+        TextView valueView = dialogView.findViewById(valueId);
+        valueView.setText(value);
+        row.setContentDescription(getString(
+                R.string.viewer_info_row_content_description,
+                getString(labelResId),
+                value
+        ));
+        row.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        for (int index = 0; index < row.getChildCount(); index++) {
+            row.getChildAt(index).setImportantForAccessibility(
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            );
+        }
     }
 
     private String typeLabel(DocumentType type) {
@@ -539,19 +637,35 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private void showLoadFailure(DocumentLoadException exception) {
         switch (exception.getReason()) {
             case PERMISSION_LOST:
-                showError(R.string.viewer_error_permission_title, R.string.viewer_error_permission);
+                showError(
+                        R.drawable.ic_viewer_state_permission_48,
+                        R.string.viewer_error_permission_title,
+                        R.string.viewer_error_permission
+                );
                 break;
             case TOO_LARGE:
-                showError(R.string.viewer_error_too_large_title, R.string.viewer_error_too_large);
+                showError(
+                        R.drawable.ic_viewer_state_too_large_48,
+                        R.string.viewer_error_too_large_title,
+                        R.string.viewer_error_too_large
+                );
                 break;
             case CORRUPTED:
-                showError(R.string.viewer_error_corrupted_title, R.string.viewer_error_corrupted);
+                showError(
+                        R.drawable.ic_viewer_state_corrupted_48,
+                        R.string.viewer_error_corrupted_title,
+                        R.string.viewer_error_corrupted
+                );
                 break;
             case CANCELLED:
                 break;
             case UNREADABLE:
             default:
-                showError(R.string.viewer_error_open_title, R.string.viewer_error_open);
+                showError(
+                        R.drawable.ic_viewer_state_permission_48,
+                        R.string.viewer_error_open_title,
+                        R.string.viewer_error_open
+                );
                 break;
         }
     }
@@ -561,16 +675,38 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         loadingText.setText(messageResId);
         loadingState.setVisibility(View.VISIBLE);
         loadingState.bringToFront();
-        loadingState.announceForAccessibility(getString(messageResId));
+        loadingState.announceForAccessibility(getString(
+                R.string.viewer_state_announcement,
+                getString(R.string.viewer_loading_title),
+                getString(messageResId)
+        ));
         shareButton.setEnabled(currentDocument != null);
     }
 
-    private void showError(int titleResId, int messageResId) {
+    private void showError(
+            @DrawableRes int iconResId,
+            @StringRes int titleResId,
+            @StringRes int messageResId
+    ) {
         hideAllStates();
+        errorIcon.setImageResource(iconResId);
         errorTitle.setText(titleResId);
         errorMessage.setText(messageResId);
         errorState.setVisibility(View.VISIBLE);
-        errorState.announceForAccessibility(getString(messageResId));
+        errorState.announceForAccessibility(getString(
+                R.string.viewer_state_announcement,
+                getString(titleResId),
+                getString(messageResId)
+        ));
+    }
+
+    private boolean isSecurityFailure(Exception exception) {
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof SecurityException) return true;
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     private void showOnly(View content) {
