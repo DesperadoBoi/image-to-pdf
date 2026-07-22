@@ -37,7 +37,8 @@ public final class AllToolsLayoutDensityTest {
         assertFalse(title.hasAttributeNS(ANDROID, "minLines"));
 
         Element description = byId(document, "@+id/text_tool_description");
-        assertEquals("2", description.getAttributeNS(ANDROID, "maxLines"));
+        assertEquals("1", description.getAttributeNS(ANDROID, "maxLines"));
+        assertEquals("end", description.getAttributeNS(ANDROID, "ellipsize"));
         assertEquals("gone", description.getAttributeNS(ANDROID, "visibility"));
     }
 

@@ -2,8 +2,8 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <corners android:radius="12dp" />
-    <solid android:color="@color/viewer_preview_background" />
+    <solid android:color="?attr/colorSurfaceVariant" />
     <stroke
         android:width="@dimen/standard_outline_width"
-        android:color="@color/viewer_document_border" />
+        android:color="?attr/colorOutline" />
 </shape>

@@ -10,7 +10,6 @@
     <color name="app_secondary_text">#FFAEB6C7</color>
     <color name="app_outline">#FF46536B</color>
     <color name="editor_preview_background">#FF070B12</color>
-    <color name="viewer_preview_background">#FF0E1522</color>
     <color name="viewer_tool_tile_background">#FF111A2D</color>
     <color name="viewer_tool_tile_border">#FF40527B</color>
     <color name="viewer_tool_document">#FF7E98FF</color>

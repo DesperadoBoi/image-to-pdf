@@ -13,6 +13,14 @@
     <color name="app_outline">#FFC5CAD4</color>
     <color name="editor_preview_background">#FF111722</color>
     <color name="viewer_preview_background">#FFE8EBF1</color>
+    <color name="viewer_document_surface">#FFFFFFFF</color>
+    <color name="viewer_document_border">#FFC9D1DC</color>
+    <color name="viewer_document_text">#FF1D2633</color>
+    <color name="viewer_table_grid">#FFD3DAE3</color>
+    <color name="viewer_table_column_header">#FFE8EEF5</color>
+    <color name="viewer_table_row_header">#FFF2F5F8</color>
+    <color name="viewer_table_corner_header">#FFDDE5EE</color>
+    <color name="viewer_image_background">#FF0E1522</color>
     <color name="viewer_tool_tile_background">#FF0B1428</color>
     <color name="viewer_tool_tile_border">#FF2B3B63</color>
     <color name="viewer_tool_document">#FF5A7FF0</color>

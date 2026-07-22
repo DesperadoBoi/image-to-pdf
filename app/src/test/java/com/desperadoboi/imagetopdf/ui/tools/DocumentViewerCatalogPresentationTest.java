@@ -21,7 +21,15 @@ public final class DocumentViewerCatalogPresentationTest {
     private static final String DESCRIPTION_KEY = "tool_document_viewer_description";
 
     @Test
-    public void localizedDescriptionsListExactSupportedFormatsWithoutExcel() throws Exception {
+    public void localizedPresentationIsCompactAndListsPrimaryFormats() throws Exception {
+        String ruTitle = readString(
+                repositoryRoot().resolve("app/src/main/res/values/strings.xml"),
+                "tool_document_viewer"
+        );
+        String enTitle = readString(
+                repositoryRoot().resolve("app/src/main/res/values-en/viewer_strings.xml"),
+                "tool_document_viewer"
+        );
         String ru = readString(
                 repositoryRoot().resolve("app/src/main/res/values/strings.xml"),
                 DESCRIPTION_KEY
@@ -31,15 +39,19 @@ public final class DocumentViewerCatalogPresentationTest {
                 DESCRIPTION_KEY
         );
 
+        assertEquals("Просмотр файлов", ruTitle);
+        assertEquals("File viewer", enTitle);
+        assertEquals("PDF, XLSX, CSV и изображения", ru);
+        assertEquals("PDF, XLSX, CSV, and images", en);
         assertFalse(ru.toLowerCase(Locale.ROOT).contains("excel"));
         assertFalse(en.toLowerCase(Locale.ROOT).contains("excel"));
         assertContainsAll(
                 ru.toLowerCase(Locale.ROOT),
-                "pdf", "xlsx", "csv", "текст", "изображен"
+                "pdf", "xlsx", "csv", "изображен"
         );
         assertContainsAll(
                 en.toLowerCase(Locale.ROOT),
-                "pdf", "xlsx", "csv", "text", "image"
+                "pdf", "xlsx", "csv", "image"
         );
         assertFalse(ru.toLowerCase(Locale.ROOT).contains("таблиц"));
         assertFalse(en.toLowerCase(Locale.ROOT).contains("table"));

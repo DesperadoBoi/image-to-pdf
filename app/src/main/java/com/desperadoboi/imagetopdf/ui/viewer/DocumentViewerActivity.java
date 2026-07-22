@@ -101,6 +101,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private RecyclerView textContent;
     private View spreadsheetContent;
     private RecyclerView spreadsheetRecycler;
+    private View sheetControls;
     private TextView sheetNameView;
     private Spinner sheetSpinner;
     private TextView noticeView;
@@ -199,6 +200,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         textContent = findViewById(R.id.content_viewer_text);
         spreadsheetContent = findViewById(R.id.content_viewer_spreadsheet);
         spreadsheetRecycler = findViewById(R.id.recycler_viewer_spreadsheet);
+        sheetControls = findViewById(R.id.layout_viewer_sheet_controls);
         sheetNameView = findViewById(R.id.text_viewer_sheet_name);
         sheetSpinner = findViewById(R.id.spinner_viewer_sheets);
         noticeView = findViewById(R.id.text_viewer_notice);
@@ -507,6 +509,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
 
     private void showSpreadsheet() {
         showLoading(R.string.viewer_loading_table);
+        sheetControls.setVisibility(View.GONE);
         sheetNameView.setVisibility(View.GONE);
         sheetSpinner.setVisibility(View.GONE);
         long generation = generations.get();
@@ -609,8 +612,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         sheetSpinner.setAdapter(spinnerAdapter);
         selectedSheet = Math.max(0, Math.min(restoredSheet, sheetNames.size() - 1));
         sheetSpinner.setSelection(selectedSheet, false);
-        sheetNameView.setVisibility(View.VISIBLE);
-        sheetSpinner.setVisibility(sheetNames.size() > 1 ? View.VISIBLE : View.GONE);
+        boolean hasMultipleSheets = sheetNames.size() > 1;
+        sheetControls.setVisibility(View.VISIBLE);
+        sheetNameView.setVisibility(hasMultipleSheets ? View.GONE : View.VISIBLE);
+        sheetSpinner.setVisibility(hasMultipleSheets ? View.VISIBLE : View.GONE);
         showOnly(spreadsheetContent);
         showSelectedXlsxSheet();
     }

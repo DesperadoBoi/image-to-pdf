@@ -155,7 +155,7 @@
     <dimen name="viewer_toolbar_height">56dp</dimen>
     <dimen name="viewer_content_margin">8dp</dimen>
     <dimen name="viewer_controls_padding">8dp</dimen>
-    <dimen name="viewer_navigation_min_height">72dp</dimen>
+    <dimen name="viewer_navigation_min_height">64dp</dimen>
     <dimen name="viewer_page_indicator_min_width">88dp</dimen>
     <dimen name="viewer_state_icon_size">56dp</dimen>
     <dimen name="viewer_state_max_width">420dp</dimen>
@@ -165,8 +165,9 @@
     <dimen name="viewer_info_value_spacing">2dp</dimen>
     <dimen name="viewer_text_horizontal_padding">16dp</dimen>
     <dimen name="viewer_text_vertical_padding">4dp</dimen>
-    <dimen name="viewer_row_header_width">56dp</dimen>
-    <dimen name="viewer_cell_width">144dp</dimen>
+    <dimen name="viewer_row_header_width">48dp</dimen>
+    <dimen name="viewer_cell_min_width">104dp</dimen>
+    <dimen name="viewer_cell_max_width">224dp</dimen>
     <dimen name="viewer_cell_height">52dp</dimen>
-    <dimen name="viewer_cell_padding">8dp</dimen>
+    <dimen name="viewer_cell_padding">12dp</dimen>
 </resources>

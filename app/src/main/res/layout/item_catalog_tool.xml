@@ -73,7 +73,7 @@
         android:hyphenationFrequency="none"
         android:includeFontPadding="false"
         android:importantForAccessibility="no"
-        android:maxLines="2"
+        android:maxLines="1"
         android:textAppearance="?attr/textAppearanceBodySmall"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:visibility="gone"

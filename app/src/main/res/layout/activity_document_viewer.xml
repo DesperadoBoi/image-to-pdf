@@ -183,7 +183,7 @@
             android:id="@+id/content_viewer_pdf"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="?android:attr/colorBackground"
+            android:background="@color/viewer_preview_background"
             android:orientation="vertical"
             android:visibility="gone">
 
@@ -206,7 +206,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_viewer_previous_page"
-                    style="?attr/materialButtonTonalStyle"
+                    style="?attr/materialButtonOutlinedStyle"
                     android:layout_width="0dp"
                     android:layout_height="@dimen/touch_target"
                     android:ellipsize="end"
@@ -218,7 +218,7 @@
                     app:icon="@drawable/ic_action_chevron_left_24"
                     app:iconGravity="textStart"
                     app:iconPadding="0dp"
-                    app:iconTint="?attr/colorOnSecondaryContainer"
+                    app:iconTint="?attr/colorOnSurface"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toStartOf="@id/text_viewer_page_counter"
                     app:layout_constraintStart_toStartOf="parent"
@@ -235,7 +235,6 @@
                     android:paddingEnd="@dimen/content_spacing_small"
                     android:textAppearance="?attr/textAppearanceLabelLarge"
                     android:textColor="?attr/colorOnSurface"
-                    android:textStyle="bold"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
@@ -244,7 +243,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_viewer_next_page"
-                    style="?attr/materialButtonTonalStyle"
+                    style="?attr/materialButtonOutlinedStyle"
                     android:layout_width="0dp"
                     android:layout_height="@dimen/touch_target"
                     android:ellipsize="end"
@@ -256,7 +255,7 @@
                     app:icon="@drawable/ic_action_chevron_right_24"
                     app:iconGravity="textEnd"
                     app:iconPadding="0dp"
-                    app:iconTint="?attr/colorOnSecondaryContainer"
+                    app:iconTint="?attr/colorOnSurface"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@id/text_viewer_page_counter"
@@ -268,7 +267,7 @@
             android:id="@+id/content_viewer_image"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="?attr/colorSurfaceVariant"
+            android:background="@color/viewer_image_background"
             android:contentDescription="@string/viewer_image_content_description"
             android:visibility="gone" />
 
@@ -276,8 +275,11 @@
             android:id="@+id/content_viewer_text"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_margin="@dimen/viewer_content_margin"
+            android:background="@drawable/bg_viewer_text_surface"
             android:clipToPadding="false"
             android:contentDescription="@string/viewer_text_content_description"
+            android:paddingTop="@dimen/content_spacing_small"
             android:paddingBottom="@dimen/content_spacing_large"
             android:visibility="gone" />
 
@@ -285,34 +287,64 @@
             android:id="@+id/content_viewer_spreadsheet"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="@color/viewer_document_surface"
             android:orientation="vertical"
             android:visibility="gone">
 
-            <TextView
-                android:id="@+id/text_viewer_sheet_name"
+            <LinearLayout
+                android:id="@+id/layout_viewer_sheet_controls"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/bg_viewer_sheet_bar"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/viewer_toolbar_height"
+                android:orientation="horizontal"
                 android:paddingStart="@dimen/viewer_content_margin"
-                android:paddingTop="@dimen/viewer_content_margin"
                 android:paddingEnd="@dimen/viewer_content_margin"
-                android:textAppearance="?attr/textAppearanceTitleSmall"
-                android:textColor="?attr/colorOnSurface"
                 android:visibility="gone"
-                tools:text="Лист: Данные" />
+                tools:visibility="visible">
 
-            <Spinner
-                android:id="@+id/spinner_viewer_sheets"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/touch_target"
-                android:layout_marginStart="@dimen/viewer_content_margin"
-                android:layout_marginEnd="@dimen/viewer_content_margin"
-                android:contentDescription="@string/viewer_sheet_selector_content_description"
-                android:visibility="gone" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/viewer_sheet_label"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:id="@+id/text_viewer_sheet_name"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_marginStart="@dimen/viewer_content_margin"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_viewer_sheet_value"
+                    android:ellipsize="end"
+                    android:gravity="center_vertical"
+                    android:maxLines="1"
+                    android:paddingStart="@dimen/content_spacing_small"
+                    android:paddingEnd="@dimen/content_spacing_small"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:visibility="gone"
+                    tools:text="Данные"
+                    tools:visibility="visible" />
+
+                <Spinner
+                    android:id="@+id/spinner_viewer_sheets"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_marginStart="@dimen/viewer_content_margin"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/viewer_sheet_selector_content_description"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </LinearLayout>
 
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
+                android:background="@color/viewer_document_surface"
                 android:fillViewport="true"
                 android:scrollbars="horizontal">
 

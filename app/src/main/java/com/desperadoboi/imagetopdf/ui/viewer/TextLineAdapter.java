@@ -4,6 +4,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.R;
@@ -37,9 +38,9 @@ final class TextLineAdapter extends RecyclerView.Adapter<TextLineAdapter.ViewHol
         ));
         textView.setPadding(horizontal, vertical, horizontal, vertical);
         textView.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
-        textView.setTextColor(com.google.android.material.color.MaterialColors.getColor(
-                textView,
-                com.google.android.material.R.attr.colorOnSurface
+        textView.setTextColor(ContextCompat.getColor(
+                textView.getContext(),
+                R.color.viewer_document_text
         ));
         textView.setTextIsSelectable(true);
         textView.setHorizontallyScrolling(false);
