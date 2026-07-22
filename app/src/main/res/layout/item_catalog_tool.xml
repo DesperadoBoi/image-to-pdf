@@ -49,9 +49,8 @@
     <TextView
         android:id="@+id/text_tool_title"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/tool_title_spacing"
-        android:layout_weight="1"
         android:ellipsize="end"
         android:gravity="top|center_horizontal"
         android:importantForAccessibility="no"
@@ -59,5 +58,19 @@
         android:textAppearance="?attr/textAppearanceLabelLarge"
         android:textColor="?attr/colorOnSurface"
         tools:text="Изображение в PDF" />
+
+    <TextView
+        android:id="@+id/text_tool_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:gravity="top|center_horizontal"
+        android:importantForAccessibility="no"
+        android:maxLines="2"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:text="Открывайте документы локально"
+        tools:visibility="visible" />
 
 </LinearLayout>

@@ -296,4 +296,82 @@
         <item quantity="other">Выбрано %1$d изображения</item>
     </plurals>
 
+    <string name="tool_document_viewer">Просмотр документов</string>
+    <string name="tool_document_viewer_description">Открывайте PDF, таблицы, текст и изображения</string>
+
+    <string name="viewer_title_default">Просмотр документа</string>
+    <string name="viewer_back_content_description">Закрыть просмотр документа</string>
+    <string name="viewer_share_content_description">Поделиться документом</string>
+    <string name="viewer_more_content_description">Информация о файле</string>
+    <string name="viewer_loading_content_description">Документ загружается</string>
+    <string name="viewer_loading_opening">Проверяем и открываем файл…</string>
+    <string name="viewer_loading_pdf">Открываем PDF…</string>
+    <string name="viewer_loading_page">Готовим страницу…</string>
+    <string name="viewer_loading_image">Открываем изображение…</string>
+    <string name="viewer_loading_text">Читаем текст…</string>
+    <string name="viewer_loading_table">Читаем таблицу…</string>
+    <string name="viewer_previous_page">Назад</string>
+    <string name="viewer_next_page">Далее</string>
+    <string name="viewer_page_counter">%1$d из %2$d</string>
+    <string name="viewer_page_announcement">Страница %1$d из %2$d</string>
+    <string name="viewer_previous_page_content_description">Перейти к странице %1$d</string>
+    <string name="viewer_next_page_content_description">Перейти к странице %1$d</string>
+    <string name="viewer_pdf_page_content_description">Страница PDF. Доступны масштабирование и перемещение</string>
+    <string name="viewer_image_content_description">Изображение. Доступны масштабирование и перемещение</string>
+    <string name="viewer_text_content_description">Текст документа</string>
+    <string name="viewer_table_content_description">Таблица документа</string>
+    <string name="viewer_cell_content_description">Строка %1$d, столбец %2$s: %3$s</string>
+    <string name="viewer_notice_text_truncated">Показана безопасная часть большого текстового файла</string>
+    <string name="viewer_notice_table_truncated">Показана безопасная часть большой таблицы</string>
+
+    <string name="viewer_error_unsupported_title">Формат не поддерживается</string>
+    <string name="viewer_error_invalid_request">Можно открыть только переданный PDF, текст, таблицу CSV или изображение</string>
+    <string name="viewer_error_excel_not_supported">Просмотр XLS и XLSX пока недоступен в этой версии</string>
+    <string name="viewer_error_unknown_format">Не удалось безопасно определить формат файла</string>
+    <string name="viewer_error_permission_title">Нет доступа к файлу</string>
+    <string name="viewer_error_permission">Разрешение на чтение потеряно. Выберите файл ещё раз</string>
+    <string name="viewer_error_too_large_title">Файл слишком большой</string>
+    <string name="viewer_error_too_large">Размер файла превышает безопасный предел локального просмотра</string>
+    <string name="viewer_error_corrupted_title">Не удалось прочитать файл</string>
+    <string name="viewer_error_corrupted">Файл повреждён или имеет неподдерживаемую структуру</string>
+    <string name="viewer_error_open_title">Не удалось открыть файл</string>
+    <string name="viewer_error_open">Источник больше недоступен или не разрешает чтение</string>
+    <string name="viewer_error_memory_title">Недостаточно памяти</string>
+    <string name="viewer_error_memory">Закройте другие приложения или откройте файл меньшего размера</string>
+    <string name="viewer_error_empty_title">Файл пуст</string>
+    <string name="viewer_error_empty_pdf">PDF не содержит доступных страниц</string>
+    <string name="viewer_error_empty_text">В текстовом файле нет содержимого</string>
+    <string name="viewer_error_empty_table">В таблице нет строк</string>
+    <string name="viewer_error_pdf_corrupted_or_encrypted">PDF повреждён либо защищён паролем</string>
+    <string name="viewer_error_pdf_page">Не удалось отобразить эту страницу PDF</string>
+    <string name="viewer_error_image_corrupted">Изображение повреждено или не декодируется на этом устройстве</string>
+    <string name="viewer_error_text_corrupted">Не удалось безопасно прочитать текст</string>
+    <string name="viewer_error_table_corrupted">Структура таблицы повреждена или слишком сложна</string>
+
+    <string name="viewer_share_chooser">Поделиться документом</string>
+    <string name="viewer_share_unavailable">Нет приложения для отправки файла</string>
+    <string name="viewer_share_failed">Не удалось подготовить файл для отправки</string>
+    <string name="viewer_info_title">Информация о файле</string>
+    <string name="viewer_info_message">Имя: %1$s\nТип: %2$s\nРазмер: %3$s\nСтраницы: %4$s\nРежим: %5$s</string>
+    <string name="viewer_info_not_available">Нет данных</string>
+    <string name="viewer_read_only">Только чтение</string>
+    <string name="viewer_type_pdf">PDF</string>
+    <string name="viewer_type_csv">CSV</string>
+    <string name="viewer_type_tsv">TSV</string>
+    <string name="viewer_type_text">Текст</string>
+    <string name="viewer_type_jpeg">JPEG</string>
+    <string name="viewer_type_png">PNG</string>
+    <string name="viewer_type_webp">WebP</string>
+    <string name="viewer_type_heic">HEIC/HEIF</string>
+    <string name="viewer_type_xls">Excel XLS</string>
+    <string name="viewer_type_xlsx">Excel XLSX</string>
+    <string name="viewer_type_unknown">Неизвестный</string>
+
+    <plurals name="viewer_pages_count">
+        <item quantity="one">%1$d страница</item>
+        <item quantity="few">%1$d страницы</item>
+        <item quantity="many">%1$d страниц</item>
+        <item quantity="other">%1$d страницы</item>
+    </plurals>
+
 </resources>

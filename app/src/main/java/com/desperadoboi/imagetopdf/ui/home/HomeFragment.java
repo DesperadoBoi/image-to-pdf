@@ -1,6 +1,7 @@
 package com.desperadoboi.imagetopdf.ui.home;
 
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -31,6 +32,7 @@ import com.desperadoboi.imagetopdf.ui.importer.ImagePickerLauncher;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 import com.desperadoboi.imagetopdf.ui.tools.ToolCatalog;
 import com.desperadoboi.imagetopdf.ui.tools.ToolId;
+import com.desperadoboi.imagetopdf.ui.viewer.DocumentViewerActivity;
 
 import java.io.IOException;
 import java.util.List;
@@ -44,6 +46,7 @@ public final class HomeFragment extends Fragment {
     private ActivityResultLauncher<Uri> cameraLauncher;
     private CapturedImageStorage capturedImageStorage;
     private ImagePickerLauncher imagePickerLauncher;
+    private ActivityResultLauncher<String[]> documentPickerLauncher;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -67,6 +70,10 @@ public final class HomeFragment extends Fragment {
         );
         imagePickerLauncher = new ImageImportCoordinator()
                 .register(ImageImportSource.CAMERA, request -> launchCamera());
+        documentPickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenDocument(),
+                this::handleDocumentSelected
+        );
     }
 
     @Nullable
@@ -136,9 +143,50 @@ public final class HomeFragment extends Fragment {
                     } else if (ToolId.SMART_SCAN.name().equals(toolName)
                             && navigationCallback != null) {
                         navigationCallback.onSmartScanRequested();
+                    } else if (ToolId.DOCUMENT_VIEWER.name().equals(toolName)) {
+                        openDocumentPicker();
                     }
                 }
         );
+    }
+
+    private void openDocumentPicker() {
+        documentPickerLauncher.launch(new String[]{
+                "application/pdf",
+                "text/plain",
+                "text/csv",
+                "text/tab-separated-values",
+                "application/csv",
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/heic",
+                "image/heif"
+        });
+    }
+
+    private void handleDocumentSelected(Uri uri) {
+        if (uri == null || !isAdded()) {
+            return;
+        }
+        try {
+            requireContext().getContentResolver().takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
+        } catch (SecurityException | UnsupportedOperationException ignored) {
+            // The temporary activity grant remains valid when the provider is not persistable.
+        }
+        Intent viewerIntent = new Intent(requireContext(), DocumentViewerActivity.class)
+                .setAction(DocumentViewerActivity.ACTION_INTERNAL_VIEW)
+                .setData(uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        viewerIntent.setClipData(ClipData.newUri(
+                        requireContext().getContentResolver(),
+                        getString(R.string.tool_document_viewer),
+                        uri
+                ));
+        startActivity(viewerIntent);
     }
 
     private void openImagePicker() {

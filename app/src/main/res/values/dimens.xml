@@ -9,7 +9,7 @@
     <dimen name="home_subtitle_spacing">4dp</dimen>
     <dimen name="home_grid_top_spacing">8dp</dimen>
     <dimen name="home_tool_item_height">124dp</dimen>
-    <dimen name="catalog_tool_item_height">124dp</dimen>
+    <dimen name="catalog_tool_item_height">156dp</dimen>
     <dimen name="tool_icon_size">60dp</dimen>
     <dimen name="tool_icon_area_height">68dp</dimen>
     <dimen name="tool_grid_half_gap">4dp</dimen>
@@ -152,4 +152,13 @@
     <dimen name="scan_permission_max_width">420dp</dimen>
     <dimen name="scan_permission_padding">24dp</dimen>
     <dimen name="scan_review_tools_spacing">4dp</dimen>
+    <dimen name="viewer_toolbar_height">64dp</dimen>
+    <dimen name="viewer_content_margin">8dp</dimen>
+    <dimen name="viewer_controls_padding">8dp</dimen>
+    <dimen name="viewer_text_horizontal_padding">16dp</dimen>
+    <dimen name="viewer_text_vertical_padding">4dp</dimen>
+    <dimen name="viewer_row_header_width">56dp</dimen>
+    <dimen name="viewer_cell_width">144dp</dimen>
+    <dimen name="viewer_cell_height">52dp</dimen>
+    <dimen name="viewer_cell_padding">8dp</dimen>
 </resources>

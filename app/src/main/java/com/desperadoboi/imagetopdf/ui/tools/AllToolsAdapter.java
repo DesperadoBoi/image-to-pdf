@@ -79,18 +79,26 @@ public final class AllToolsAdapter
         CharSequence title = holder.itemView.getContext().getText(definition.getTitleResId());
         holder.icon.setImageResource(definition.getIconResId());
         holder.title.setText(title);
+        int descriptionResId = definition.getId() == ToolId.DOCUMENT_VIEWER
+                ? R.string.tool_document_viewer_description
+                : definition.getId() == ToolId.SMART_SCAN
+                        ? R.string.tool_smart_scan_description
+                        : 0;
+        holder.description.setVisibility(descriptionResId == 0 ? View.GONE : View.VISIBLE);
+        if (descriptionResId != 0) {
+            holder.description.setText(descriptionResId);
+        }
         holder.badge.setVisibility(available ? View.GONE : View.VISIBLE);
         holder.icon.setAlpha(available ? AVAILABLE_ALPHA : COMING_SOON_ALPHA);
         holder.title.setAlpha(available ? AVAILABLE_ALPHA : COMING_SOON_ALPHA);
+        holder.description.setAlpha(available ? AVAILABLE_ALPHA : COMING_SOON_ALPHA);
         holder.itemView.setEnabled(available);
         holder.itemView.setClickable(available);
-        CharSequence availableDescription = definition.getId() == ToolId.SMART_SCAN
+        CharSequence availableDescription = descriptionResId != 0
                 ? holder.itemView.getContext().getString(
                         R.string.tool_title_with_description,
                         title,
-                        holder.itemView.getContext().getString(
-                                R.string.tool_smart_scan_description
-                        )
+                        holder.itemView.getContext().getString(descriptionResId)
                 )
                 : title;
         holder.itemView.setContentDescription(available
@@ -161,12 +169,14 @@ public final class AllToolsAdapter
         private final AppCompatImageView icon;
         private final TextView title;
         private final TextView badge;
+        private final TextView description;
 
         ToolViewHolder(@NonNull View itemView) {
             super(itemView);
             icon = itemView.findViewById(R.id.image_tool_icon);
             title = itemView.findViewById(R.id.text_tool_title);
             badge = itemView.findViewById(R.id.text_tool_badge);
+            description = itemView.findViewById(R.id.text_tool_description);
         }
     }
 

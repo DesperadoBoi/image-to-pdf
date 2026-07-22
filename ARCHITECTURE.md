@@ -34,12 +34,21 @@ com.desperadoboi.imagetopdf
 │   ├── export
 │   └── result
 ├── model
+├── document
+│   ├── image
+│   ├── pdf
+│   ├── spreadsheet
+│   └── text
 ├── image
 ├── pdf
 └── util
 ```
 
 `MainActivity` сейчас является контейнером экранов. `HomeFragment` является dashboard, `ImagePickerFragment` показывает внутреннюю MediaStore-галерею и системные fallback-источники, `AllToolsFragment` показывает секционный каталог инструментов, `EditorFragment` отвечает за страницы и генерацию, а `PdfResultFragment` — за отдельный успешный сценарий.
+
+`DocumentViewerActivity` является отдельной exported read-only точкой `ACTION_VIEW`. Она не
+участвует в fragment navigation `MainActivity`, не получает общий editor ViewModel и не
+импортирует внешние документы в текущую сессию.
 
 ## Целевая UI-архитектура
 
@@ -95,6 +104,12 @@ CameraX captures создаются в `filesDir/captured_images`. При отм
 - открывать данные через `InputStream`;
 - поддерживать изображения из галереи и `document providers`.
 - снимки камеры хранить в app-specific storage как app-owned файлы и также читать через `ContentResolver` по `content://` Uri.
+
+Для viewer `IncomingDocumentLoader` читает metadata и bytes через `ContentResolver`,
+`DocumentTypeResolver` проверяет MIME/signature/extension, а `TemporaryDocumentStore`
+создаёт bounded случайно именованную копию в app cache. Seekable PDF открывается только из
+этой копии. Старые viewer files имеют age-based cleanup; Share выдаёт FileProvider URI после
+явного действия пользователя. Подробный контракт — в [docs/DOCUMENT_VIEWER.md](docs/DOCUMENT_VIEWER.md).
 
 ### Обработка изображений
 
