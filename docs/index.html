@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ImageToPDF — локальное создание PDF из изображений.">
+  <link rel="canonical" href="https://desperadoboi.github.io/image-to-pdf/">
+  <title>ImageToPDF</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f7f8fc;
+      --surface: #ffffff;
+      --surface-variant: #eef1f6;
+      --text: #171a24;
+      --muted: #656b7a;
+      --accent: #152e63;
+      --outline: #c5cad4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(720px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: clamp(12px, 5vw, 48px) 0;
+    }
+
+    section {
+      border: 1px solid var(--outline);
+      border-radius: 20px;
+      background: var(--surface);
+      padding: clamp(20px, 6vw, 44px);
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--accent);
+      line-height: 1.2;
+    }
+
+    p { margin: 16px 0 0; }
+
+    nav {
+      display: grid;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    nav a {
+      min-height: 48px;
+      border-radius: 14px;
+      background: var(--surface-variant);
+      color: var(--accent);
+      padding: 12px 16px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+      text-decoration: none;
+    }
+
+    footer {
+      padding-top: 24px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #0b1020;
+        --surface: #121a2a;
+        --surface-variant: #1b2538;
+        --text: #f1f3f9;
+        --muted: #aeb6c7;
+        --accent: #afc6ed;
+        --outline: #46536b;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <h1>ImageToPDF</h1>
+      <p>Приложение локально создаёт PDF из изображений и сканирует документы без рекламы и регистрации.</p>
+      <nav aria-label="Политика конфиденциальности">
+        <a href="privacy/" lang="ru">Политика конфиденциальности — Русский</a>
+        <a href="privacy/en/" lang="en">Privacy Policy — English</a>
+      </nav>
+    </section>
+    <footer>© 2026 DesperadoBoi</footer>
+  </main>
+</body>
+</html>

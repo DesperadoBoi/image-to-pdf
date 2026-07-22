@@ -43,7 +43,7 @@ unsigned `assembleRelease` остаются доступны; production `bundle
 - [x] Проверены R8 mapping/configuration и отсутствие blanket keep rules
 - [x] `git diff --check`, conflict markers, secrets и keystore audit пройдены
 
-Автоматические проверки выше выполнены 21 июля 2026 года. Повторить их после любого
+Автоматические проверки выше повторены 22 июля 2026 года. Повторить их после любого
 изменения release-конфигурации или production-кода.
 
 ## Известные технические замечания
@@ -55,6 +55,8 @@ unsigned `assembleRelease` остаются доступны; production `bundle
   проходит, но предупреждение следует проверить перед будущим обновлением AndroidX.
 - Основные и stress-сценарии ниже требуют ручного тестирования на реальных phone/tablet
   устройствах; автоматическая сборка не подтверждает визуальное и lifecycle-поведение.
+- Английская локализация в этой ветке охватывает только новые About/Privacy экраны; прежний
+  интерфейс намеренно использует русские fallback-строки.
 
 ## Основные сценарии
 
@@ -81,6 +83,12 @@ unsigned `assembleRelease` остаются доступны; production `bundle
 - [ ] Светлая и тёмная тема
 - [ ] Edge-to-edge, status/navigation bars и display cutout
 - [ ] Системный Back и predictive back на поддерживаемом устройстве
+- [ ] Home → «О приложении» → локальная политика, включая Back на каждом уровне
+- [ ] Версия на экране «О приложении» совпадает с `versionName` собранного APK/AAB
+- [ ] Email разработчику открывается через `mailto:`; понятен fallback без email-приложения
+- [ ] Публичная политика открывается в браузере; локальная остаётся доступной без браузера/сети
+- [ ] Новые экраны проверены на русском и английском языке
+- [ ] About/Privacy проверены при fontScale `1.0`, `1.3`, `1.5` на ширинах `320dp` и `360dp`
 
 ## Stress
 
@@ -113,3 +121,12 @@ unsigned `assembleRelease` остаются доступны; production `bundle
 
 Публикация, Play Console и создание реального signing key не входят в автоматическую
 подготовку этой release candidate.
+
+## Privacy publication handoff
+
+- [x] Подготовлены `docs/index.html`, RU `docs/privacy/index.html`, EN
+  `docs/privacy/en/index.html` и `docs/.nojekyll`
+- [x] Локальная политика реализована внутри приложения
+- [ ] После merge включить GitHub Pages из `main /docs`
+- [ ] Вручную проверить root, RU и EN URL извне без авторизации
+- [ ] Повторно сверить Data Safety с точным финальным подписанным AAB

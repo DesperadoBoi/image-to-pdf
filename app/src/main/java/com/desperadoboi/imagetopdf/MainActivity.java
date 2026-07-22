@@ -17,6 +17,8 @@ import com.desperadoboi.imagetopdf.model.ImageImportMode;
 import com.desperadoboi.imagetopdf.model.ImageImportResult;
 import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
+import com.desperadoboi.imagetopdf.ui.about.AboutFragment;
+import com.desperadoboi.imagetopdf.ui.about.PrivacyPolicyFragment;
 import com.desperadoboi.imagetopdf.ui.editor.EditorFragment;
 import com.desperadoboi.imagetopdf.ui.editor.PageEditFragment;
 import com.desperadoboi.imagetopdf.ui.gallery.ImagePickerFragment;
@@ -29,6 +31,7 @@ import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 
 public class MainActivity extends AppCompatActivity
         implements HomeFragment.NavigationCallback,
+        AboutFragment.NavigationCallback,
         EditorFragment.NavigationCallback,
         ImagePickerFragment.NavigationCallback,
         PdfResultFragment.NavigationCallback,
@@ -38,6 +41,8 @@ public class MainActivity extends AppCompatActivity
     private ScanSessionViewModel scanSessionViewModel;
     private CapturedImageStorage capturedImageStorage;
     private boolean scanReviewNavigationPending;
+    private boolean aboutNavigationPending;
+    private boolean privacyNavigationPending;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +93,16 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onAllToolsRequested() {
         showAllTools();
+    }
+
+    @Override
+    public void onAboutRequested() {
+        showAbout();
+    }
+
+    @Override
+    public void onPrivacyPolicyRequested() {
+        showPrivacyPolicy();
     }
 
     @Override
@@ -256,6 +271,11 @@ public class MainActivity extends AppCompatActivity
                     smartScanFragment.handleBackPressed();
                     return;
                 }
+                if (findVisibleFragment(PrivacyPolicyFragment.TAG) != null
+                        || findVisibleFragment(AboutFragment.TAG) != null) {
+                    getSupportFragmentManager().popBackStack();
+                    return;
+                }
                 if (getSupportFragmentManager().findFragmentByTag(AllToolsFragment.TAG) != null) {
                     getSupportFragmentManager().popBackStack();
                     return;
@@ -344,6 +364,46 @@ public class MainActivity extends AppCompatActivity
                 .replace(R.id.fragment_container, new AllToolsFragment(), AllToolsFragment.TAG)
                 .addToBackStack(AllToolsFragment.TAG)
                 .commit();
+    }
+
+    private void showAbout() {
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        if (aboutNavigationPending
+                || fragmentManager.isStateSaved()
+                || fragmentManager.findFragmentByTag(AboutFragment.TAG) != null) {
+            return;
+        }
+        aboutNavigationPending = true;
+        fragmentManager
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(R.id.fragment_container, new AboutFragment(), AboutFragment.TAG)
+                .addToBackStack(AboutFragment.TAG)
+                .commit();
+        fragmentManager.executePendingTransactions();
+        aboutNavigationPending = false;
+    }
+
+    private void showPrivacyPolicy() {
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        if (privacyNavigationPending
+                || fragmentManager.isStateSaved()
+                || fragmentManager.findFragmentByTag(PrivacyPolicyFragment.TAG) != null) {
+            return;
+        }
+        privacyNavigationPending = true;
+        fragmentManager
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(
+                        R.id.fragment_container,
+                        new PrivacyPolicyFragment(),
+                        PrivacyPolicyFragment.TAG
+                )
+                .addToBackStack(PrivacyPolicyFragment.TAG)
+                .commit();
+        fragmentManager.executePendingTransactions();
+        privacyNavigationPending = false;
     }
 
     private void showSmartScan() {

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Политика конфиденциальности Android-приложения ImageToPDF.">
+  <link rel="canonical" href="https://desperadoboi.github.io/image-to-pdf/privacy/">
+  <title>Политика конфиденциальности ImageToPDF</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f7f8fc;
+      --surface: #ffffff;
+      --surface-variant: #eef1f6;
+      --text: #171a24;
+      --muted: #656b7a;
+      --accent: #152e63;
+      --outline: #c5cad4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(860px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: clamp(12px, 4vw, 40px) 0 64px;
+    }
+
+    article {
+      border: 1px solid var(--outline);
+      border-radius: 20px;
+      background: var(--surface);
+      padding: clamp(20px, 5vw, 40px);
+    }
+
+    h1, h2 { line-height: 1.25; }
+    h1 { margin: 0; color: var(--accent); }
+    h2 { margin: 32px 0 8px; }
+    p, ul { margin: 12px 0 0; }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    nav a {
+      min-height: 44px;
+      border-radius: 14px;
+      background: var(--surface-variant);
+      padding: 10px 16px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    a { color: var(--accent); overflow-wrap: anywhere; }
+
+    dl {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.35fr) minmax(0, 1fr);
+      gap: 8px 20px;
+      margin: 24px 0 0;
+      border-radius: 16px;
+      background: var(--surface-variant);
+      padding: 20px;
+    }
+
+    dt { color: var(--muted); font-weight: 700; }
+    dd { margin: 0; }
+
+    footer {
+      padding-top: 28px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 560px) {
+      article { border-radius: 16px; }
+      dl { grid-template-columns: 1fr; }
+      dd + dt { margin-top: 8px; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #0b1020;
+        --surface: #121a2a;
+        --surface-variant: #1b2538;
+        --text: #f1f3f9;
+        --muted: #aeb6c7;
+        --accent: #afc6ed;
+        --outline: #46536b;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <nav aria-label="Навигация">
+      <a href="../">ImageToPDF</a>
+      <a href="en/" lang="en" hreflang="en">English</a>
+    </nav>
+
+    <article>
+      <h1>Политика конфиденциальности ImageToPDF</h1>
+      <dl>
+        <dt>Дата вступления в силу</dt>
+        <dd>22 июля 2026 года</dd>
+        <dt>Разработчик</dt>
+        <dd>DesperadoBoi</dd>
+        <dt>Контактный email</dt>
+        <dd><a href="mailto:mihaelkruspe@gmail.com">mihaelkruspe@gmail.com</a></dd>
+        <dt>Публичный URL политики</dt>
+        <dd><a href="https://desperadoboi.github.io/image-to-pdf/privacy/">https://desperadoboi.github.io/image-to-pdf/privacy/</a></dd>
+      </dl>
+
+      <h2>Область действия</h2>
+      <p>Эта политика описывает обработку данных в Android-приложении ImageToPDF. Текущая версия приложения предназначена для локального создания PDF из изображений и сканирования документов.</p>
+
+      <h2>Как обрабатываются данные</h2>
+      <ul>
+        <li>Изображения и документы обрабатываются локально на устройстве.</li>
+        <li>Приложение не отправляет изображения или созданные PDF на сервер разработчика.</li>
+        <li>Приложение не требует регистрации, не создаёт пользовательские аккаунты и не содержит рекламы или аналитики.</li>
+        <li>Приложение не продаёт данные и не передаёт их рекламодателям.</li>
+        <li>В manifest приложения отсутствует <code>INTERNET</code> permission.</li>
+      </ul>
+
+      <h2>Доступ к камере и изображениям</h2>
+      <p><code>CAMERA</code> используется только для съёмки страниц в сценарии сканирования документов. Доступ к изображениям используется только после системного выбора пользователя или выдачи соответствующего разрешения. При доступе к MediaStore приложение локально читает сведения об изображениях и их содержимое, чтобы показать встроенную галерею и обработать выбранные страницы. При отказе можно использовать доступные системные способы выбора файлов; без разрешения приложение не получает более широкий доступ.</p>
+
+      <h2>Сохранение и удаление файлов</h2>
+      <p>Созданный PDF сохраняется в место, выбранное пользователем через системный Android-диалог. После сохранения пользователь управляет этим файлом через выбранное хранилище или файловый менеджер.</p>
+      <p>Временные снимки, созданные самим приложением, хранятся в app-owned каталоге на время рабочей сессии. Они удаляются при отмене, пересъёмке, удалении страницы или очистке сессии в предусмотренных приложением сценариях. Исходные изображения, выбранные из галереи или стороннего document provider, приложением не удаляются.</p>
+      <p>Пользователь может удалить локальные данные приложения через настройки Android или удалив приложение. Сохранённые во внешнее выбранное место PDF удаляются самим пользователем.</p>
+
+      <h2>Открытие и отправка PDF</h2>
+      <p>Открытие и отправка PDF выполняются только по действию пользователя через системные механизмы Android. При отправке пользователь самостоятельно выбирает приложение-получатель; дальнейшая обработка файла регулируется политикой выбранного получателя.</p>
+
+      <h2>Изменения политики и контакты</h2>
+      <p>Политика должна пересматриваться при изменении разрешений, зависимостей или способов обработки данных. Вопросы о конфиденциальности можно направить на указанный контактный email.</p>
+    </article>
+
+    <footer>© 2026 DesperadoBoi</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Privacy policy for the ImageToPDF Android application.">
+  <link rel="canonical" href="https://desperadoboi.github.io/image-to-pdf/privacy/en/">
+  <title>ImageToPDF Privacy Policy</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f7f8fc;
+      --surface: #ffffff;
+      --surface-variant: #eef1f6;
+      --text: #171a24;
+      --muted: #656b7a;
+      --accent: #152e63;
+      --outline: #c5cad4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(860px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: clamp(12px, 4vw, 40px) 0 64px;
+    }
+
+    article {
+      border: 1px solid var(--outline);
+      border-radius: 20px;
+      background: var(--surface);
+      padding: clamp(20px, 5vw, 40px);
+    }
+
+    h1, h2 { line-height: 1.25; }
+    h1 { margin: 0; color: var(--accent); }
+    h2 { margin: 32px 0 8px; }
+    p, ul { margin: 12px 0 0; }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    nav a {
+      min-height: 44px;
+      border-radius: 14px;
+      background: var(--surface-variant);
+      padding: 10px 16px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    a { color: var(--accent); overflow-wrap: anywhere; }
+
+    dl {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.35fr) minmax(0, 1fr);
+      gap: 8px 20px;
+      margin: 24px 0 0;
+      border-radius: 16px;
+      background: var(--surface-variant);
+      padding: 20px;
+    }
+
+    dt { color: var(--muted); font-weight: 700; }
+    dd { margin: 0; }
+
+    footer {
+      padding-top: 28px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 560px) {
+      article { border-radius: 16px; }
+      dl { grid-template-columns: 1fr; }
+      dd + dt { margin-top: 8px; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #0b1020;
+        --surface: #121a2a;
+        --surface-variant: #1b2538;
+        --text: #f1f3f9;
+        --muted: #aeb6c7;
+        --accent: #afc6ed;
+        --outline: #46536b;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <nav aria-label="Navigation">
+      <a href="../../">ImageToPDF</a>
+      <a href="../" lang="ru" hreflang="ru">Русский</a>
+    </nav>
+
+    <article>
+      <h1>ImageToPDF Privacy Policy</h1>
+      <dl>
+        <dt>Effective date</dt>
+        <dd>July 22, 2026</dd>
+        <dt>Developer</dt>
+        <dd>DesperadoBoi</dd>
+        <dt>Contact email</dt>
+        <dd><a href="mailto:mihaelkruspe@gmail.com">mihaelkruspe@gmail.com</a></dd>
+        <dt>Public policy URL</dt>
+        <dd><a href="https://desperadoboi.github.io/image-to-pdf/privacy/en/">https://desperadoboi.github.io/image-to-pdf/privacy/en/</a></dd>
+      </dl>
+
+      <h2>Scope</h2>
+      <p>This policy describes data handling in the ImageToPDF Android application. The current version creates PDF documents from images and scans document pages locally.</p>
+
+      <h2>How data is handled</h2>
+      <ul>
+        <li>Images and documents are processed locally on the device.</li>
+        <li>The app does not send images or generated PDF files to the developer’s server.</li>
+        <li>The app does not require registration, create user accounts, display advertising, or use analytics.</li>
+        <li>The app does not sell data or share it with advertisers.</li>
+        <li>The app manifest does not include the <code>INTERNET</code> permission.</li>
+      </ul>
+
+      <h2>Camera and image access</h2>
+      <p><code>CAMERA</code> is used only to capture pages in the document scanning flow. The app accesses images only after the user selects them through a system interface or grants the relevant permission. When MediaStore access is granted, the app reads image information and content locally to display the in-app gallery and process selected pages. If access is denied, available system file selection methods can still be used; the app does not obtain broader access without permission.</p>
+
+      <h2>File storage and deletion</h2>
+      <p>Generated PDF files are saved to a location selected by the user through the Android system dialog. After saving, the user controls the file through the selected storage provider or a file manager.</p>
+      <p>Temporary captures created by the app are kept in app-owned storage for the working session. They are deleted during supported cancellation, retake, page removal, or session cleanup flows. The app does not delete source images selected from the gallery or a third-party document provider.</p>
+      <p>Users can remove local app data through Android settings or by uninstalling the app. PDF files saved to a user-selected external location must be deleted by the user.</p>
+
+      <h2>Opening and sharing PDF files</h2>
+      <p>PDF files are opened or shared only after a user action through Android system mechanisms. When sharing, the user selects the recipient application. Any subsequent processing is governed by that recipient’s privacy practices.</p>
+
+      <h2>Policy changes and contact</h2>
+      <p>This policy should be reviewed whenever permissions, dependencies, or data handling change. Privacy questions can be sent to the contact email listed above.</p>
+    </article>
+
+    <footer>© 2026 DesperadoBoi</footer>
+  </main>
+</body>
+</html>

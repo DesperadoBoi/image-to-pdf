@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="developer_name" translatable="false">DesperadoBoi</string>
+    <string name="developer_email" translatable="false">mihaelkruspe@gmail.com</string>
+    <string name="developer_email_subject" translatable="false">ImageToPDF — обратная связь</string>
+    <string name="privacy_policy_url">https://desperadoboi.github.io/image-to-pdf/privacy/</string>
+    <string name="action_open_about_content_description">О приложении</string>
+    <string name="about_title">О приложении</string>
+    <string name="action_about_back_content_description">Вернуться на главный экран</string>
+    <string name="about_version_format">Версия %1$s</string>
+    <string name="about_version_unknown">неизвестна</string>
+    <string name="about_description">Создание PDF из изображений и сканирование документов без рекламы.</string>
+    <string name="about_device_processing">Файлы обрабатываются на устройстве</string>
+    <string name="about_no_ads">Без рекламы</string>
+    <string name="about_no_registration">Без регистрации</string>
+    <string name="action_privacy_policy">Политика конфиденциальности</string>
+    <string name="action_email_developer">Написать разработчику</string>
+    <string name="action_open_privacy_browser">Открыть политику в браузере</string>
+    <string name="action_open_local_privacy_content_description">Открыть локальную политику конфиденциальности</string>
+    <string name="action_email_developer_content_description">Написать разработчику по электронной почте</string>
+    <string name="action_open_privacy_browser_content_description">Открыть политику конфиденциальности в браузере</string>
+    <string name="status_email_app_not_found">Не найдено приложение для отправки email</string>
+    <string name="status_browser_app_not_found">Не найдено приложение для открытия ссылки. Политика доступна внутри приложения.</string>
+    <string name="about_developer_format">Разработчик: %1$s</string>
+    <string name="about_copyright_format">© 2026 %1$s</string>
+
+    <string name="privacy_policy_title">Политика конфиденциальности</string>
+    <string name="action_privacy_back_content_description">Вернуться к экрану «О приложении»</string>
+    <string name="privacy_effective_date_label">Дата вступления в силу</string>
+    <string name="privacy_effective_date">22 июля 2026 года</string>
+    <string name="privacy_developer_label">Разработчик</string>
+    <string name="privacy_contact_email_label">Контактный email</string>
+    <string name="privacy_public_url_label">Публичный URL политики</string>
+    <string name="privacy_scope_title">Область действия</string>
+    <string name="privacy_scope_body">Эта политика описывает обработку данных в Android-приложении ImageToPDF. Текущая версия приложения предназначена для локального создания PDF из изображений и сканирования документов.</string>
+    <string name="privacy_handling_title">Как обрабатываются данные</string>
+    <string name="privacy_handling_body">• Изображения и документы обрабатываются локально на устройстве.\n• Приложение не отправляет изображения или созданные PDF на сервер разработчика.\n• Приложение не требует регистрации, не создаёт пользовательские аккаунты и не содержит рекламы или аналитики.\n• Приложение не продаёт данные и не передаёт их рекламодателям.\n• В manifest приложения отсутствует INTERNET permission.</string>
+    <string name="privacy_access_title">Доступ к камере и изображениям</string>
+    <string name="privacy_access_body">CAMERA используется только для съёмки страниц в сценарии сканирования документов. Доступ к изображениям используется только после системного выбора пользователя или выдачи соответствующего разрешения. При доступе к MediaStore приложение локально читает сведения об изображениях и их содержимое, чтобы показать встроенную галерею и обработать выбранные страницы. При отказе можно использовать доступные системные способы выбора файлов; без разрешения приложение не получает более широкий доступ.</string>
+    <string name="privacy_storage_title">Сохранение и удаление файлов</string>
+    <string name="privacy_storage_body">Созданный PDF сохраняется в место, выбранное пользователем через системный Android-диалог. После сохранения пользователь управляет этим файлом через выбранное хранилище или файловый менеджер.\n\nВременные снимки, созданные самим приложением, хранятся в app-owned каталоге на время рабочей сессии. Они удаляются при отмене, пересъёмке, удалении страницы или очистке сессии в предусмотренных приложением сценариях. Исходные изображения, выбранные из галереи или стороннего document provider, приложением не удаляются.\n\nПользователь может удалить локальные данные приложения через настройки Android или удалив приложение. Сохранённые во внешнее выбранное место PDF удаляются самим пользователем.</string>
+    <string name="privacy_sharing_title">Открытие и отправка PDF</string>
+    <string name="privacy_sharing_body">Открытие и отправка PDF выполняются только по действию пользователя через системные механизмы Android. При отправке пользователь самостоятельно выбирает приложение-получатель; дальнейшая обработка файла регулируется политикой выбранного получателя.</string>
+    <string name="privacy_changes_title">Изменения политики и контакты</string>
+    <string name="privacy_changes_body">Политика должна пересматриваться при изменении разрешений, зависимостей или способов обработки данных. Вопросы о конфиденциальности можно направить на указанный контактный email.</string>
+</resources>
