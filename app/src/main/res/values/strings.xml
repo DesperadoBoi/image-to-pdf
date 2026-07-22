@@ -323,6 +323,10 @@
     <string name="viewer_image_content_description">Изображение. Доступны масштабирование и перемещение</string>
     <string name="viewer_text_content_description">Текст документа</string>
     <string name="viewer_table_content_description">Таблица документа</string>
+    <string name="viewer_fit_width">Вписать по ширине</string>
+    <string name="viewer_fit_width_content_description">Вписать таблицу по ширине</string>
+    <string name="viewer_zoom_announcement">Масштаб %1$d процентов</string>
+    <string name="viewer_column_header_content_description">Столбец %1$s</string>
     <string name="viewer_sheet_selector_content_description">Выбор листа книги XLSX</string>
     <string name="viewer_sheet_label">Лист</string>
     <string name="viewer_current_sheet">%1$s</string>

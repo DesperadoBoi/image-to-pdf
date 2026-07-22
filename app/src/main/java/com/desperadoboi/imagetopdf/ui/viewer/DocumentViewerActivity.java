@@ -83,9 +83,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private int restoredSheet;
     private int selectedSheet;
     private int knownPageCount;
+    private SpreadsheetStateStore spreadsheetStateStore = new SpreadsheetStateStore();
 
     private TextView titleView;
     private View shareButton;
+    private View fitWidthButton;
     private View loadingState;
     private TextView loadingText;
     private View errorState;
@@ -100,7 +102,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private ZoomableImageView imageContent;
     private RecyclerView textContent;
     private View spreadsheetContent;
-    private RecyclerView spreadsheetRecycler;
+    private SpreadsheetViewport spreadsheetViewport;
     private View sheetControls;
     private TextView sheetNameView;
     private Spinner sheetSpinner;
@@ -129,7 +131,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             imageBitmap = retainedState.imageBitmap;
             xlsxWorkbook = retainedState.xlsxWorkbook;
             cacheWasShared = retainedState.cacheWasShared;
-            restoredSheet = retainedState.selectedSheet;
+            spreadsheetStateStore = retainedState.spreadsheetStateStore;
+            restoredSheet = spreadsheetStateStore.getSelectedSheet();
             displayLoadedDocument();
         } else {
             loadFromIntent(getIntent());
@@ -146,6 +149,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+        saveCurrentSpreadsheetState();
         outState.putInt(
                 STATE_CURRENT_PAGE,
                 pdfPageState == null ? restoredPage : pdfPageState.getCurrentPage()
@@ -156,12 +160,13 @@ public final class DocumentViewerActivity extends AppCompatActivity {
 
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
+        saveCurrentSpreadsheetState();
         return new RetainedState(
                 currentDocument,
                 imageBitmap,
                 xlsxWorkbook,
                 cacheWasShared,
-                selectedSheet
+                spreadsheetStateStore.copy()
         );
     }
 
@@ -185,6 +190,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private void bindViews() {
         titleView = findViewById(R.id.text_viewer_title);
         shareButton = findViewById(R.id.button_viewer_share);
+        fitWidthButton = findViewById(R.id.button_viewer_fit_width);
         loadingState = findViewById(R.id.state_viewer_loading);
         loadingText = findViewById(R.id.text_viewer_loading);
         errorState = findViewById(R.id.state_viewer_error);
@@ -199,20 +205,33 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         imageContent = findViewById(R.id.content_viewer_image);
         textContent = findViewById(R.id.content_viewer_text);
         spreadsheetContent = findViewById(R.id.content_viewer_spreadsheet);
-        spreadsheetRecycler = findViewById(R.id.recycler_viewer_spreadsheet);
+        spreadsheetViewport = findViewById(R.id.viewport_viewer_spreadsheet);
         sheetControls = findViewById(R.id.layout_viewer_sheet_controls);
         sheetNameView = findViewById(R.id.text_viewer_sheet_name);
         sheetSpinner = findViewById(R.id.spinner_viewer_sheets);
         noticeView = findViewById(R.id.text_viewer_notice);
         textContent.setLayoutManager(new LinearLayoutManager(this));
         textContent.setAdapter(new TextLineAdapter());
-        spreadsheetRecycler.setLayoutManager(new LinearLayoutManager(this));
-        spreadsheetRecycler.setAdapter(new SpreadsheetRowAdapter());
+        spreadsheetViewport.setOnZoomChangeListener((scale, fitWidth, finished, userInitiated) -> {
+            if (userInitiated && !fitWidth) {
+                spreadsheetStateStore.recordManualZoom(selectedSheet, scale);
+            }
+            fitWidthButton.setSelected(fitWidth);
+            if (finished) {
+                saveCurrentSpreadsheetState();
+                spreadsheetViewport.announceForAccessibility(getString(
+                        R.string.viewer_zoom_announcement,
+                        Math.round(scale * 100f)
+                ));
+            }
+        });
         sheetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (xlsxWorkbook == null || position == selectedSheet) return;
+                saveCurrentSpreadsheetState();
                 selectedSheet = position;
+                spreadsheetStateStore.setSelectedSheet(selectedSheet);
                 showSelectedXlsxSheet();
             }
 
@@ -238,6 +257,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private void configureActions() {
         findViewById(R.id.button_viewer_back).setOnClickListener(ignored -> finish());
         shareButton.setOnClickListener(ignored -> shareDocument());
+        fitWidthButton.setOnClickListener(ignored -> spreadsheetViewport.fitToWidth());
         findViewById(R.id.button_viewer_more).setOnClickListener(ignored -> showFileInfo());
         findViewById(R.id.button_viewer_cancel_loading).setOnClickListener(ignored -> finish());
         findViewById(R.id.button_viewer_close_error).setOnClickListener(ignored -> finish());
@@ -263,6 +283,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             );
             return;
         }
+        spreadsheetStateStore.openDocument(uri.toString());
         titleView.setText(com.desperadoboi.imagetopdf.document.SafeDisplayName.sanitize(
                 uri.getLastPathSegment()
         ));
@@ -611,6 +632,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         sheetSpinner.setAdapter(spinnerAdapter);
         selectedSheet = Math.max(0, Math.min(restoredSheet, sheetNames.size() - 1));
+        spreadsheetStateStore.setSelectedSheet(selectedSheet);
         sheetSpinner.setSelection(selectedSheet, false);
         boolean hasMultipleSheets = sheetNames.size() > 1;
         sheetControls.setVisibility(View.VISIBLE);
@@ -634,7 +656,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 selectedSheet + 1,
                 xlsxWorkbook.getSheets().size()
         ));
-        submitSpreadsheetData(sheet.getData());
+        submitSpreadsheetData(
+                sheet.getData(),
+                spreadsheetStateStore.restore(selectedSheet)
+        );
         noticeView.setText(R.string.viewer_notice_xlsx_truncated);
         noticeView.setVisibility(
                 xlsxWorkbook.isTruncated() || sheet.getData().isTruncated()
@@ -644,12 +669,26 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     }
 
     private void submitSpreadsheetData(SpreadsheetData data) {
-        SpreadsheetRowAdapter adapter =
-                (SpreadsheetRowAdapter) spreadsheetRecycler.getAdapter();
-        adapter.submit(data);
-        ViewGroup.LayoutParams params = spreadsheetRecycler.getLayoutParams();
-        params.width = adapter.getRequiredWidth(spreadsheetRecycler);
-        spreadsheetRecycler.setLayoutParams(params);
+        submitSpreadsheetData(data, spreadsheetStateStore.restore(0));
+    }
+
+    private void submitSpreadsheetData(
+            SpreadsheetData data,
+            SpreadsheetViewportState state
+    ) {
+        spreadsheetViewport.submit(data, state);
+        fitWidthButton.setSelected(state.isFitWidth());
+    }
+
+    private void saveCurrentSpreadsheetState() {
+        if (spreadsheetViewport == null
+                || currentDocument == null
+                || (!currentDocument.getDocumentType().isSpreadsheetText()
+                && currentDocument.getDocumentType() != DocumentType.XLSX)) {
+            return;
+        }
+        spreadsheetStateStore.save(selectedSheet, spreadsheetViewport.captureState());
+        spreadsheetStateStore.setSelectedSheet(selectedSheet);
     }
 
     private void shareDocument() {
@@ -856,6 +895,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private void showOnly(View content) {
         hideAllStates();
         content.setVisibility(View.VISIBLE);
+        fitWidthButton.setVisibility(content == spreadsheetContent ? View.VISIBLE : View.GONE);
     }
 
     private void hideAllStates() {
@@ -865,6 +905,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         imageContent.setVisibility(View.GONE);
         textContent.setVisibility(View.GONE);
         spreadsheetContent.setVisibility(View.GONE);
+        fitWidthButton.setVisibility(View.GONE);
         noticeView.setVisibility(View.GONE);
     }
 
@@ -884,6 +925,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         restoredPage = 0;
         restoredSheet = 0;
         selectedSheet = 0;
+        spreadsheetStateStore.clear();
         shareButton.setEnabled(false);
         generations.incrementAndGet();
     }
@@ -909,20 +951,20 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         private final Bitmap imageBitmap;
         private final XlsxWorkbook xlsxWorkbook;
         private final boolean cacheWasShared;
-        private final int selectedSheet;
+        private final SpreadsheetStateStore spreadsheetStateStore;
 
         private RetainedState(
                 IncomingDocument document,
                 Bitmap imageBitmap,
                 XlsxWorkbook xlsxWorkbook,
                 boolean cacheWasShared,
-                int selectedSheet
+                SpreadsheetStateStore spreadsheetStateStore
         ) {
             this.document = document;
             this.imageBitmap = imageBitmap;
             this.xlsxWorkbook = xlsxWorkbook;
             this.cacheWasShared = cacheWasShared;
-            this.selectedSheet = selectedSheet;
+            this.spreadsheetStateStore = spreadsheetStateStore;
         }
     }
 }

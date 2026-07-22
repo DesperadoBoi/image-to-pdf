@@ -61,6 +61,21 @@ public final class DocumentViewerVisualContractTest {
     }
 
     @Test
+    public void spreadsheetUsesUnifiedTwoDimensionalViewport() throws Exception {
+        Document document = parse(repositoryRoot().resolve(
+                "app/src/main/res/layout/activity_document_viewer.xml"
+        ));
+        Element viewport = byId(document, "@+id/viewport_viewer_spreadsheet");
+        Element fitWidth = byId(document, "@+id/button_viewer_fit_width");
+
+        assertEquals("com.desperadoboi.imagetopdf.ui.viewer.SpreadsheetViewport",
+                viewport.getTagName());
+        assertEquals("@string/viewer_fit_width_content_description",
+                fitWidth.getAttributeNS(ANDROID, "contentDescription"));
+        assertEquals(0, document.getElementsByTagName("HorizontalScrollView").getLength());
+    }
+
+    @Test
     public void neutralDocumentPaletteDoesNotSwitchToDarkMode() throws Exception {
         Document baseColors = parse(repositoryRoot().resolve(
                 "app/src/main/res/values/colors.xml"

@@ -4,6 +4,10 @@
     <string name="tool_document_viewer_description">PDF, XLSX, CSV, and images</string>
     <string name="viewer_loading_xlsx">Checking and reading XLSX…</string>
     <string name="viewer_sheet_selector_content_description">Select an XLSX workbook sheet</string>
+    <string name="viewer_fit_width">Fit width</string>
+    <string name="viewer_fit_width_content_description">Fit spreadsheet to width</string>
+    <string name="viewer_zoom_announcement">Zoom %1$d percent</string>
+    <string name="viewer_column_header_content_description">Column %1$s</string>
     <string name="viewer_sheet_label">Sheet</string>
     <string name="viewer_current_sheet">%1$s</string>
     <string name="viewer_current_sheet_content_description">Sheet %1$s, %2$d of %3$d</string>

@@ -44,6 +44,18 @@
             tools:text="ImageToPDF_20260721_041622.pdf" />
 
         <ImageButton
+            android:id="@+id/button_viewer_fit_width"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="@drawable/bg_icon_button_round"
+            android:contentDescription="@string/viewer_fit_width_content_description"
+            android:padding="@dimen/editor_overlay_button_padding"
+            android:src="@drawable/ic_action_fit_width_24"
+            android:visibility="gone"
+            app:tint="?attr/colorOnSurface"
+            tools:visibility="visible" />
+
+        <ImageButton
             android:id="@+id/button_viewer_share"
             android:layout_width="@dimen/touch_target"
             android:layout_height="@dimen/touch_target"
@@ -340,20 +352,13 @@
                     tools:visibility="visible" />
             </LinearLayout>
 
-            <HorizontalScrollView
+            <com.desperadoboi.imagetopdf.ui.viewer.SpreadsheetViewport
+                android:id="@+id/viewport_viewer_spreadsheet"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:background="@color/viewer_document_surface"
-                android:fillViewport="true"
-                android:scrollbars="horizontal">
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recycler_viewer_spreadsheet"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@string/viewer_table_content_description" />
-            </HorizontalScrollView>
+                android:contentDescription="@string/viewer_table_content_description" />
         </LinearLayout>
 
         <TextView
