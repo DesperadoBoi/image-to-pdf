@@ -103,6 +103,10 @@ public final class DocumentViewerVisualContractTest {
                 "@string/viewer_fit_width",
                 byId(menu, "@+id/action_viewer_fit_width").getAttributeNS(ANDROID, "title")
         );
+        assertEquals(
+                "@string/viewer_fit_sheet",
+                byId(menu, "@+id/action_viewer_fit_sheet").getAttributeNS(ANDROID, "title")
+        );
 
         Document russian = parse(repositoryRoot().resolve(
                 "app/src/main/res/values/strings.xml"
@@ -114,6 +118,7 @@ public final class DocumentViewerVisualContractTest {
         assertEquals("Вписать по ширине", namedText(russian, "viewer_fit_width"));
         assertEquals("Zoom to 100%", namedText(english, "viewer_zoom_100"));
         assertEquals("Fit to width", namedText(english, "viewer_fit_width"));
+        assertEquals("Fit sheet", namedText(english, "viewer_fit_sheet"));
     }
 
     @Test

@@ -327,6 +327,8 @@
     <string name="viewer_fit_width">Вписать по ширине</string>
     <string name="viewer_fit_width_content_description">Вписать таблицу по ширине</string>
     <string name="viewer_fit_width_applied">Таблица вписана по ширине</string>
+    <string name="viewer_fit_sheet">Вписать весь лист</string>
+    <string name="viewer_fit_sheet_applied">Показан обзор всего листа</string>
     <string name="viewer_zoom_indicator">%1$d%%</string>
     <string name="viewer_zoom_announcement">Масштаб %1$d процентов</string>
     <string name="viewer_column_header_content_description">Столбец %1$s</string>

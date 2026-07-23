@@ -13,6 +13,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -112,6 +113,80 @@ public final class XlsxSpreadsheetParserTest {
         assertEquals("1904-01-02 12:00:00", row.get(1));
         assertEquals("2.5", row.get(2));
         assertEquals("42", row.get(3));
+    }
+
+    @Test
+    public void preservesVisualStylesRealDimensionsAndMergedGeometry() throws Exception {
+        Path file = XlsxTestFixtures.workbook(
+                fixture("styled.xlsx"),
+                false,
+                new String[]{"Styled"},
+                new String[]{"worksheets/sheet1.xml"},
+                new String[]{XlsxTestFixtures.worksheet(
+                        "<dimension ref=\"A1:B2\"/>"
+                                + "<sheetFormatPr defaultColWidth=\"9\" defaultRowHeight=\"16\"/>"
+                                + "<cols><col min=\"1\" max=\"1\" width=\"22.5\" "
+                                + "customWidth=\"1\"/></cols>"
+                                + "<sheetData><row r=\"1\" ht=\"30\" customHeight=\"1\">"
+                                + "<c r=\"A1\" s=\"1\" t=\"inlineStr\"><is><t>Green title</t>"
+                                + "</is></c></row><row r=\"2\"><c r=\"B2\"><v>7</v></c>"
+                                + "</row></sheetData>"
+                                + "<mergeCells count=\"1\"><mergeCell ref=\"A1:B1\"/>"
+                                + "</mergeCells>"
+                )},
+                null,
+                XlsxTestFixtures.styles(
+                        "<fonts count=\"2\"><font><sz val=\"11\"/></font>"
+                                + "<font><b/><i/><u/><sz val=\"12\"/>"
+                                + "<color rgb=\"FFFFFFFF\"/></font></fonts>"
+                                + "<fills count=\"3\"><fill><patternFill patternType=\"none\"/>"
+                                + "</fill><fill><patternFill patternType=\"gray125\"/></fill>"
+                                + "<fill><patternFill patternType=\"solid\">"
+                                + "<fgColor rgb=\"0000B050\"/></patternFill></fill></fills>"
+                                + "<borders count=\"2\"><border/><border>"
+                                + "<left style=\"thin\"><color rgb=\"FF008000\"/></left>"
+                                + "<top style=\"medium\"><color rgb=\"FF008000\"/></top>"
+                                + "<right style=\"thin\"><color rgb=\"FF008000\"/></right>"
+                                + "<bottom style=\"medium\"><color rgb=\"FF008000\"/></bottom>"
+                                + "</border></borders>"
+                                + "<cellXfs count=\"2\"><xf numFmtId=\"0\" fontId=\"0\" "
+                                + "fillId=\"0\" borderId=\"0\"/><xf numFmtId=\"0\" fontId=\"1\" "
+                                + "fillId=\"2\" borderId=\"1\"><alignment horizontal=\"center\" "
+                                + "vertical=\"center\" wrapText=\"1\"/></xf></cellXfs>"
+                )
+        );
+
+        XlsxSheet sheet = parser.parse(file.toFile()).getSheets().get(0);
+        SpreadsheetSheetLayout layout = sheet.getLayout();
+        SpreadsheetCellStyle style = layout.getCellStyle(0, 0);
+
+        assertEquals(2, layout.getRowCount());
+        assertEquals(2, layout.getColumnCount());
+        assertEquals(22.5f, layout.getColumnWidthCharacters(0), 0.001f);
+        assertEquals(9f, layout.getColumnWidthCharacters(1), 0.001f);
+        assertEquals(30f, layout.getRowHeightPoints(0), 0.001f);
+        assertEquals(16f, layout.getRowHeightPoints(1), 0.001f);
+        assertEquals(Integer.valueOf(0xFF00B050), style.getFillColor());
+        assertEquals(Integer.valueOf(0xFFFFFFFF), style.getFontColor());
+        assertTrue(style.isBold());
+        assertTrue(style.isItalic());
+        assertTrue(style.isUnderline());
+        assertTrue(style.isWrapText());
+        assertEquals(12f, style.getFontSizePoints(), 0.001f);
+        assertEquals(
+                SpreadsheetCellStyle.HorizontalAlignment.CENTER,
+                style.getHorizontalAlignment()
+        );
+        assertEquals(
+                SpreadsheetCellStyle.VerticalAlignment.CENTER,
+                style.getVerticalAlignment()
+        );
+        assertEquals(SpreadsheetBorder.Style.MEDIUM,
+                style.getBottomBorder().getStyle());
+        assertEquals(1, layout.getMergedRanges().size());
+        SpreadsheetMergedRange merged = layout.findMergedRange(0, 1);
+        assertNotNull(merged);
+        assertTrue(merged.isAnchor(0, 0));
     }
 
     @Test

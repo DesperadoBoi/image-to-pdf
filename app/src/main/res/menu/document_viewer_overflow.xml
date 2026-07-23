@@ -9,6 +9,10 @@
             android:id="@+id/action_viewer_fit_width"
             android:checkable="true"
             android:title="@string/viewer_fit_width" />
+        <item
+            android:id="@+id/action_viewer_fit_sheet"
+            android:checkable="true"
+            android:title="@string/viewer_fit_sheet" />
     </group>
     <item
         android:id="@+id/action_viewer_file_info"

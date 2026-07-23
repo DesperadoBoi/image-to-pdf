@@ -39,6 +39,18 @@ final class SpreadsheetViewportState {
         );
     }
 
+    static SpreadsheetViewportState initialFitSheet() {
+        return new SpreadsheetViewportState(
+                ZoomController.NORMAL_ZOOM,
+                0f,
+                0f,
+                0f,
+                0f,
+                ZoomController.ZoomMode.FIT_SHEET,
+                false
+        );
+    }
+
     static SpreadsheetViewportState positioned(
             float scale,
             float horizontalOffset,

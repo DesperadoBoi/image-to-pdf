@@ -9,7 +9,8 @@ public final class ZoomController {
     enum ZoomMode {
         MANUAL,
         ZOOM_100,
-        FIT_WIDTH
+        FIT_WIDTH,
+        FIT_SHEET
     }
 
     private ZoomController() {
@@ -22,8 +23,12 @@ public final class ZoomController {
 
     static float clampZoom(float zoom, ZoomMode mode) {
         if (mode == ZoomMode.ZOOM_100) return NORMAL_ZOOM;
-        if (mode == ZoomMode.FIT_WIDTH) return clampOverviewZoom(zoom);
+        if (isOverview(mode)) return clampOverviewZoom(zoom);
         return clampZoom(zoom);
+    }
+
+    static boolean isOverview(ZoomMode mode) {
+        return mode == ZoomMode.FIT_WIDTH || mode == ZoomMode.FIT_SHEET;
     }
 
     static float clampOverviewZoom(float zoom) {
@@ -64,6 +69,17 @@ public final class ZoomController {
                 MIN_OVERVIEW_ZOOM,
                 Math.min(fitLimit, clampOverviewZoom(availableContentWidth / sheetWidth))
         );
+    }
+
+    public static float calculateFitSheetScale(
+            float availableContentWidth,
+            float availableContentHeight,
+            float sheetWidth,
+            float sheetHeight
+    ) {
+        float widthScale = calculateFitScale(availableContentWidth, sheetWidth);
+        float heightScale = calculateFitScale(availableContentHeight, sheetHeight);
+        return clampOverviewZoom(Math.min(widthScale, heightScale));
     }
 
     public static float preserveFocalPoint(

@@ -236,6 +236,12 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                             R.string.viewer_fit_width_applied,
                             Toast.LENGTH_SHORT
                     ).show();
+                } else if (userInitiated && zoomMode == ZoomController.ZoomMode.FIT_SHEET) {
+                    Toast.makeText(
+                            this,
+                            R.string.viewer_fit_sheet_applied,
+                            Toast.LENGTH_SHORT
+                    ).show();
                 }
             }
         });
@@ -669,10 +675,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 selectedSheet + 1,
                 xlsxWorkbook.getSheets().size()
         ));
-        submitSpreadsheetData(
-                sheet.getData(),
-                spreadsheetStateStore.restore(selectedSheet)
-        );
+        spreadsheetViewport.submit(sheet, spreadsheetStateStore.restoreXlsx(selectedSheet));
         noticeView.setText(R.string.viewer_notice_xlsx_truncated);
         noticeView.setVisibility(
                 xlsxWorkbook.isTruncated() || sheet.getData().isTruncated()
@@ -798,12 +801,16 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 .setVisible(spreadsheetVisible);
         popupMenu.getMenu().findItem(R.id.action_viewer_fit_width)
                 .setVisible(spreadsheetVisible);
+        popupMenu.getMenu().findItem(R.id.action_viewer_fit_sheet)
+                .setVisible(spreadsheetVisible);
         if (spreadsheetVisible) {
             ZoomController.ZoomMode zoomMode = spreadsheetViewport.getZoomMode();
             popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
                     .setChecked(zoomMode == ZoomController.ZoomMode.ZOOM_100);
             popupMenu.getMenu().findItem(R.id.action_viewer_fit_width)
                     .setChecked(zoomMode == ZoomController.ZoomMode.FIT_WIDTH);
+            popupMenu.getMenu().findItem(R.id.action_viewer_fit_sheet)
+                    .setChecked(zoomMode == ZoomController.ZoomMode.FIT_SHEET);
         }
         popupMenu.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
@@ -813,6 +820,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             }
             if (itemId == R.id.action_viewer_fit_width) {
                 spreadsheetViewport.fitToWidth();
+                return true;
+            }
+            if (itemId == R.id.action_viewer_fit_sheet) {
+                spreadsheetViewport.fitToSheet();
                 return true;
             }
             if (itemId == R.id.action_viewer_file_info) {

@@ -9,6 +9,7 @@ public final class XlsxSheet {
     private final SpreadsheetData data;
     private final String usedRange;
     private final List<String> mergedRanges;
+    private final SpreadsheetSheetLayout layout;
 
     public XlsxSheet(
             String name,
@@ -16,10 +17,27 @@ public final class XlsxSheet {
             String usedRange,
             List<String> mergedRanges
     ) {
+        this(
+                name,
+                data,
+                usedRange,
+                mergedRanges,
+                SpreadsheetSheetLayout.empty(data.getRows().size(), data.getColumnCount())
+        );
+    }
+
+    public XlsxSheet(
+            String name,
+            SpreadsheetData data,
+            String usedRange,
+            List<String> mergedRanges,
+            SpreadsheetSheetLayout layout
+    ) {
         this.name = name;
         this.data = data;
         this.usedRange = usedRange;
         this.mergedRanges = Collections.unmodifiableList(new ArrayList<>(mergedRanges));
+        this.layout = layout;
     }
 
     public String getName() {
@@ -36,5 +54,9 @@ public final class XlsxSheet {
 
     public List<String> getMergedRanges() {
         return mergedRanges;
+    }
+
+    public SpreadsheetSheetLayout getLayout() {
+        return layout;
     }
 }

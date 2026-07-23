@@ -3,6 +3,7 @@ package com.desperadoboi.imagetopdf.ui.viewer;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.text.TextPaint;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -18,7 +19,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.document.spreadsheet.ColumnLabelFormatter;
+import com.desperadoboi.imagetopdf.document.spreadsheet.SpreadsheetCellStyle;
 import com.desperadoboi.imagetopdf.document.spreadsheet.SpreadsheetData;
+import com.desperadoboi.imagetopdf.document.spreadsheet.SpreadsheetMergedRange;
+import com.desperadoboi.imagetopdf.document.spreadsheet.SpreadsheetSheetLayout;
 
 import java.util.Collections;
 import java.util.List;
@@ -27,27 +31,47 @@ final class SpreadsheetRowAdapter
         extends RecyclerView.Adapter<SpreadsheetRowAdapter.ViewHolder> {
     private static final int WIDTH_SAMPLE_ROW_COUNT = 80;
     private static final int WIDTH_SAMPLE_CHARACTER_COUNT = 64;
+    private static final float EXCEL_CHARACTER_WIDTH_DP = 7f;
+    private static final float EXCEL_COLUMN_PADDING_DP = 5f;
+    private static final float POINTS_TO_DP = 4f / 3f;
 
     private SpreadsheetData data = new SpreadsheetData(Collections.emptyList(), false, ',');
+    @Nullable private SpreadsheetSheetLayout sheetLayout;
     private int[] baseColumnWidths = new int[0];
     private int[] scaledColumnWidths = new int[0];
+    private int[] baseRowHeights = new int[0];
+    private int[] scaledRowHeights = new int[0];
+    private int[] baseRowOffsets = new int[]{0};
+    private int[] scaledRowOffsets = new int[]{0};
     private float scale = ZoomController.NORMAL_ZOOM;
     private float horizontalOffset;
     private int rowHeaderWidth;
-    private int baseRowHeight;
+    private int headerHeight;
+    private int baseCsvRowHeight;
     private int minimumManualRowHeight;
     private int basePadding;
     private float baseTextSize;
     private float minimumManualTextSize;
+    private int defaultCellColor;
+    private int defaultTextColor;
+    private int gridColor;
+    private float density;
+    private float scaledDensity;
     private ZoomController.ZoomMode zoomMode = ZoomController.ZoomMode.ZOOM_100;
     @Nullable private RecyclerView recyclerView;
 
-    void submit(SpreadsheetData data, ViewGroup parent) {
+    void submit(
+            SpreadsheetData data,
+            @Nullable SpreadsheetSheetLayout sheetLayout,
+            ViewGroup parent
+    ) {
         int previousCount = getItemCount();
         this.data = data;
+        this.sheetLayout = sheetLayout;
         readBaseMetrics(parent);
         calculateColumnWidths(parent);
-        updateScaledColumnWidths();
+        calculateRowHeights();
+        updateScaledMetrics();
         if (previousCount > 0) notifyItemRangeRemoved(0, previousCount);
         int currentCount = getItemCount();
         if (currentCount > 0) notifyItemRangeInserted(0, currentCount);
@@ -61,7 +85,7 @@ final class SpreadsheetRowAdapter
         }
         this.scale = clampedScale;
         this.zoomMode = zoomMode;
-        updateScaledColumnWidths();
+        updateScaledMetrics();
         updateAttachedRows(true);
         if (recyclerView != null) recyclerView.requestLayout();
     }
@@ -80,30 +104,29 @@ final class SpreadsheetRowAdapter
     }
 
     int getHeaderHeight() {
-        return baseRowHeight;
+        return headerHeight;
     }
 
-    int getScaledRowHeight() {
-        int scaledHeight = Math.max(1, Math.round(baseRowHeight * scale));
-        if (zoomMode == ZoomController.ZoomMode.FIT_WIDTH) return scaledHeight;
-        return Math.max(minimumManualRowHeight, scaledHeight);
-    }
-
-    float getVerticalScale() {
-        if (baseRowHeight <= 0) return scale;
-        return getScaledRowHeight() / (float) baseRowHeight;
+    int getScaledRowHeight(int row) {
+        if (scaledRowHeights.length == 0) return Math.max(1, baseCsvRowHeight);
+        int safeRow = Math.max(0, Math.min(row, scaledRowHeights.length - 1));
+        return scaledRowHeights[safeRow];
     }
 
     int getUnscaledSheetWidth() {
-        int width = 0;
-        for (int columnWidth : baseColumnWidths) width += columnWidth;
-        return width;
+        return sum(baseColumnWidths);
     }
 
     int getScaledSheetWidth() {
-        int width = 0;
-        for (int columnWidth : scaledColumnWidths) width += columnWidth;
-        return width;
+        return sum(scaledColumnWidths);
+    }
+
+    int getUnscaledSheetHeight() {
+        return baseRowOffsets[baseRowOffsets.length - 1];
+    }
+
+    int getScaledSheetHeight() {
+        return scaledRowOffsets[scaledRowOffsets.length - 1];
     }
 
     int[] getScaledColumnWidths() {
@@ -111,16 +134,47 @@ final class SpreadsheetRowAdapter
     }
 
     int getScaledPadding() {
-        float minimumScale = zoomMode == ZoomController.ZoomMode.FIT_WIDTH ? 0.35f : 0.60f;
+        float minimumScale = ZoomController.isOverview(zoomMode) ? 0.30f : 0.60f;
         float paddingScale = Math.max(minimumScale, Math.min(2f, scale));
         return Math.max(1, Math.round(basePadding * paddingScale));
     }
 
     float getScaledTextSize() {
-        float textScale = Math.max(0.65f, Math.min(2f, scale));
-        float scaledSize = baseTextSize * textScale;
-        if (zoomMode == ZoomController.ZoomMode.FIT_WIDTH) return scaledSize;
+        return getScaledTextSize(SpreadsheetCellStyle.DEFAULT);
+    }
+
+    float getScaledTextSize(SpreadsheetCellStyle style) {
+        float cellBaseSize = style.getFontSizePoints() > 0f
+                ? style.getFontSizePoints() * scaledDensity
+                : baseTextSize;
+        float scaledSize = cellBaseSize * Math.max(0.35f, Math.min(2f, scale));
+        if (ZoomController.isOverview(zoomMode)) return scaledSize;
         return Math.max(minimumManualTextSize, scaledSize);
+    }
+
+    float scaledOffsetToBase(float scaledOffset) {
+        if (scaledRowHeights.length == 0) return 0f;
+        int row = rowForOffset(scaledRowOffsets, scaledOffset);
+        float within = Math.max(0f, scaledOffset - scaledRowOffsets[row]);
+        float fraction = Math.min(1f, within / Math.max(1f, scaledRowHeights[row]));
+        return baseRowOffsets[row] + fraction * baseRowHeights[row];
+    }
+
+    float baseOffsetToScaled(float baseOffset) {
+        if (baseRowHeights.length == 0) return 0f;
+        int row = rowForOffset(baseRowOffsets, baseOffset);
+        float within = Math.max(0f, baseOffset - baseRowOffsets[row]);
+        float fraction = Math.min(1f, within / Math.max(1f, baseRowHeights[row]));
+        return scaledRowOffsets[row] + fraction * scaledRowHeights[row];
+    }
+
+    int rowForScaledOffset(float offset) {
+        return rowForOffset(scaledRowOffsets, offset);
+    }
+
+    int getScaledRowOffset(int row) {
+        int safeRow = Math.max(0, Math.min(row, scaledRowHeights.length));
+        return scaledRowOffsets[safeRow];
     }
 
     @Override
@@ -139,14 +193,17 @@ final class SpreadsheetRowAdapter
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         FrameLayout row = new FrameLayout(parent.getContext());
-        row.setClipChildren(true);
+        row.setClipChildren(false);
+        row.setClipToPadding(false);
         row.setLayoutParams(new RecyclerView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                getScaledRowHeight()
+                getScaledRowHeight(0)
         ));
 
         LinearLayout cells = new LinearLayout(parent.getContext());
         cells.setOrientation(LinearLayout.HORIZONTAL);
+        cells.setClipChildren(false);
+        cells.setClipToPadding(false);
         row.addView(cells);
 
         TextView rowNumber = createTextView(parent, true);
@@ -161,7 +218,9 @@ final class SpreadsheetRowAdapter
 
     @Override
     public int getItemCount() {
-        return data.getRows().size();
+        return sheetLayout == null
+                ? data.getRows().size()
+                : Math.max(data.getRows().size(), sheetLayout.getRowCount());
     }
 
     private void updateAttachedRows(boolean updateMetrics) {
@@ -172,27 +231,23 @@ final class SpreadsheetRowAdapter
             );
             if (!(holder instanceof ViewHolder)) continue;
             ViewHolder rowHolder = (ViewHolder) holder;
-            if (updateMetrics) rowHolder.applyMetrics();
-            rowHolder.applyHorizontalOffset();
+            if (updateMetrics) rowHolder.bind(rowHolder.getBindingAdapterPosition());
+            else rowHolder.applyHorizontalOffset();
         }
     }
 
     private TextView createTextView(ViewGroup parent, boolean rowHeader) {
         TextView cell = new TextView(parent.getContext());
-        cell.setGravity(rowHeader ? Gravity.CENTER : Gravity.CENTER_VERTICAL);
-        cell.setMaxLines(rowHeader ? 1 : 2);
-        cell.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        cell.setTextColor(ContextCompat.getColor(
-                parent.getContext(),
-                R.color.viewer_document_text
-        ));
-        cell.setBackgroundResource(rowHeader
-                ? R.drawable.bg_viewer_grid_row_header
-                : R.drawable.bg_viewer_grid_cell);
+        cell.setGravity(rowHeader ? Gravity.CENTER : Gravity.START | Gravity.CENTER_VERTICAL);
+        cell.setTextColor(defaultTextColor);
         if (rowHeader) {
+            cell.setMaxLines(1);
+            cell.setEllipsize(TextUtils.TruncateAt.END);
+            cell.setBackgroundResource(R.drawable.bg_viewer_grid_row_header);
             cell.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         } else {
             cell.setTextIsSelectable(true);
+            cell.setIncludeFontPadding(false);
         }
         return cell;
     }
@@ -201,7 +256,12 @@ final class SpreadsheetRowAdapter
         rowHeaderWidth = parent.getResources().getDimensionPixelSize(
                 R.dimen.viewer_row_header_width
         );
-        baseRowHeight = parent.getResources().getDimensionPixelSize(R.dimen.viewer_cell_height);
+        baseCsvRowHeight = parent.getResources().getDimensionPixelSize(
+                R.dimen.viewer_cell_height
+        );
+        headerHeight = parent.getResources().getDimensionPixelSize(
+                R.dimen.viewer_spreadsheet_header_height
+        );
         minimumManualRowHeight = parent.getResources().getDimensionPixelSize(
                 R.dimen.viewer_cell_manual_min_height
         );
@@ -210,10 +270,42 @@ final class SpreadsheetRowAdapter
         minimumManualTextSize = parent.getResources().getDimension(
                 R.dimen.viewer_cell_manual_min_text_size
         );
+        defaultCellColor = ContextCompat.getColor(
+                parent.getContext(),
+                R.color.viewer_document_surface
+        );
+        defaultTextColor = ContextCompat.getColor(
+                parent.getContext(),
+                R.color.viewer_document_text
+        );
+        gridColor = ContextCompat.getColor(parent.getContext(), R.color.viewer_table_grid);
+        density = parent.getResources().getDisplayMetrics().density;
+        scaledDensity = parent.getResources().getDisplayMetrics().scaledDensity;
     }
 
     private void calculateColumnWidths(ViewGroup parent) {
-        int columnCount = Math.max(1, data.getColumnCount());
+        int columnCount = Math.max(
+                1,
+                sheetLayout == null
+                        ? data.getColumnCount()
+                        : Math.max(data.getColumnCount(), sheetLayout.getColumnCount())
+        );
+        baseColumnWidths = new int[columnCount];
+        if (sheetLayout != null) {
+            int minimumWidth = Math.max(1, Math.round(4f * density));
+            int maximumWidth = Math.round(480f * density);
+            for (int column = 0; column < columnCount; column++) {
+                float widthDp = sheetLayout.getColumnWidthCharacters(column)
+                        * EXCEL_CHARACTER_WIDTH_DP
+                        + EXCEL_COLUMN_PADDING_DP;
+                baseColumnWidths[column] = Math.max(
+                        minimumWidth,
+                        Math.min(maximumWidth, Math.round(widthDp * density))
+                );
+            }
+            return;
+        }
+
         int minimumWidth = parent.getResources().getDimensionPixelSize(
                 R.dimen.viewer_cell_min_width
         );
@@ -224,8 +316,6 @@ final class SpreadsheetRowAdapter
         TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         textPaint.setTypeface(Typeface.DEFAULT);
         textPaint.setTextSize(baseTextSize);
-
-        baseColumnWidths = new int[columnCount];
         int sampledRows = Math.min(WIDTH_SAMPLE_ROW_COUNT, data.getRows().size());
         for (int column = 0; column < columnCount; column++) {
             float measuredWidth = textPaint.measureText(ColumnLabelFormatter.format(column));
@@ -233,10 +323,7 @@ final class SpreadsheetRowAdapter
                 List<String> row = data.getRows().get(rowIndex);
                 if (column >= row.size()) continue;
                 String value = row.get(column);
-                int measuredCharacters = Math.min(
-                        WIDTH_SAMPLE_CHARACTER_COUNT,
-                        value.length()
-                );
+                int measuredCharacters = Math.min(WIDTH_SAMPLE_CHARACTER_COUNT, value.length());
                 measuredWidth = Math.max(
                         measuredWidth,
                         textPaint.measureText(value, 0, measuredCharacters)
@@ -250,17 +337,154 @@ final class SpreadsheetRowAdapter
         }
     }
 
-    private void updateScaledColumnWidths() {
+    private void calculateRowHeights() {
+        int rowCount = getItemCount();
+        baseRowHeights = new int[rowCount];
+        for (int row = 0; row < rowCount; row++) {
+            if (sheetLayout == null) {
+                baseRowHeights[row] = baseCsvRowHeight;
+            } else {
+                float heightDp = sheetLayout.getRowHeightPoints(row) * POINTS_TO_DP;
+                baseRowHeights[row] = Math.max(1, Math.round(heightDp * density));
+            }
+        }
+        baseRowOffsets = offsets(baseRowHeights);
+    }
+
+    private void updateScaledMetrics() {
         scaledColumnWidths = new int[baseColumnWidths.length];
         for (int index = 0; index < baseColumnWidths.length; index++) {
-            scaledColumnWidths[index] = Math.max(1, Math.round(baseColumnWidths[index] * scale));
+            scaledColumnWidths[index] = Math.max(
+                    1,
+                    Math.round(baseColumnWidths[index] * scale)
+            );
         }
+        scaledRowHeights = new int[baseRowHeights.length];
+        for (int row = 0; row < baseRowHeights.length; row++) {
+            int scaledHeight = Math.max(1, Math.round(baseRowHeights[row] * scale));
+            if (sheetLayout == null && !ZoomController.isOverview(zoomMode)) {
+                scaledHeight = Math.max(minimumManualRowHeight, scaledHeight);
+            }
+            scaledRowHeights[row] = scaledHeight;
+        }
+        scaledRowOffsets = offsets(scaledRowHeights);
+    }
+
+    private SpreadsheetMergedRange[] mergedRangesForRow(int row) {
+        SpreadsheetMergedRange[] result =
+                new SpreadsheetMergedRange[scaledColumnWidths.length];
+        if (sheetLayout == null) return result;
+        for (SpreadsheetMergedRange range : sheetLayout.getMergedRanges()) {
+            if (row < range.getFirstRow() || row > range.getLastRow()) continue;
+            int lastColumn = Math.min(range.getLastColumn(), result.length - 1);
+            for (int column = range.getFirstColumn(); column <= lastColumn; column++) {
+                result[column] = range;
+            }
+        }
+        return result;
+    }
+
+    private int mergedWidth(SpreadsheetMergedRange range) {
+        int width = 0;
+        for (int column = range.getFirstColumn();
+                column <= range.getLastColumn() && column < scaledColumnWidths.length;
+                column++) {
+            width += scaledColumnWidths[column];
+        }
+        return width;
+    }
+
+    private int mergedHeight(SpreadsheetMergedRange range) {
+        int lastRow = Math.min(range.getLastRow(), scaledRowHeights.length - 1);
+        return scaledRowOffsets[lastRow + 1] - scaledRowOffsets[range.getFirstRow()];
+    }
+
+    private int gravityFor(SpreadsheetCellStyle style, String value) {
+        int horizontal;
+        switch (style.getHorizontalAlignment()) {
+            case CENTER:
+                horizontal = Gravity.CENTER_HORIZONTAL;
+                break;
+            case RIGHT:
+                horizontal = Gravity.END;
+                break;
+            case JUSTIFY:
+                horizontal = Gravity.FILL_HORIZONTAL;
+                break;
+            case GENERAL:
+                horizontal = looksNumeric(value) ? Gravity.END : Gravity.START;
+                break;
+            case LEFT:
+            default:
+                horizontal = Gravity.START;
+                break;
+        }
+        int vertical;
+        switch (style.getVerticalAlignment()) {
+            case TOP:
+                vertical = Gravity.TOP;
+                break;
+            case CENTER:
+                vertical = Gravity.CENTER_VERTICAL;
+                break;
+            case BOTTOM:
+            default:
+                vertical = Gravity.BOTTOM;
+                break;
+        }
+        return horizontal | vertical;
+    }
+
+    private boolean looksNumeric(String value) {
+        if (value == null || value.isEmpty()) return false;
+        int index = value.charAt(0) == '-' || value.charAt(0) == '+' ? 1 : 0;
+        boolean digit = false;
+        for (; index < value.length(); index++) {
+            char current = value.charAt(index);
+            if (Character.isDigit(current)) digit = true;
+            else if (current != '.' && current != ',' && current != ' ') return false;
+        }
+        return digit;
+    }
+
+    private int[] offsets(int[] sizes) {
+        int[] result = new int[sizes.length + 1];
+        for (int index = 0; index < sizes.length; index++) {
+            long next = (long) result[index] + sizes[index];
+            result[index + 1] = next > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) next;
+        }
+        return result;
+    }
+
+    private int rowForOffset(int[] offsets, float offset) {
+        if (offsets.length <= 1) return 0;
+        float clamped = Math.max(0f, Math.min(offset, offsets[offsets.length - 1] - 1f));
+        int low = 0;
+        int high = offsets.length - 2;
+        while (low <= high) {
+            int middle = (low + high) >>> 1;
+            if (clamped < offsets[middle]) {
+                high = middle - 1;
+            } else if (clamped >= offsets[middle + 1]) {
+                low = middle + 1;
+            } else {
+                return middle;
+            }
+        }
+        return Math.max(0, Math.min(low, offsets.length - 2));
+    }
+
+    private int sum(int[] values) {
+        long total = 0L;
+        for (int value : values) total += value;
+        return total > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) total;
     }
 
     final class ViewHolder extends RecyclerView.ViewHolder {
         private final FrameLayout rowView;
         private final LinearLayout cellContainer;
         private final TextView rowNumberView;
+        private int boundPosition = RecyclerView.NO_POSITION;
 
         ViewHolder(
                 FrameLayout rowView,
@@ -274,58 +498,123 @@ final class SpreadsheetRowAdapter
         }
 
         void bind(int position) {
+            if (position == RecyclerView.NO_POSITION || position >= getItemCount()) return;
+            boundPosition = position;
             ensureCellCount();
-            List<String> row = data.getRows().get(position);
+            List<String> row = position < data.getRows().size()
+                    ? data.getRows().get(position)
+                    : Collections.emptyList();
+            SpreadsheetMergedRange[] mergedRanges = mergedRangesForRow(position);
+            boolean anchorsVerticalMerge = false;
             rowNumberView.setText(String.valueOf(position + 1));
             for (int column = 0; column < scaledColumnWidths.length; column++) {
                 TextView cell = (TextView) cellContainer.getChildAt(column);
+                SpreadsheetMergedRange mergedRange = mergedRanges[column];
+                boolean anchor = mergedRange != null
+                        && mergedRange.isAnchor(position, column);
+                boolean covered = mergedRange != null && !anchor;
                 String value = column < row.size() ? row.get(column) : "";
+                if (covered) value = "";
+                SpreadsheetCellStyle style = sheetLayout == null
+                        ? SpreadsheetCellStyle.DEFAULT
+                        : sheetLayout.getCellStyle(
+                                anchor ? mergedRange.getFirstRow() : position,
+                                anchor ? mergedRange.getFirstColumn() : column
+                        );
+                applyCellPresentation(cell, style, value);
                 cell.setText(value);
+                cell.setVisibility(covered ? View.INVISIBLE : View.VISIBLE);
                 cell.setContentDescription(cell.getResources().getString(
                         R.string.viewer_cell_content_description,
                         position + 1,
                         ColumnLabelFormatter.format(column),
                         value
                 ));
+
+                int width = scaledColumnWidths[column];
+                int height = getScaledRowHeight(position);
+                if (anchor) {
+                    width = mergedWidth(mergedRange);
+                    height = mergedHeight(mergedRange);
+                    anchorsVerticalMerge |= mergedRange.getLastRow() > mergedRange.getFirstRow();
+                } else if (mergedRange != null
+                        && position == mergedRange.getFirstRow()
+                        && column > mergedRange.getFirstColumn()) {
+                    width = 0;
+                }
+                cell.setLayoutParams(new LinearLayout.LayoutParams(width, height));
             }
+            rowView.setTranslationZ(anchorsVerticalMerge ? density : 0f);
             applyMetrics();
             applyHorizontalOffset();
         }
 
         void applyMetrics() {
+            if (boundPosition == RecyclerView.NO_POSITION) return;
+            int rowHeight = getScaledRowHeight(boundPosition);
             ViewGroup.LayoutParams rowParams = rowView.getLayoutParams();
             rowParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
-            rowParams.height = getScaledRowHeight();
+            rowParams.height = rowHeight;
             rowView.setLayoutParams(rowParams);
 
             FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(
                     getScaledSheetWidth(),
-                    getScaledRowHeight()
+                    rowHeight
             );
             contentParams.leftMargin = rowHeaderWidth;
             cellContainer.setLayoutParams(contentParams);
 
             FrameLayout.LayoutParams rowNumberParams = new FrameLayout.LayoutParams(
                     rowHeaderWidth,
-                    getScaledRowHeight()
+                    rowHeight
             );
             rowNumberView.setLayoutParams(rowNumberParams);
             rowNumberView.setTextSize(TypedValue.COMPLEX_UNIT_PX, getScaledTextSize());
-
-            int padding = getScaledPadding();
-            for (int column = 0; column < scaledColumnWidths.length; column++) {
-                TextView cell = (TextView) cellContainer.getChildAt(column);
-                cell.setLayoutParams(new LinearLayout.LayoutParams(
-                        scaledColumnWidths[column],
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                ));
-                cell.setPadding(padding, 0, padding, 0);
-                cell.setTextSize(TypedValue.COMPLEX_UNIT_PX, getScaledTextSize());
-            }
         }
 
         void applyHorizontalOffset() {
             cellContainer.setTranslationX(-horizontalOffset);
+        }
+
+        private void applyCellPresentation(
+                TextView cell,
+                SpreadsheetCellStyle style,
+                String value
+        ) {
+            cell.setGravity(gravityFor(style, value));
+            cell.setMaxLines(style.isWrapText() ? Integer.MAX_VALUE : 1);
+            cell.setEllipsize(style.isWrapText() ? null : TextUtils.TruncateAt.END);
+            cell.setHorizontallyScrolling(!style.isWrapText());
+            cell.setTypeface(
+                    Typeface.create(
+                            "sans-serif",
+                            style.isBold() && style.isItalic()
+                                    ? Typeface.BOLD_ITALIC
+                                    : style.isBold()
+                                            ? Typeface.BOLD
+                                            : style.isItalic()
+                                                    ? Typeface.ITALIC
+                                                    : Typeface.NORMAL
+                    )
+            );
+            cell.setPaintFlags(style.isUnderline()
+                    ? cell.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG
+                    : cell.getPaintFlags() & ~Paint.UNDERLINE_TEXT_FLAG);
+            cell.setTextColor(style.getFontColor() == null
+                    ? defaultTextColor
+                    : style.getFontColor());
+            cell.setTextSize(
+                    TypedValue.COMPLEX_UNIT_PX,
+                    getScaledTextSize(style)
+            );
+            int padding = getScaledPadding();
+            cell.setPadding(padding, Math.max(0, padding / 3), padding, Math.max(0, padding / 3));
+            cell.setBackground(new SpreadsheetCellDrawable(
+                    style,
+                    defaultCellColor,
+                    gridColor,
+                    density
+            ));
         }
 
         private void ensureCellCount() {

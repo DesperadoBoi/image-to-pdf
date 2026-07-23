@@ -39,6 +39,22 @@ public final class ZoomControllerTest {
     }
 
     @Test
+    public void fitSheetUsesTheMoreRestrictiveAxis() {
+        assertEquals(0.5f, ZoomController.calculateFitSheetScale(
+                400f,
+                300f,
+                800f,
+                400f
+        ), DELTA);
+        assertEquals(0.25f, ZoomController.calculateFitSheetScale(
+                400f,
+                200f,
+                800f,
+                2_000f
+        ), DELTA);
+    }
+
+    @Test
     public void zoomModesKeepOverviewSeparateFromManualAndNormal() {
         assertEquals(0.60f, ZoomController.clampZoom(
                 0.25f,
@@ -51,6 +67,10 @@ public final class ZoomControllerTest {
         assertEquals(0.25f, ZoomController.clampZoom(
                 0.25f,
                 ZoomController.ZoomMode.FIT_WIDTH
+        ), DELTA);
+        assertEquals(0.25f, ZoomController.clampZoom(
+                0.25f,
+                ZoomController.ZoomMode.FIT_SHEET
         ), DELTA);
     }
 

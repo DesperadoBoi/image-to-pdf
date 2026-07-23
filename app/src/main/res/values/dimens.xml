@@ -166,6 +166,7 @@
     <dimen name="viewer_text_horizontal_padding">16dp</dimen>
     <dimen name="viewer_text_vertical_padding">4dp</dimen>
     <dimen name="viewer_row_header_width">48dp</dimen>
+    <dimen name="viewer_spreadsheet_header_height">32dp</dimen>
     <dimen name="viewer_cell_min_width">104dp</dimen>
     <dimen name="viewer_cell_max_width">224dp</dimen>
     <dimen name="viewer_cell_height">52dp</dimen>

@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
@@ -200,9 +201,12 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
             throws IOException, XmlPullParserException, XlsxParseException {
         if (entry == null) return Styles.empty();
         Map<Integer, String> formats = new HashMap<>();
-        List<Integer> styleFormatIds = new ArrayList<>();
-        boolean inCellFormats = false;
-        int cellFormatsDepth = -1;
+        List<FontStyle> fonts = new ArrayList<>();
+        List<Integer> fills = new ArrayList<>();
+        List<BorderStyle> borders = new ArrayList<>();
+        List<CellFormat> cellFormats = new ArrayList<>();
+        String section = "";
+        int sectionDepth = -1;
         try (InputStream inputStream = zipFile.getInputStream(entry)) {
             XmlPullParser parser = XlsxXml.newParser(inputStream);
             XlsxXml.Budget budget = new XlsxXml.Budget();
@@ -213,26 +217,287 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
                         Integer id = parseInteger(XlsxXml.attribute(parser, "numFmtId"));
                         String code = XlsxXml.attribute(parser, "formatCode");
                         if (id != null && code != null) formats.put(id, code);
-                    } else if ("cellXfs".equals(parser.getName())) {
-                        inCellFormats = true;
-                        cellFormatsDepth = parser.getDepth();
-                    } else if (inCellFormats && "xf".equals(parser.getName())
-                            && parser.getDepth() == cellFormatsDepth + 1) {
-                        Integer id = parseInteger(XlsxXml.attribute(parser, "numFmtId"));
-                        styleFormatIds.add(id == null ? 0 : id);
+                    } else if ("fonts".equals(parser.getName())
+                            || "fills".equals(parser.getName())
+                            || "borders".equals(parser.getName())
+                            || "cellXfs".equals(parser.getName())) {
+                        section = parser.getName();
+                        sectionDepth = parser.getDepth();
+                    } else if (parser.getDepth() == sectionDepth + 1) {
+                        if ("fonts".equals(section) && "font".equals(parser.getName())) {
+                            fonts.add(readFont(parser, budget));
+                        } else if ("fills".equals(section) && "fill".equals(parser.getName())) {
+                            fills.add(readFill(parser, budget));
+                        } else if ("borders".equals(section)
+                                && "border".equals(parser.getName())) {
+                            borders.add(readBorder(parser, budget));
+                        } else if ("cellXfs".equals(section) && "xf".equals(parser.getName())) {
+                            cellFormats.add(readCellFormat(parser, budget));
+                        }
                     }
                 } else if (event == XmlPullParser.END_TAG
-                        && inCellFormats
-                        && "cellXfs".equals(parser.getName())) {
-                    inCellFormats = false;
+                        && parser.getDepth() == sectionDepth
+                        && section.equals(parser.getName())) {
+                    section = "";
+                    sectionDepth = -1;
                 }
             }
         }
-        List<DateStyle> dateStyles = new ArrayList<>();
-        for (Integer formatId : styleFormatIds) {
-            dateStyles.add(dateStyle(formatId, formats.get(formatId)));
+        List<ResolvedStyle> resolvedStyles = new ArrayList<>();
+        for (CellFormat format : cellFormats) {
+            FontStyle font = getOrDefault(fonts, format.fontId, FontStyle.DEFAULT);
+            Integer fill = getOrDefault(fills, format.fillId, null);
+            BorderStyle border = getOrDefault(borders, format.borderId, BorderStyle.NONE);
+            SpreadsheetCellStyle visual = new SpreadsheetCellStyle.Builder()
+                    .setFillColor(fill)
+                    .setFontColor(font.color)
+                    .setBold(font.bold)
+                    .setItalic(font.italic)
+                    .setUnderline(font.underline)
+                    .setFontSizePoints(font.sizePoints)
+                    .setHorizontalAlignment(format.horizontalAlignment)
+                    .setVerticalAlignment(format.verticalAlignment)
+                    .setWrapText(format.wrapText)
+                    .setBorders(border.left, border.top, border.right, border.bottom)
+                    .build();
+            resolvedStyles.add(new ResolvedStyle(
+                    dateStyle(format.numberFormatId, formats.get(format.numberFormatId)),
+                    visual
+            ));
         }
-        return new Styles(dateStyles);
+        return new Styles(resolvedStyles);
+    }
+
+    private FontStyle readFont(XmlPullParser parser, XlsxXml.Budget budget)
+            throws IOException, XmlPullParserException, XlsxParseException {
+        int depth = parser.getDepth();
+        boolean bold = false;
+        boolean italic = false;
+        boolean underline = false;
+        float sizePoints = 0f;
+        Integer color = null;
+        int event;
+        while ((event = XlsxXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG) {
+                String element = parser.getName();
+                if ("b".equals(element)) bold = enabledProperty(parser);
+                else if ("i".equals(element)) italic = enabledProperty(parser);
+                else if ("u".equals(element)) underline = enabledProperty(parser);
+                else if ("sz".equals(element)) {
+                    sizePoints = parsePositiveFloat(XlsxXml.attribute(parser, "val"), 0f);
+                } else if ("color".equals(element)) {
+                    color = parseColor(parser);
+                }
+            } else if (event == XmlPullParser.END_TAG
+                    && "font".equals(parser.getName())
+                    && parser.getDepth() == depth) {
+                break;
+            }
+        }
+        return new FontStyle(bold, italic, underline, sizePoints, color);
+    }
+
+    private Integer readFill(XmlPullParser parser, XlsxXml.Budget budget)
+            throws IOException, XmlPullParserException, XlsxParseException {
+        int depth = parser.getDepth();
+        String patternType = "";
+        Integer foreground = null;
+        Integer background = null;
+        int event;
+        while ((event = XlsxXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG) {
+                if ("patternFill".equals(parser.getName())) {
+                    String value = XlsxXml.attribute(parser, "patternType");
+                    patternType = value == null ? "" : value;
+                } else if ("fgColor".equals(parser.getName())) {
+                    foreground = parseColor(parser);
+                } else if ("bgColor".equals(parser.getName())) {
+                    background = parseColor(parser);
+                }
+            } else if (event == XmlPullParser.END_TAG
+                    && "fill".equals(parser.getName())
+                    && parser.getDepth() == depth) {
+                break;
+            }
+        }
+        if ("none".equals(patternType) || "gray125".equals(patternType)) return null;
+        return foreground != null ? foreground : background;
+    }
+
+    private BorderStyle readBorder(XmlPullParser parser, XlsxXml.Budget budget)
+            throws IOException, XmlPullParserException, XlsxParseException {
+        int depth = parser.getDepth();
+        SpreadsheetBorder left = SpreadsheetBorder.NONE;
+        SpreadsheetBorder top = SpreadsheetBorder.NONE;
+        SpreadsheetBorder right = SpreadsheetBorder.NONE;
+        SpreadsheetBorder bottom = SpreadsheetBorder.NONE;
+        int event;
+        while ((event = XlsxXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG && parser.getDepth() == depth + 1) {
+                String element = parser.getName();
+                if ("left".equals(element)) left = readBorderSide(parser, budget, element);
+                else if ("top".equals(element)) top = readBorderSide(parser, budget, element);
+                else if ("right".equals(element)) right = readBorderSide(parser, budget, element);
+                else if ("bottom".equals(element)) bottom = readBorderSide(parser, budget, element);
+            } else if (event == XmlPullParser.END_TAG
+                    && "border".equals(parser.getName())
+                    && parser.getDepth() == depth) {
+                break;
+            }
+        }
+        return new BorderStyle(left, top, right, bottom);
+    }
+
+    private SpreadsheetBorder readBorderSide(
+            XmlPullParser parser,
+            XlsxXml.Budget budget,
+            String sideElement
+    ) throws IOException, XmlPullParserException, XlsxParseException {
+        int depth = parser.getDepth();
+        SpreadsheetBorder.Style style = borderStyle(XlsxXml.attribute(parser, "style"));
+        Integer color = null;
+        int event;
+        while ((event = XlsxXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG && "color".equals(parser.getName())) {
+                color = parseColor(parser);
+            } else if (event == XmlPullParser.END_TAG
+                    && sideElement.equals(parser.getName())
+                    && parser.getDepth() == depth) {
+                break;
+            }
+        }
+        if (style == SpreadsheetBorder.Style.NONE) return SpreadsheetBorder.NONE;
+        return new SpreadsheetBorder(style, color == null ? 0xFF606060 : color);
+    }
+
+    private CellFormat readCellFormat(XmlPullParser parser, XlsxXml.Budget budget)
+            throws IOException, XmlPullParserException, XlsxParseException {
+        int depth = parser.getDepth();
+        int numberFormatId = parseStyleIndex(XlsxXml.attribute(parser, "numFmtId"));
+        int fontId = parseStyleIndex(XlsxXml.attribute(parser, "fontId"));
+        int fillId = parseStyleIndex(XlsxXml.attribute(parser, "fillId"));
+        int borderId = parseStyleIndex(XlsxXml.attribute(parser, "borderId"));
+        SpreadsheetCellStyle.HorizontalAlignment horizontal =
+                SpreadsheetCellStyle.HorizontalAlignment.GENERAL;
+        SpreadsheetCellStyle.VerticalAlignment vertical =
+                SpreadsheetCellStyle.VerticalAlignment.BOTTOM;
+        boolean wrapText = false;
+        int event;
+        while ((event = XlsxXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG && "alignment".equals(parser.getName())) {
+                horizontal = horizontalAlignment(XlsxXml.attribute(parser, "horizontal"));
+                vertical = verticalAlignment(XlsxXml.attribute(parser, "vertical"));
+                wrapText = parseBoolean(XlsxXml.attribute(parser, "wrapText"));
+            } else if (event == XmlPullParser.END_TAG
+                    && "xf".equals(parser.getName())
+                    && parser.getDepth() == depth) {
+                break;
+            }
+        }
+        return new CellFormat(
+                Math.max(0, numberFormatId),
+                fontId,
+                fillId,
+                borderId,
+                horizontal,
+                vertical,
+                wrapText
+        );
+    }
+
+    private Integer parseColor(XmlPullParser parser) {
+        String rgb = XlsxXml.attribute(parser, "rgb");
+        if (rgb != null) {
+            String normalized = rgb.trim();
+            if (normalized.length() == 6) normalized = "FF" + normalized;
+            if (normalized.length() == 8) {
+                try {
+                    int parsed = (int) Long.parseLong(normalized, 16);
+                    return 0xFF000000 | (parsed & 0x00FFFFFF);
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
+            }
+        }
+        Integer indexed = parseInteger(XlsxXml.attribute(parser, "indexed"));
+        if (indexed != null) return indexedColor(indexed);
+        Integer theme = parseInteger(XlsxXml.attribute(parser, "theme"));
+        return theme == null ? null : themeColor(theme);
+    }
+
+    private Integer indexedColor(int index) {
+        int[] colors = {
+                0xFF000000, 0xFFFFFFFF, 0xFFFF0000, 0xFF00FF00,
+                0xFF0000FF, 0xFFFFFF00, 0xFFFF00FF, 0xFF00FFFF,
+                0xFF000000, 0xFFFFFFFF, 0xFFFF0000, 0xFF00FF00,
+                0xFF0000FF, 0xFFFFFF00, 0xFFFF00FF, 0xFF00FFFF,
+                0xFF800000, 0xFF008000, 0xFF000080, 0xFF808000,
+                0xFF800080, 0xFF008080, 0xFFC0C0C0, 0xFF808080,
+                0xFF9999FF, 0xFF993366, 0xFFFFFFCC, 0xFFCCFFFF,
+                0xFF660066, 0xFFFF8080, 0xFF0066CC, 0xFFCCCCFF,
+                0xFF000080, 0xFFFF00FF, 0xFFFFFF00, 0xFF00FFFF,
+                0xFF800080, 0xFF800000, 0xFF008080, 0xFF0000FF,
+                0xFF00CCFF, 0xFFCCFFFF, 0xFFCCFFCC, 0xFFFFFF99,
+                0xFF99CCFF, 0xFFFF99CC, 0xFFCC99FF, 0xFFFFCC99,
+                0xFF3366FF, 0xFF33CCCC, 0xFF99CC00, 0xFFFFCC00,
+                0xFFFF9900, 0xFFFF6600, 0xFF666699, 0xFF969696,
+                0xFF003366, 0xFF339966, 0xFF003300, 0xFF333300,
+                0xFF993300, 0xFF993366, 0xFF333399, 0xFF333333
+        };
+        return index >= 0 && index < colors.length ? colors[index] : null;
+    }
+
+    private Integer themeColor(int index) {
+        int[] colors = {
+                0xFFFFFFFF, 0xFF000000, 0xFFEEECE1, 0xFF1F497D,
+                0xFF4F81BD, 0xFFC0504D, 0xFF9BBB59, 0xFF8064A2,
+                0xFF4BACC6, 0xFFF79646, 0xFF0000FF, 0xFF800080
+        };
+        return index >= 0 && index < colors.length ? colors[index] : null;
+    }
+
+    private SpreadsheetBorder.Style borderStyle(String value) {
+        if (value == null || value.isEmpty()) return SpreadsheetBorder.Style.NONE;
+        if ("hair".equals(value)) return SpreadsheetBorder.Style.HAIR;
+        if ("medium".equals(value) || value.startsWith("medium")) {
+            return SpreadsheetBorder.Style.MEDIUM;
+        }
+        if ("thick".equals(value)) return SpreadsheetBorder.Style.THICK;
+        if ("dashed".equals(value) || value.endsWith("Dash")) {
+            return SpreadsheetBorder.Style.DASHED;
+        }
+        if ("dotted".equals(value) || value.endsWith("Dot")) {
+            return SpreadsheetBorder.Style.DOTTED;
+        }
+        if ("double".equals(value)) return SpreadsheetBorder.Style.DOUBLE;
+        return SpreadsheetBorder.Style.THIN;
+    }
+
+    private SpreadsheetCellStyle.HorizontalAlignment horizontalAlignment(String value) {
+        if ("left".equals(value)) return SpreadsheetCellStyle.HorizontalAlignment.LEFT;
+        if ("center".equals(value) || "centerContinuous".equals(value)) {
+            return SpreadsheetCellStyle.HorizontalAlignment.CENTER;
+        }
+        if ("right".equals(value)) return SpreadsheetCellStyle.HorizontalAlignment.RIGHT;
+        if ("justify".equals(value) || "distributed".equals(value)) {
+            return SpreadsheetCellStyle.HorizontalAlignment.JUSTIFY;
+        }
+        return SpreadsheetCellStyle.HorizontalAlignment.GENERAL;
+    }
+
+    private SpreadsheetCellStyle.VerticalAlignment verticalAlignment(String value) {
+        if ("top".equals(value)) return SpreadsheetCellStyle.VerticalAlignment.TOP;
+        if ("center".equals(value)) return SpreadsheetCellStyle.VerticalAlignment.CENTER;
+        return SpreadsheetCellStyle.VerticalAlignment.BOTTOM;
+    }
+
+    private boolean enabledProperty(XmlPullParser parser) {
+        String value = XlsxXml.attribute(parser, "val");
+        return value == null || parseBoolean(value);
+    }
+
+    private <T> T getOrDefault(List<T> values, int index, T fallback) {
+        return index >= 0 && index < values.size() ? values.get(index) : fallback;
     }
 
     private SheetParseResult readWorksheet(
@@ -246,11 +511,24 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
     ) throws IOException, XmlPullParserException, XlsxParseException {
         List<List<String>> rows = new ArrayList<>();
         List<String> mergedRanges = new ArrayList<>();
+        List<SpreadsheetMergedRange> parsedMergedRanges = new ArrayList<>();
+        Map<Long, SpreadsheetCellStyle> cellStyles = new HashMap<>();
+        float[] columnWidths = new float[DocumentLimits.MAX_SPREADSHEET_COLUMNS];
+        float[] rowHeights = new float[DocumentLimits.MAX_SPREADSHEET_ROWS];
+        Arrays.fill(columnWidths, -1f);
+        Arrays.fill(rowHeights, -1f);
+        int[] columnStyleIndexes = new int[DocumentLimits.MAX_SPREADSHEET_COLUMNS];
+        Arrays.fill(columnStyleIndexes, -1);
         boolean truncated = false;
         String usedRange = "";
+        float defaultColumnWidth = SpreadsheetSheetLayout.DEFAULT_COLUMN_WIDTH_CHARACTERS;
+        float defaultRowHeight = SpreadsheetSheetLayout.DEFAULT_ROW_HEIGHT_POINTS;
         int currentRow = -1;
+        int currentRowStyle = -1;
         int implicitRow = -1;
         int implicitColumn = -1;
+        int maximumDefinedColumn = -1;
+        int maximumDefinedRow = -1;
         try (InputStream inputStream = zipFile.getInputStream(entry)) {
             XmlPullParser parser = XlsxXml.newParser(inputStream);
             XlsxXml.Budget budget = new XlsxXml.Budget();
@@ -261,14 +539,49 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
                 if ("dimension".equals(element)) {
                     String reference = XlsxXml.attribute(parser, "ref");
                     if (reference != null) usedRange = limit(reference, 128);
+                } else if ("sheetFormatPr".equals(element)) {
+                    defaultColumnWidth = parsePositiveFloat(
+                            XlsxXml.attribute(parser, "defaultColWidth"),
+                            defaultColumnWidth
+                    );
+                    defaultRowHeight = parsePositiveFloat(
+                            XlsxXml.attribute(parser, "defaultRowHeight"),
+                            defaultRowHeight
+                    );
+                } else if ("col".equals(element)) {
+                    Integer first = parseInteger(XlsxXml.attribute(parser, "min"));
+                    Integer last = parseInteger(XlsxXml.attribute(parser, "max"));
+                    float width = parsePositiveFloat(XlsxXml.attribute(parser, "width"), -1f);
+                    boolean hidden = parseBoolean(XlsxXml.attribute(parser, "hidden"));
+                    Integer styleIndex = parseInteger(XlsxXml.attribute(parser, "style"));
+                    if (first != null && last != null && first > 0 && last >= first) {
+                        int from = Math.min(
+                                DocumentLimits.MAX_SPREADSHEET_COLUMNS - 1,
+                                first - 1
+                        );
+                        int to = Math.min(
+                                DocumentLimits.MAX_SPREADSHEET_COLUMNS - 1,
+                                last - 1
+                        );
+                        for (int column = from; column <= to; column++) {
+                            if (hidden) columnWidths[column] = 0f;
+                            else if (width > 0f) columnWidths[column] = width;
+                            if (styleIndex != null) columnStyleIndexes[column] = styleIndex;
+                        }
+                    }
                 } else if ("row".equals(element)) {
                     Integer rowNumber = parseInteger(XlsxXml.attribute(parser, "r"));
                     currentRow = rowNumber == null ? implicitRow + 1 : rowNumber - 1;
                     if (currentRow < 0) throw corrupted("Worksheet row index is invalid", null);
                     implicitRow = currentRow;
                     implicitColumn = -1;
+                    currentRowStyle = parseStyleIndex(XlsxXml.attribute(parser, "s"));
                     if (currentRow >= DocumentLimits.MAX_SPREADSHEET_ROWS) {
                         truncated = true;
+                    } else {
+                        rowHeights[currentRow] = parseBoolean(
+                                XlsxXml.attribute(parser, "hidden")
+                        ) ? 0f : parsePositiveFloat(XlsxXml.attribute(parser, "ht"), -1f);
                     }
                 } else if ("c".equals(element)) {
                     counter.count++;
@@ -295,11 +608,34 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
                     );
                     truncated |= display.truncated;
                     putCell(rows, position.row, position.column, display.value);
+                    int resolvedStyleIndex = rawCell.styleIndex >= 0
+                            ? rawCell.styleIndex
+                            : currentRowStyle >= 0
+                                    ? currentRowStyle
+                                    : columnStyleIndexes[position.column];
+                    SpreadsheetCellStyle visualStyle = styles.getVisual(resolvedStyleIndex);
+                    if (visualStyle != SpreadsheetCellStyle.DEFAULT) {
+                        cellStyles.put(
+                                SpreadsheetSheetLayout.cellKey(position.row, position.column),
+                                visualStyle
+                        );
+                    }
+                    maximumDefinedColumn = Math.max(maximumDefinedColumn, position.column);
+                    maximumDefinedRow = Math.max(maximumDefinedRow, position.row);
                 } else if ("mergeCell".equals(element)) {
                     String reference = XlsxXml.attribute(parser, "ref");
                     if (reference != null
                             && mergedRanges.size() < DocumentLimits.MAX_XLSX_MERGED_RANGES) {
                         mergedRanges.add(limit(reference, 128));
+                        SpreadsheetMergedRange range = parseMergedRange(reference);
+                        if (range != null) {
+                            parsedMergedRanges.add(range);
+                            maximumDefinedColumn = Math.max(
+                                    maximumDefinedColumn,
+                                    range.getLastColumn()
+                            );
+                            maximumDefinedRow = Math.max(maximumDefinedRow, range.getLastRow());
+                        }
                     } else if (reference != null) {
                         truncated = true;
                     }
@@ -308,9 +644,37 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
         }
         for (String mergedRange : mergedRanges) applyMergedRange(rows, mergedRange);
         if (usedRange.isEmpty()) usedRange = calculatedRange(rows);
+        CellPosition usedRangeEnd = parseRangeEnd(usedRange);
+        if (usedRangeEnd != null) {
+            maximumDefinedColumn = Math.max(maximumDefinedColumn, Math.min(
+                    DocumentLimits.MAX_SPREADSHEET_COLUMNS - 1,
+                    usedRangeEnd.column
+            ));
+            maximumDefinedRow = Math.max(maximumDefinedRow, Math.min(
+                    DocumentLimits.MAX_SPREADSHEET_ROWS - 1,
+                    usedRangeEnd.row
+            ));
+            if (usedRangeEnd.column >= DocumentLimits.MAX_SPREADSHEET_COLUMNS
+                    || usedRangeEnd.row >= DocumentLimits.MAX_SPREADSHEET_ROWS) {
+                truncated = true;
+            }
+        }
+        int rowCount = maximumDefinedRow + 1;
+        int columnCount = maximumDefinedColumn + 1;
+        while (rows.size() < rowCount) rows.add(new ArrayList<>());
         SpreadsheetData data = new SpreadsheetData(rows, truncated, '\0');
+        SpreadsheetSheetLayout layout = new SpreadsheetSheetLayout(
+                rowCount,
+                columnCount,
+                defaultColumnWidth,
+                defaultRowHeight,
+                columnWidths,
+                rowHeights,
+                cellStyles,
+                parsedMergedRanges
+        );
         return new SheetParseResult(
-                new XlsxSheet(name, data, usedRange, mergedRanges),
+                new XlsxSheet(name, data, usedRange, mergedRanges, layout),
                 truncated
         );
     }
@@ -414,7 +778,7 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
             return new CellDisplay(limit(raw), truncated || raw.length() > DocumentLimits.MAX_CELL_CHARS);
         }
         if (raw.isEmpty()) return new CellDisplay("", truncated);
-        DateStyle dateStyle = styles.get(cell.styleIndex);
+        DateStyle dateStyle = styles.getDateStyle(cell.styleIndex);
         try {
             BigDecimal number = new BigDecimal(raw.trim());
             if (dateStyle.date) {
@@ -544,6 +908,40 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
         return new CellPosition(row - 1, (int) column - 1);
     }
 
+    private SpreadsheetMergedRange parseMergedRange(String reference) {
+        String[] endpoints = reference.split(":", -1);
+        if (endpoints.length != 2) return null;
+        try {
+            CellPosition start = parseCellPosition(endpoints[0], -1, -1);
+            CellPosition end = parseCellPosition(endpoints[1], -1, -1);
+            if (start.row >= DocumentLimits.MAX_SPREADSHEET_ROWS
+                    || end.row >= DocumentLimits.MAX_SPREADSHEET_ROWS
+                    || start.column >= DocumentLimits.MAX_SPREADSHEET_COLUMNS
+                    || end.column >= DocumentLimits.MAX_SPREADSHEET_COLUMNS) {
+                return null;
+            }
+            return new SpreadsheetMergedRange(
+                    start.row,
+                    end.row,
+                    start.column,
+                    end.column
+            );
+        } catch (XlsxParseException ignored) {
+            return null;
+        }
+    }
+
+    private CellPosition parseRangeEnd(String reference) {
+        if (reference == null || reference.isEmpty()) return null;
+        String[] endpoints = reference.split(":", -1);
+        String endpoint = endpoints[endpoints.length - 1];
+        try {
+            return parseCellPosition(endpoint.replace("$", ""), -1, -1);
+        } catch (XlsxParseException ignored) {
+            return null;
+        }
+    }
+
     private void putCell(List<List<String>> rows, int rowIndex, int columnIndex, String value) {
         while (rows.size() <= rowIndex) rows.add(new ArrayList<>());
         List<String> row = rows.get(rowIndex);
@@ -628,6 +1026,21 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
         }
     }
 
+    private int parseStyleIndex(String value) {
+        Integer parsed = parseInteger(value);
+        return parsed == null ? -1 : parsed;
+    }
+
+    private float parsePositiveFloat(String value, float fallback) {
+        if (value == null || value.isEmpty()) return fallback;
+        try {
+            float parsed = Float.parseFloat(value);
+            return Float.isFinite(parsed) && parsed > 0f ? parsed : fallback;
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+
     private boolean parseBoolean(String value) {
         return "1".equals(value) || "true".equalsIgnoreCase(value);
     }
@@ -705,18 +1118,116 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
     }
 
     private static final class Styles {
-        private final List<DateStyle> dateStyles;
+        private final List<ResolvedStyle> styles;
 
-        private Styles(List<DateStyle> dateStyles) {
-            this.dateStyles = dateStyles;
+        private Styles(List<ResolvedStyle> styles) {
+            this.styles = styles;
         }
 
         private static Styles empty() {
             return new Styles(Collections.emptyList());
         }
 
-        private DateStyle get(int index) {
-            return index >= 0 && index < dateStyles.size() ? dateStyles.get(index) : DateStyle.NONE;
+        private DateStyle getDateStyle(int index) {
+            return index >= 0 && index < styles.size()
+                    ? styles.get(index).dateStyle
+                    : DateStyle.NONE;
+        }
+
+        private SpreadsheetCellStyle getVisual(int index) {
+            if (index >= 0 && index < styles.size()) return styles.get(index).visualStyle;
+            return styles.isEmpty()
+                    ? SpreadsheetCellStyle.DEFAULT
+                    : styles.get(0).visualStyle;
+        }
+    }
+
+    private static final class ResolvedStyle {
+        private final DateStyle dateStyle;
+        private final SpreadsheetCellStyle visualStyle;
+
+        private ResolvedStyle(DateStyle dateStyle, SpreadsheetCellStyle visualStyle) {
+            this.dateStyle = dateStyle;
+            this.visualStyle = visualStyle;
+        }
+    }
+
+    private static final class FontStyle {
+        private static final FontStyle DEFAULT =
+                new FontStyle(false, false, false, 0f, null);
+
+        private final boolean bold;
+        private final boolean italic;
+        private final boolean underline;
+        private final float sizePoints;
+        private final Integer color;
+
+        private FontStyle(
+                boolean bold,
+                boolean italic,
+                boolean underline,
+                float sizePoints,
+                Integer color
+        ) {
+            this.bold = bold;
+            this.italic = italic;
+            this.underline = underline;
+            this.sizePoints = sizePoints;
+            this.color = color;
+        }
+    }
+
+    private static final class BorderStyle {
+        private static final BorderStyle NONE = new BorderStyle(
+                SpreadsheetBorder.NONE,
+                SpreadsheetBorder.NONE,
+                SpreadsheetBorder.NONE,
+                SpreadsheetBorder.NONE
+        );
+
+        private final SpreadsheetBorder left;
+        private final SpreadsheetBorder top;
+        private final SpreadsheetBorder right;
+        private final SpreadsheetBorder bottom;
+
+        private BorderStyle(
+                SpreadsheetBorder left,
+                SpreadsheetBorder top,
+                SpreadsheetBorder right,
+                SpreadsheetBorder bottom
+        ) {
+            this.left = left;
+            this.top = top;
+            this.right = right;
+            this.bottom = bottom;
+        }
+    }
+
+    private static final class CellFormat {
+        private final int numberFormatId;
+        private final int fontId;
+        private final int fillId;
+        private final int borderId;
+        private final SpreadsheetCellStyle.HorizontalAlignment horizontalAlignment;
+        private final SpreadsheetCellStyle.VerticalAlignment verticalAlignment;
+        private final boolean wrapText;
+
+        private CellFormat(
+                int numberFormatId,
+                int fontId,
+                int fillId,
+                int borderId,
+                SpreadsheetCellStyle.HorizontalAlignment horizontalAlignment,
+                SpreadsheetCellStyle.VerticalAlignment verticalAlignment,
+                boolean wrapText
+        ) {
+            this.numberFormatId = numberFormatId;
+            this.fontId = fontId;
+            this.fillId = fillId;
+            this.borderId = borderId;
+            this.horizontalAlignment = horizontalAlignment;
+            this.verticalAlignment = verticalAlignment;
+            this.wrapText = wrapText;
         }
     }
 

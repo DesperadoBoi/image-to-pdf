@@ -87,6 +87,27 @@ public final class SpreadsheetStateStoreTest {
     }
 
     @Test
+    public void newXlsxSheetStartsInFitSheetOverviewAndRestoresSavedState() {
+        SpreadsheetStateStore store = new SpreadsheetStateStore();
+        store.openDocument("document-a");
+
+        SpreadsheetViewportState initial = store.restoreXlsx(3);
+        assertEquals(ZoomController.ZoomMode.FIT_SHEET, initial.getZoomMode());
+        assertEquals(0f, initial.getHorizontalOffset(), DELTA);
+        assertEquals(0f, initial.getVerticalOffset(), DELTA);
+        assertFalse(initial.hasViewportPosition());
+
+        store.save(3, positioned(
+                1.4f,
+                35f,
+                80f,
+                ZoomController.ZoomMode.MANUAL
+        ));
+        assertEquals(1.4f, store.restoreXlsx(3).getScale(), DELTA);
+        assertEquals(ZoomController.ZoomMode.MANUAL, store.restoreXlsx(3).getZoomMode());
+    }
+
+    @Test
     public void pinchAfterFitWidthUsesManualClampAndMode() {
         SpreadsheetStateStore store = new SpreadsheetStateStore();
         store.openDocument("document-a");
