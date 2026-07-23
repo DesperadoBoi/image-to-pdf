@@ -8,10 +8,8 @@
     android:background="@color/viewer_document_surface"
     android:breakStrategy="high_quality"
     android:hyphenationFrequency="normal"
-    android:includeFontPadding="true"
+    android:includeFontPadding="false"
     android:paddingStart="@dimen/viewer_word_paragraph_horizontal_padding"
-    android:paddingTop="@dimen/viewer_word_paragraph_vertical_padding"
     android:paddingEnd="@dimen/viewer_word_paragraph_horizontal_padding"
-    android:paddingBottom="@dimen/viewer_word_paragraph_vertical_padding"
     android:textColor="@color/viewer_document_text"
     android:textIsSelectable="true" />

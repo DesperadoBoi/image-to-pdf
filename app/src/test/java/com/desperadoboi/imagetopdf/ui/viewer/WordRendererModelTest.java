@@ -3,6 +3,7 @@ package com.desperadoboi.imagetopdf.ui.viewer;
 import com.desperadoboi.imagetopdf.document.word.WordBlock;
 import com.desperadoboi.imagetopdf.document.word.WordBorder;
 import com.desperadoboi.imagetopdf.document.word.WordPageBreak;
+import com.desperadoboi.imagetopdf.document.word.WordMeasurementConverter;
 import com.desperadoboi.imagetopdf.document.word.WordParagraph;
 import com.desperadoboi.imagetopdf.document.word.WordParagraphStyle;
 import com.desperadoboi.imagetopdf.document.word.WordRun;
@@ -43,7 +44,11 @@ public final class WordRendererModelTest {
                 WordBorder.NONE
         );
 
-        WordTableGeometry geometry = WordTableGeometry.create(table, 1f);
+        WordTableGeometry geometry = WordTableGeometry.create(
+                table,
+                new WordMeasurementConverter(160f, 1f, 1f),
+                0f
+        );
         assertEquals(3, geometry.getColumnCount());
         assertEquals(2, geometry.getRowCount());
         WordTableGeometry.CellPlacement first = geometry.getPlacements(0).get(0);
@@ -54,6 +59,12 @@ public final class WordRendererModelTest {
         assertSame(first, geometry.getPlacements(1).get(0));
         assertEquals(0, geometry.firstVisibleRow(0f));
         assertTrue(geometry.lastVisibleRow(geometry.getHeight()) >= 1);
+        WordTableGeometry physical = WordTableGeometry.create(
+                table,
+                new WordMeasurementConverter(144f, 1f, 1f),
+                1_000f
+        );
+        assertEquals(432f, physical.getWidth(), 0.001f);
     }
 
     @Test
@@ -79,6 +90,26 @@ public final class WordRendererModelTest {
                 80,
                 600
         ));
+        WordImageSizeCalculator.Size physical = WordImageSizeCalculator.calculate(
+                914_400L,
+                457_200L,
+                400,
+                80,
+                600,
+                new WordMeasurementConverter(144f, 1f, 1f)
+        );
+        assertEquals(144, physical.getWidth());
+        assertEquals(72, physical.getHeight());
+        WordImageSizeCalculator.Size bounded = WordImageSizeCalculator.calculate(
+                9_144_000L,
+                4_572_000L,
+                400,
+                80,
+                300,
+                new WordMeasurementConverter(144f, 1f, 1f)
+        );
+        assertEquals(400, bounded.getWidth());
+        assertEquals(200, bounded.getHeight());
     }
 
     @Test

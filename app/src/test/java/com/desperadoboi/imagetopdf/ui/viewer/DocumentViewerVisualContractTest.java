@@ -76,6 +76,15 @@ public final class DocumentViewerVisualContractTest {
                 "@color/viewer_document_surface",
                 paragraph.getDocumentElement().getAttributeNS(ANDROID, "background")
         );
+        assertEquals(
+                "false",
+                paragraph.getDocumentElement()
+                        .getAttributeNS(ANDROID, "includeFontPadding")
+        );
+        assertEquals(
+                "",
+                paragraph.getDocumentElement().getAttributeNS(ANDROID, "minLines")
+        );
 
         Document table = parse(root.resolve(
                 "app/src/main/res/layout/item_word_table.xml"
@@ -97,6 +106,18 @@ public final class DocumentViewerVisualContractTest {
                 "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
                         + "WordBlockAdapter.java"
         ));
+        String table = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "WordTableView.java"
+        ));
+        String activity = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "DocumentViewerActivity.java"
+        ));
+        String images = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "WordImageSizeCalculator.java"
+        ));
 
         assertTrue(factory.contains("new StyleSpan("));
         assertTrue(factory.contains("new UnderlineSpan()"));
@@ -104,10 +125,19 @@ public final class DocumentViewerVisualContractTest {
         assertTrue(factory.contains("new ForegroundColorSpan("));
         assertTrue(factory.contains("new BackgroundColorSpan("));
         assertTrue(factory.contains("new AbsoluteSizeSpan("));
+        assertTrue(factory.contains("new AbsoluteSizeSpan(sizePixels, false)"));
+        assertFalse(factory.contains("RelativeSizeSpan"));
         assertTrue(factory.contains("new SubscriptSpan()"));
         assertTrue(factory.contains("new SuperscriptSpan()"));
         assertTrue(adapter.contains("RecyclerView.Adapter<RecyclerView.ViewHolder>"));
         assertFalse(adapter.contains("for (WordRun"));
+        assertFalse(adapter.contains("setTextSize("));
+        assertFalse(adapter.contains("getTextSize()"));
+        assertFalse(activity.contains("wordContent.addItemDecoration"));
+        assertTrue(table.contains("WordSpannableFactory.createForTable("));
+        assertTrue(table.contains("measurementConverter"));
+        assertFalse(table.contains("viewer_word_table_text_size"));
+        assertTrue(images.contains("converter.emuToPixels("));
     }
 
     @Test

@@ -3,6 +3,9 @@ package com.desperadoboi.imagetopdf.ui.viewer;
 import com.desperadoboi.imagetopdf.document.word.WordTable;
 import com.desperadoboi.imagetopdf.document.word.WordTableCell;
 import com.desperadoboi.imagetopdf.document.word.WordTableRow;
+import com.desperadoboi.imagetopdf.document.word.WordMeasurementConverter;
+import com.desperadoboi.imagetopdf.document.word.WordBlock;
+import com.desperadoboi.imagetopdf.document.word.WordParagraph;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,11 +14,9 @@ import java.util.List;
 import java.util.Map;
 
 final class WordTableGeometry {
-    private static final float DEFAULT_COLUMN_DP = 112f;
-    private static final float MINIMUM_COLUMN_DP = 64f;
-    private static final float MAXIMUM_COLUMN_DP = 260f;
-    private static final float MINIMUM_ROW_DP = 48f;
-    private static final float MAXIMUM_ROW_DP = 240f;
+    private static final float DEFAULT_COLUMN_POINTS = 90f;
+    private static final float MINIMUM_DEFINED_COLUMN_POINTS = 1f;
+    private static final float MAXIMUM_DEFINED_COLUMN_POINTS = 1_440f;
 
     private final float[] columnOffsets;
     private final float[] rowOffsets;
@@ -34,8 +35,11 @@ final class WordTableGeometry {
         this.columnCount = columnCount;
     }
 
-    static WordTableGeometry create(WordTable table, float density) {
-        float safeDensity = Float.isFinite(density) && density > 0f ? density : 1f;
+    static WordTableGeometry create(
+            WordTable table,
+            WordMeasurementConverter converter,
+            float availableWidth
+    ) {
         int columns = table.getColumnWidthsTwips().size();
         for (WordTableRow row : table.getRows()) {
             int count = 0;
@@ -48,13 +52,29 @@ final class WordTableGeometry {
             int twips = column < table.getColumnWidthsTwips().size()
                     ? table.getColumnWidthsTwips().get(column)
                     : 0;
-            float width = twips > 0 ? twips * safeDensity / 9f
-                    : DEFAULT_COLUMN_DP * safeDensity;
-            widths[column] = clamp(
-                    width,
-                    MINIMUM_COLUMN_DP * safeDensity,
-                    MAXIMUM_COLUMN_DP * safeDensity
-            );
+            widths[column] = twips > 0
+                    ? clamp(
+                            converter.twipsToPixels(twips),
+                            converter.pointsToPhysicalPixels(
+                                    MINIMUM_DEFINED_COLUMN_POINTS
+                            ),
+                            converter.pointsToPhysicalPixels(
+                                    MAXIMUM_DEFINED_COLUMN_POINTS
+                            )
+                    )
+                    : converter.pointsToPhysicalPixels(DEFAULT_COLUMN_POINTS);
+        }
+        applyCellWidths(table, widths, converter, availableWidth);
+        float requestedTableWidth = converter.tableWidthToPixels(
+                table.getWidth(),
+                availableWidth
+        );
+        float gridWidth = sum(widths);
+        if (requestedTableWidth > 0f && gridWidth > 0f) {
+            float scale = requestedTableWidth / gridWidth;
+            for (int index = 0; index < widths.length; index++) {
+                widths[index] *= scale;
+            }
         }
         float[] columnOffsets = prefix(widths);
 
@@ -68,7 +88,7 @@ final class WordTableGeometry {
             List<CellPlacement> rowPlacements = new ArrayList<>();
             byRow.add(rowPlacements);
             int column = 0;
-            float estimatedHeight = MINIMUM_ROW_DP * safeDensity;
+            float estimatedHeight = 0f;
             for (WordTableCell cell : row.getCells()) {
                 int firstColumn = Math.min(columns - 1, column);
                 int lastColumn = Math.min(
@@ -115,18 +135,23 @@ final class WordTableGeometry {
                         - columnOffsets[firstColumn];
                 estimatedHeight = Math.max(
                         estimatedHeight,
-                        estimatedTextHeight(cell.getPlainText(), cellWidth, safeDensity)
+                        estimatedTextHeight(
+                                cell,
+                                cellWidth,
+                                table,
+                                converter
+                        )
                 );
                 column = lastColumn + 1;
             }
             int rowTwips = row.getHeightTwips();
             if (rowTwips > 0) {
-                estimatedHeight = Math.max(estimatedHeight, rowTwips * safeDensity / 9f);
+                estimatedHeight = Math.max(
+                        estimatedHeight,
+                        converter.twipsToPixels(rowTwips)
+                );
             }
-            heights[rowIndex] = Math.min(
-                    MAXIMUM_ROW_DP * safeDensity,
-                    estimatedHeight
-            );
+            heights[rowIndex] = Math.max(1f, estimatedHeight);
         }
         float[] rowOffsets = prefix(heights);
         List<List<CellPlacement>> immutableRows = new ArrayList<>();
@@ -171,30 +196,109 @@ final class WordTableGeometry {
     }
 
     private static float estimatedTextHeight(
-            String text,
+            WordTableCell cell,
             float width,
-            float density
+            WordTable table,
+            WordMeasurementConverter converter
     ) {
-        int usableCharacters = Math.max(8, Math.round(width / (7f * density)));
-        int lines = 1;
-        int current = 0;
-        for (int index = 0; index < text.length(); index++) {
-            if (text.charAt(index) == '\n') {
-                lines++;
-                current = 0;
-            } else {
-                current++;
-                if (current >= usableCharacters) {
+        float horizontalPadding = converter.twipsToPixels(
+                table.getCellMarginStartTwips()
+                        + table.getCellMarginEndTwips()
+        );
+        float verticalPadding = converter.twipsToPixels(
+                table.getCellMarginTopTwips()
+                        + table.getCellMarginBottomTwips()
+        );
+        float available = Math.max(1f, width - horizontalPadding);
+        float height = verticalPadding;
+        WordParagraph previous = null;
+        for (int blockIndex = 0; blockIndex < cell.getBlocks().size(); blockIndex++) {
+            WordBlock block = cell.getBlocks().get(blockIndex);
+            if (!(block instanceof WordParagraph)) {
+                height += converter.pointsToPhysicalPixels(12f);
+                previous = null;
+                continue;
+            }
+            WordParagraph paragraph = (WordParagraph) block;
+            WordParagraph next = null;
+            if (blockIndex + 1 < cell.getBlocks().size()
+                    && cell.getBlocks().get(blockIndex + 1)
+                    instanceof WordParagraph) {
+                next = (WordParagraph) cell.getBlocks().get(blockIndex + 1);
+            }
+            ParagraphLayoutMetrics metrics = ParagraphLayoutMetrics.resolve(
+                    paragraph,
+                    previous,
+                    next,
+                    converter
+            );
+            float fontPixels = converter.fontPointsToPixels(
+                    ParagraphLayoutMetrics.maximumFontPoints(paragraph)
+            );
+            float paragraphAvailable = Math.max(
+                    1f,
+                    available - metrics.getStartIndentPixels()
+                            - metrics.getEndIndentPixels()
+            );
+            int charactersPerLine = Math.max(
+                    1,
+                    (int) Math.floor(
+                            paragraphAvailable / Math.max(1f, fontPixels * 0.52f)
+                    )
+            );
+            String text = paragraph.getPlainText();
+            int lines = 1;
+            int current = 0;
+            for (int index = 0; index < text.length(); index++) {
+                if (text.charAt(index) == '\n') {
+                    lines++;
+                    current = 0;
+                } else if (++current >= charactersPerLine) {
                     lines++;
                     current = 0;
                 }
             }
-            if (lines >= 10) break;
+            float lineHeight = metrics.getMinimumHeightPixels()
+                    * metrics.getLineSpacingMultiplier()
+                    + metrics.getLineSpacingExtraPixels();
+            height += metrics.getMarginTopPixels()
+                    + metrics.getMarginBottomPixels()
+                    + Math.max(metrics.getMinimumHeightPixels(), lines * lineHeight);
+            previous = paragraph;
         }
-        return Math.min(
-                MAXIMUM_ROW_DP * density,
-                Math.max(MINIMUM_ROW_DP * density, (lines * 20f + 20f) * density)
-        );
+        return Math.max(1f, height);
+    }
+
+    private static void applyCellWidths(
+            WordTable table,
+            float[] widths,
+            WordMeasurementConverter converter,
+            float availableWidth
+    ) {
+        for (WordTableRow row : table.getRows()) {
+            int column = 0;
+            for (WordTableCell cell : row.getCells()) {
+                if (column >= widths.length) break;
+                int span = Math.min(cell.getGridSpan(), widths.length - column);
+                float requested = converter.tableWidthToPixels(
+                        cell.getWidth(),
+                        availableWidth
+                );
+                if (requested > 0f) {
+                    float perColumn = requested / span;
+                    for (int index = column; index < column + span; index++) {
+                        widths[index] = Math.max(widths[index], perColumn);
+                    }
+                }
+                column += span;
+            }
+        }
+    }
+
+    private static float sum(float[] values) {
+        float total = 0f;
+        for (float value : values) total += value;
+        return total;
     }
 
     private static float[] prefix(float[] values) {

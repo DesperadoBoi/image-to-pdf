@@ -7,6 +7,7 @@ import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Gravity;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -19,6 +20,7 @@ import com.desperadoboi.imagetopdf.document.word.WordBlock;
 import com.desperadoboi.imagetopdf.document.word.WordDocumentModel;
 import com.desperadoboi.imagetopdf.document.word.WordImage;
 import com.desperadoboi.imagetopdf.document.word.WordImageLoader;
+import com.desperadoboi.imagetopdf.document.word.WordMeasurementConverter;
 import com.desperadoboi.imagetopdf.document.word.WordPageBreak;
 import com.desperadoboi.imagetopdf.document.word.WordParagraph;
 import com.desperadoboi.imagetopdf.document.word.WordParagraphStyle;
@@ -37,15 +39,18 @@ final class WordBlockAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private static final int VIEW_PAGE_BREAK = 4;
 
     private final WordImageLoader imageLoader;
+    private final WordMeasurementConverter measurementConverter;
     private final WordSpannableFactory.LinkHandler linkHandler;
     private List<WordBlock> blocks = Collections.emptyList();
 
     WordBlockAdapter(
             File packageFile,
             Executor callbackExecutor,
+            WordMeasurementConverter measurementConverter,
             WordSpannableFactory.LinkHandler linkHandler
     ) {
         imageLoader = new WordImageLoader(packageFile, callbackExecutor);
+        this.measurementConverter = measurementConverter;
         this.linkHandler = linkHandler;
         setHasStableIds(true);
     }
@@ -113,10 +118,14 @@ final class WordBlockAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         WordBlock block = blocks.get(position);
         if (holder instanceof ParagraphHolder) {
-            bindParagraph((ParagraphHolder) holder, (WordParagraph) block);
+            bindParagraph(
+                    (ParagraphHolder) holder,
+                    (WordParagraph) block,
+                    position
+            );
         } else if (holder instanceof TableHolder) {
             WordTable table = (WordTable) block;
-            ((TableHolder) holder).table.submit(table);
+            ((TableHolder) holder).table.submit(table, measurementConverter);
             holder.itemView.setContentDescription(holder.itemView.getContext().getString(
                     R.string.viewer_word_table_content_description,
                     table.getRows().size(),
@@ -146,12 +155,29 @@ final class WordBlockAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return blocks.size();
     }
 
-    private void bindParagraph(ParagraphHolder holder, WordParagraph paragraph) {
+    private void bindParagraph(
+            ParagraphHolder holder,
+            WordParagraph paragraph,
+            int position
+    ) {
         TextView text = holder.text;
-        float density = text.getResources().getDisplayMetrics().density;
-        text.setText(WordSpannableFactory.create(paragraph, density, linkHandler));
+        WordParagraph previous = paragraphAt(position - 1);
+        WordParagraph next = paragraphAt(position + 1);
+        ParagraphLayoutMetrics metrics = ParagraphLayoutMetrics.resolve(
+                paragraph,
+                previous,
+                next,
+                measurementConverter
+        );
+        text.setText(WordSpannableFactory.create(
+                paragraph,
+                measurementConverter,
+                linkHandler
+        ));
         text.setMovementMethod(LinkMovementMethod.getInstance());
         text.setTextIsSelectable(true);
+        text.setIncludeFontPadding(false);
+        text.setMinimumHeight(metrics.getMinimumHeightPixels());
         WordParagraphStyle style = paragraph.getStyle();
         if (style.getAlignment() == WordParagraphStyle.Alignment.CENTER) {
             text.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
@@ -169,36 +195,35 @@ final class WordBlockAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         int baseHorizontal = text.getResources().getDimensionPixelSize(
                 R.dimen.viewer_word_paragraph_horizontal_padding
         );
-        int left = Math.max(0, Math.round(style.getLeftIndentTwips() * density / 9f));
-        int right = Math.max(0, Math.round(style.getRightIndentTwips() * density / 9f));
-        text.setPadding(
-                baseHorizontal + left,
-                text.getPaddingTop(),
-                baseHorizontal + right,
-                text.getPaddingBottom()
+        text.setLayoutDirection(style.isBidirectional()
+                ? View.LAYOUT_DIRECTION_RTL
+                : View.LAYOUT_DIRECTION_LTR);
+        text.setTextDirection(style.isBidirectional()
+                ? View.TEXT_DIRECTION_RTL
+                : View.TEXT_DIRECTION_FIRST_STRONG);
+        text.setPaddingRelative(
+                baseHorizontal + metrics.getStartIndentPixels(),
+                0,
+                baseHorizontal + metrics.getEndIndentPixels(),
+                0
         );
         ViewGroup.MarginLayoutParams layoutParams =
                 (ViewGroup.MarginLayoutParams) text.getLayoutParams();
-        layoutParams.topMargin = Math.max(
-                0,
-                Math.round(style.getSpaceBeforeTwips() * density / 9f)
-        );
-        layoutParams.bottomMargin = Math.max(
-                0,
-                Math.round(style.getSpaceAfterTwips() * density / 9f)
-        );
+        layoutParams.topMargin = metrics.getMarginTopPixels();
+        layoutParams.bottomMargin = metrics.getMarginBottomPixels();
         text.setLayoutParams(layoutParams);
-        if (style.getLineSpacingTwips() > 0) {
-            text.setLineSpacing(
-                    Math.max(0f, style.getLineSpacingTwips() * density / 9f
-                            - text.getTextSize()),
-                    1f
-            );
-        } else {
-            text.setLineSpacing(0f, 1f);
-        }
+        text.setLineSpacing(
+                metrics.getLineSpacingExtraPixels(),
+                metrics.getLineSpacingMultiplier()
+        );
         boolean secondary = paragraph.getRole() != WordParagraph.Role.BODY;
         text.setAlpha(secondary ? 0.82f : 1f);
+    }
+
+    private WordParagraph paragraphAt(int position) {
+        if (position < 0 || position >= blocks.size()) return null;
+        WordBlock block = blocks.get(position);
+        return block instanceof WordParagraph ? (WordParagraph) block : null;
     }
 
     private void bindImage(ImageHolder holder, WordImage image) {
@@ -224,14 +249,18 @@ final class WordBlockAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 return;
             }
             int width = Math.max(1, holder.container.getWidth());
-            int height = desiredImageHeight(image, width, holder);
-            ViewGroup.LayoutParams imageLayout = holder.image.getLayoutParams();
-            imageLayout.height = height;
+            WordImageSizeCalculator.Size size =
+                    desiredImageSize(image, width, holder);
+            FrameLayout.LayoutParams imageLayout =
+                    (FrameLayout.LayoutParams) holder.image.getLayoutParams();
+            imageLayout.width = size.getWidth();
+            imageLayout.height = size.getHeight();
+            imageLayout.gravity = Gravity.CENTER_HORIZONTAL;
             holder.image.setLayoutParams(imageLayout);
             imageLoader.load(
                     image.getPackagePath(),
-                    width * 2,
-                    height * 2,
+                    size.getWidth() * 2,
+                    size.getHeight() * 2,
                     new WordImageLoader.Callback() {
                         @Override
                         public void onLoaded(String packagePath, Bitmap bitmap) {
@@ -252,19 +281,24 @@ final class WordBlockAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         });
     }
 
-    private int desiredImageHeight(WordImage image, int width, ImageHolder holder) {
+    private WordImageSizeCalculator.Size desiredImageSize(
+            WordImage image,
+            int width,
+            ImageHolder holder
+    ) {
         int maximum = holder.itemView.getResources().getDimensionPixelSize(
                 R.dimen.viewer_word_image_max_height
         );
         int minimum = holder.itemView.getResources().getDimensionPixelSize(
                 R.dimen.viewer_word_image_min_height
         );
-        return WordImageSizeCalculator.calculateHeight(
+        return WordImageSizeCalculator.calculate(
                 image.getWidthEmu(),
                 image.getHeightEmu(),
                 width,
                 minimum,
-                maximum
+                maximum,
+                measurementConverter
         );
     }
 

@@ -44,7 +44,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                     relatedEntry(entries, relationships, "/theme"),
                     cancelled
             );
-            StyleSheet styles = readStyles(
+            ParsedStyles styles = readStyles(
                     zipFile,
                     relatedEntry(entries, relationships, "/styles"),
                     theme,
@@ -257,23 +257,29 @@ public final class DocxDocumentParser implements WordDocumentParser {
         return new Theme(majorFont, minorFont, colors);
     }
 
-    private StyleSheet readStyles(
+    private ParsedStyles readStyles(
             ZipFile zipFile,
             ZipEntry entry,
             Theme theme,
             AtomicBoolean cancelled
     ) throws IOException, XmlPullParserException, WordParseException {
         if (entry == null) {
-            return new StyleSheet(
+            WordRunStyle documentRun = WordRunStyle.defaults();
+            WordParagraphStyle documentParagraph = WordParagraphStyle.defaults();
+            return new ParsedStyles(
                     WordRunStyle.defaults(),
-                    WordParagraphStyle.defaults(),
-                    Collections.emptyMap(),
+                    new WordStyleResolver(
+                            documentRun,
+                            documentParagraph,
+                            Collections.emptyMap(),
+                            debugTypographyEnabled()
+                    ),
                     theme
             );
         }
         WordRunStyle documentRun = WordRunStyle.defaults();
         WordParagraphStyle documentParagraph = WordParagraphStyle.defaults();
-        Map<String, StyleDefinition> definitions = new HashMap<>();
+        Map<String, WordStyleResolver.Definition> definitions = new HashMap<>();
         try (InputStream inputStream = zipFile.getInputStream(entry)) {
             XmlPullParser parser = WordXml.newParser(inputStream);
             WordXml.Budget budget = new WordXml.Budget(cancelled);
@@ -289,16 +295,26 @@ public final class DocxDocumentParser implements WordDocumentParser {
                             defaults.paragraphStyle
                     );
                 } else if ("style".equals(parser.getName())) {
-                    StyleDefinition definition = readStyle(parser, budget, theme);
-                    if (definition.id != null) {
-                        if (definitions.put(definition.id, definition) != null) {
+                    WordStyleResolver.Definition definition =
+                            readStyle(parser, budget, theme);
+                    if (definition.getId() != null) {
+                        if (definitions.put(definition.getId(), definition) != null) {
                             throw corrupted("Duplicate Word style identifier", null);
                         }
                     }
                 }
             }
         }
-        return new StyleSheet(documentRun, documentParagraph, definitions, theme);
+        return new ParsedStyles(
+                documentRun,
+                new WordStyleResolver(
+                        documentRun,
+                        documentParagraph,
+                        definitions,
+                        debugTypographyEnabled()
+                ),
+                theme
+        );
     }
 
     private DocumentDefaults readDocumentDefaults(
@@ -327,7 +343,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
         return new DocumentDefaults(run, paragraph);
     }
 
-    private StyleDefinition readStyle(
+    private WordStyleResolver.Definition readStyle(
             XmlPullParser parser,
             WordXml.Budget budget,
             Theme theme
@@ -336,6 +352,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
         String id = WordXml.attribute(parser, "styleId");
         String type = WordXml.attribute(parser, "type");
         String basedOn = null;
+        String linkedStyle = null;
         String name = null;
         WordRunStyle runStyle = null;
         WordParagraphStyle paragraphStyle = null;
@@ -346,6 +363,8 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 String element = parser.getName();
                 if ("basedOn".equals(element)) {
                     basedOn = WordXml.attribute(parser, "val");
+                } else if ("link".equals(element)) {
+                    linkedStyle = WordXml.attribute(parser, "val");
                 } else if ("name".equals(element)) {
                     name = WordXml.attribute(parser, "val");
                 } else if ("pPr".equals(element)) {
@@ -367,7 +386,15 @@ public final class DocxDocumentParser implements WordDocumentParser {
                     ? paragraphRunStyle
                     : WordRunStyle.merge(paragraphRunStyle, runStyle);
         }
-        return new StyleDefinition(id, type, basedOn, name, paragraphStyle, runStyle);
+        return new WordStyleResolver.Definition(
+                id,
+                type,
+                basedOn,
+                linkedStyle,
+                name,
+                paragraphStyle,
+                runStyle
+        );
     }
 
     private Numbering readNumbering(
@@ -503,7 +530,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             ZipFile zipFile,
             ZipEntry entry,
             Relationships relationships,
-            StyleSheet styles,
+            ParsedStyles styles,
             Numbering numbering,
             ParseCounters counters,
             AtomicBoolean cancelled
@@ -569,7 +596,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             Relationships mainRelationships,
             String relationshipSuffix,
             WordParagraph.Role role,
-            StyleSheet styles,
+            ParsedStyles styles,
             Numbering numbering,
             ParseCounters counters,
             AtomicBoolean cancelled,
@@ -608,7 +635,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             ZipFile zipFile,
             ZipEntry entry,
             Relationships relationships,
-            StyleSheet styles,
+            ParsedStyles styles,
             Numbering numbering,
             WordParagraph.Role role,
             ParseCounters counters,
@@ -665,7 +692,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             String relationshipSuffix,
             String noteElement,
             WordParagraph.Role role,
-            StyleSheet styles,
+            ParsedStyles styles,
             Numbering numbering,
             ParseCounters counters,
             AtomicBoolean cancelled
@@ -742,7 +769,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             XmlPullParser parser,
             WordXml.Budget budget,
             Relationships relationships,
-            StyleSheet styles,
+            ParsedStyles styles,
             Numbering numbering,
             WordParagraph.Role role,
             ParseCounters counters
@@ -792,9 +819,10 @@ public final class DocxDocumentParser implements WordDocumentParser {
             }
         }
 
-        ResolvedParagraph resolved = styles.resolveParagraph(direct.styleId);
+        WordStyleResolver.ResolvedParagraph resolved =
+                styles.resolver.resolveParagraph(direct.styleId);
         WordParagraphStyle paragraphStyle = WordParagraphStyle.merge(
-                resolved.paragraphStyle,
+                resolved.getParagraphStyle(),
                 direct.style
         );
         String marker = "";
@@ -807,14 +835,19 @@ public final class DocxDocumentParser implements WordDocumentParser {
                     paragraphStyle
             );
         }
+        WordRunStyle paragraphRunStyle =
+                styles.resolver.resolveParagraphDefaultRun(
+                        resolved,
+                        direct.runStyle
+                );
         List<WordRun> runs = new ArrayList<>();
         for (RawRun raw : rawRuns) {
-            WordRunStyle runStyle = WordRunStyle.merge(
-                    resolved.runStyle,
-                    styles.resolveCharacter(raw.styleId)
+            WordRunStyle runStyle = styles.resolver.resolveRun(
+                    resolved,
+                    raw.styleId,
+                    direct.runStyle,
+                    raw.style
             );
-            runStyle = WordRunStyle.merge(runStyle, direct.runStyle);
-            runStyle = WordRunStyle.merge(runStyle, raw.style);
             if (runStyle.isHidden() || raw.text.isEmpty()) continue;
             WordRunStyle finalStyle = raw.hyperlink == null
                     ? runStyle
@@ -825,8 +858,13 @@ public final class DocxDocumentParser implements WordDocumentParser {
             runs.add(new WordRun(raw.text, finalStyle, raw.hyperlink));
         }
         counters.addBlock();
-        WordParagraph paragraph =
-                new WordParagraph(runs, paragraphStyle, marker, role);
+        WordParagraph paragraph = new WordParagraph(
+                runs,
+                paragraphStyle,
+                paragraphRunStyle,
+                marker,
+                role
+        );
         return new ParagraphResult(
                 paragraph,
                 images,
@@ -978,7 +1016,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             XmlPullParser parser,
             WordXml.Budget budget,
             Relationships relationships,
-            StyleSheet styles,
+            ParsedStyles styles,
             Numbering numbering,
             WordParagraph.Role role,
             ParseCounters counters,
@@ -1024,8 +1062,12 @@ public final class DocxDocumentParser implements WordDocumentParser {
         return new WordTable(
                 rows,
                 columnWidths,
+                properties.width,
                 properties.alignment,
-                properties.cellMarginTwips,
+                properties.cellMarginTopTwips,
+                properties.cellMarginEndTwips,
+                properties.cellMarginBottomTwips,
+                properties.cellMarginStartTwips,
                 properties.left,
                 properties.top,
                 properties.right,
@@ -1039,7 +1081,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             XmlPullParser parser,
             WordXml.Budget budget,
             Relationships relationships,
-            StyleSheet styles,
+            ParsedStyles styles,
             Numbering numbering,
             WordParagraph.Role role,
             ParseCounters counters,
@@ -1083,7 +1125,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             XmlPullParser parser,
             WordXml.Budget budget,
             Relationships relationships,
-            StyleSheet styles,
+            ParsedStyles styles,
             Numbering numbering,
             WordParagraph.Role role,
             ParseCounters counters,
@@ -1143,7 +1185,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
         }
         return new WordTableCell(
                 blocks,
-                properties.widthTwips,
+                properties.width,
                 properties.gridSpan,
                 properties.verticalMerge,
                 properties.verticalAlignment,
@@ -1175,14 +1217,41 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 } else if ("jc".equals(element)) {
                     style.setAlignment(alignment(WordXml.attribute(parser, "val")));
                 } else if ("ind".equals(element)) {
-                    style.setLeftIndentTwips(optionalInteger(parser, "left", "start"));
-                    style.setRightIndentTwips(optionalInteger(parser, "right", "end"));
+                    style.setLeftIndentTwips(optionalInteger(parser, "start", "left"));
+                    style.setRightIndentTwips(optionalInteger(parser, "end", "right"));
                     style.setFirstLineIndentTwips(optionalInteger(parser, "firstLine"));
                     style.setHangingIndentTwips(optionalInteger(parser, "hanging"));
+                    style.setStartIndentCharacters(optionalInteger(
+                            parser,
+                            "startChars",
+                            "leftChars"
+                    ));
+                    style.setEndIndentCharacters(optionalInteger(
+                            parser,
+                            "endChars",
+                            "rightChars"
+                    ));
                 } else if ("spacing".equals(element)) {
                     style.setSpaceBeforeTwips(optionalInteger(parser, "before"));
                     style.setSpaceAfterTwips(optionalInteger(parser, "after"));
-                    style.setLineSpacingTwips(optionalInteger(parser, "line"));
+                    Integer lineValue = optionalInteger(parser, "line");
+                    String rawLineRule = WordXml.attribute(parser, "lineRule");
+                    style.setLineSpacingValue(lineValue);
+                    if (lineValue != null || rawLineRule != null) {
+                        style.setLineRule(lineRule(rawLineRule));
+                    }
+                    style.setBeforeAutoSpacing(optionalBooleanAttribute(
+                            parser,
+                            "beforeAutospacing"
+                    ));
+                    style.setAfterAutoSpacing(optionalBooleanAttribute(
+                            parser,
+                            "afterAutospacing"
+                    ));
+                } else if ("contextualSpacing".equals(element)) {
+                    style.setContextualSpacing(enabledProperty(parser));
+                } else if ("bidi".equals(element)) {
+                    style.setBidirectional(enabledProperty(parser));
                 } else if ("keepLines".equals(element)) {
                     style.setKeepTogether(enabledProperty(parser));
                 } else if ("pageBreakBefore".equals(element)) {
@@ -1225,6 +1294,9 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int depth = parser.getDepth();
         WordRunStyle.Builder style = new WordRunStyle.Builder();
         String styleId = null;
+        Float primaryFontSize = null;
+        Float complexFontSize = null;
+        Float baselineShift = null;
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
@@ -1235,14 +1307,22 @@ public final class DocxDocumentParser implements WordDocumentParser {
                     String family = firstNonEmpty(
                             WordXml.attribute(parser, "ascii"),
                             WordXml.attribute(parser, "hAnsi"),
-                            theme.font(WordXml.attribute(parser, "asciiTheme"))
+                            WordXml.attribute(parser, "eastAsia"),
+                            WordXml.attribute(parser, "cs"),
+                            theme.font(WordXml.attribute(parser, "asciiTheme")),
+                            theme.font(WordXml.attribute(parser, "hAnsiTheme")),
+                            theme.font(WordXml.attribute(parser, "eastAsiaTheme")),
+                            theme.font(WordXml.attribute(parser, "csTheme"))
                     );
                     if (family != null) style.setFontFamily(family);
                 } else if ("sz".equals(element) || "szCs".equals(element)) {
                     int halfPoints = integer(WordXml.attribute(parser, "val"), -1);
-                    if (halfPoints > 0 && halfPoints <= 400) {
-                        style.setFontSizePoints(halfPoints / 2f);
-                    }
+                    Float points =
+                            WordMeasurementConverter.safeFontPointsFromHalfPoints(
+                                    halfPoints
+                            );
+                    if ("sz".equals(element)) primaryFontSize = points;
+                    else complexFontSize = points;
                 } else if ("b".equals(element) || "bCs".equals(element)) {
                     style.setBold(enabledProperty(parser));
                 } else if ("i".equals(element) || "iCs".equals(element)) {
@@ -1269,6 +1349,14 @@ public final class DocxDocumentParser implements WordDocumentParser {
                             : "superscript".equals(value)
                                     ? WordRunStyle.VerticalPosition.SUPERSCRIPT
                                     : WordRunStyle.VerticalPosition.BASELINE);
+                } else if ("position".equals(element)) {
+                    int halfPoints = integer(WordXml.attribute(parser, "val"), 0);
+                    if (Math.abs((long) halfPoints) <= 800L) {
+                        baselineShift =
+                                WordMeasurementConverter.halfPointsToPoints(
+                                        halfPoints
+                                );
+                    }
                 } else if ("vanish".equals(element) || "webHidden".equals(element)) {
                     style.setHidden(enabledProperty(parser));
                 }
@@ -1278,6 +1366,10 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 break;
             }
         }
+        style.setFontSizePoints(primaryFontSize == null
+                ? complexFontSize
+                : primaryFontSize);
+        style.setBaselineShiftPoints(baselineShift);
         return new RunProperties(style.build(), styleId);
     }
 
@@ -1298,9 +1390,10 @@ public final class DocxDocumentParser implements WordDocumentParser {
                             : "right".equals(value) || "end".equals(value)
                                     ? WordTable.Alignment.RIGHT
                                     : WordTable.Alignment.LEFT;
+                } else if ("tblW".equals(element)) {
+                    result.width = tableWidth(parser);
                 } else if ("tblCellMar".equals(element)) {
-                    result.cellMarginTwips =
-                            readCellMargin(parser, budget, result.cellMarginTwips);
+                    readCellMargins(parser, budget, result);
                 } else if ("tblBorders".equals(element)) {
                     readTableBorders(parser, budget, result);
                 }
@@ -1313,25 +1406,32 @@ public final class DocxDocumentParser implements WordDocumentParser {
         return result;
     }
 
-    private int readCellMargin(
+    private void readCellMargins(
             XmlPullParser parser,
             WordXml.Budget budget,
-            int fallback
+            TableProperties result
     ) throws IOException, XmlPullParserException, WordParseException {
         int depth = parser.getDepth();
-        int total = 0;
-        int values = 0;
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
                 String element = parser.getName();
-                if ("left".equals(element) || "right".equals(element)
-                        || "start".equals(element) || "end".equals(element)) {
-                    int value = integer(WordXml.attribute(parser, "w"), -1);
-                    if (value >= 0) {
-                        total += value;
-                        values++;
-                    }
+                WordTableWidth width = tableWidth(parser);
+                if (width.getType() != WordTableWidth.Type.DXA
+                        && width.getType() != WordTableWidth.Type.NIL) {
+                    continue;
+                }
+                int value = width.getType() == WordTableWidth.Type.NIL
+                        ? 0
+                        : width.getValue();
+                if ("left".equals(element) || "start".equals(element)) {
+                    result.cellMarginStartTwips = value;
+                } else if ("right".equals(element) || "end".equals(element)) {
+                    result.cellMarginEndTwips = value;
+                } else if ("top".equals(element)) {
+                    result.cellMarginTopTwips = value;
+                } else if ("bottom".equals(element)) {
+                    result.cellMarginBottomTwips = value;
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
@@ -1339,7 +1439,6 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 break;
             }
         }
-        return values == 0 ? fallback : total / values;
     }
 
     private void readTableBorders(
@@ -1396,10 +1495,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             if (event == XmlPullParser.START_TAG) {
                 String element = parser.getName();
                 if ("tcW".equals(element)) {
-                    result.widthTwips = Math.max(
-                            0,
-                            integer(WordXml.attribute(parser, "w"), 0)
-                    );
+                    result.width = tableWidth(parser);
                 } else if ("gridSpan".equals(element)) {
                     result.gridSpan = clamp(
                             integer(WordXml.attribute(parser, "val"), 1),
@@ -1630,6 +1726,42 @@ public final class DocxDocumentParser implements WordDocumentParser {
         );
     }
 
+    private WordTableWidth tableWidth(XmlPullParser parser) {
+        String type = WordXml.attribute(parser, "type");
+        String rawValue = WordXml.attribute(parser, "w");
+        int value = Math.max(0, integer(rawValue, 0));
+        if ("pct".equals(type)) {
+            return new WordTableWidth(
+                    WordTableWidth.Type.PERCENT,
+                    percentageValue(rawValue)
+            );
+        }
+        if ("nil".equals(type)) {
+            return new WordTableWidth(WordTableWidth.Type.NIL, 0);
+        }
+        if ("auto".equals(type)) {
+            return WordTableWidth.AUTO;
+        }
+        return new WordTableWidth(WordTableWidth.Type.DXA, value);
+    }
+
+    private int percentageValue(String value) {
+        if (value == null) return 0;
+        String normalized = value.trim();
+        if (!normalized.endsWith("%")) return Math.max(0, integer(normalized, 0));
+        try {
+            double percent = Double.parseDouble(
+                    normalized.substring(0, normalized.length() - 1)
+            );
+            if (!Double.isFinite(percent) || percent <= 0d) return 0;
+            return percent >= Integer.MAX_VALUE / 50d
+                    ? Integer.MAX_VALUE
+                    : (int) Math.round(percent * 50d);
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
     private WordParagraphStyle.Alignment alignment(String value) {
         if ("center".equals(value)) return WordParagraphStyle.Alignment.CENTER;
         if ("right".equals(value) || "end".equals(value)) {
@@ -1642,9 +1774,26 @@ public final class DocxDocumentParser implements WordDocumentParser {
         return WordParagraphStyle.Alignment.LEFT;
     }
 
+    private WordParagraphStyle.LineRule lineRule(String value) {
+        if ("exact".equals(value)) return WordParagraphStyle.LineRule.EXACT;
+        if ("atLeast".equals(value)) return WordParagraphStyle.LineRule.AT_LEAST;
+        return WordParagraphStyle.LineRule.AUTO;
+    }
+
     private Boolean enabledProperty(XmlPullParser parser) {
         String value = WordXml.attribute(parser, "val");
         return value == null || !("0".equals(value)
+                || "false".equalsIgnoreCase(value)
+                || "off".equalsIgnoreCase(value));
+    }
+
+    private Boolean optionalBooleanAttribute(
+            XmlPullParser parser,
+            String name
+    ) {
+        String value = WordXml.attribute(parser, name);
+        if (value == null) return null;
+        return !("0".equals(value)
                 || "false".equalsIgnoreCase(value)
                 || "off".equalsIgnoreCase(value));
     }
@@ -1764,6 +1913,10 @@ public final class DocxDocumentParser implements WordDocumentParser {
         return Math.max(minimum, Math.min(maximum, value));
     }
 
+    private boolean debugTypographyEnabled() {
+        return Boolean.getBoolean("imagetopdf.debug.wordTypography");
+    }
+
     private static WordParseException corrupted(String message, Throwable cause) {
         return cause == null
                 ? new WordParseException(WordParseException.Reason.CORRUPTED, message)
@@ -1819,155 +1972,19 @@ public final class DocxDocumentParser implements WordDocumentParser {
         }
     }
 
-    private final class StyleSheet {
+    private static final class ParsedStyles {
         private final WordRunStyle documentRun;
-        private final WordParagraphStyle documentParagraph;
-        private final Map<String, StyleDefinition> definitions;
-        private final Map<String, ResolvedParagraph> paragraphCache = new HashMap<>();
-        private final Map<String, WordRunStyle> characterCache = new HashMap<>();
+        private final WordStyleResolver resolver;
         private final Theme theme;
 
-        private StyleSheet(
+        private ParsedStyles(
                 WordRunStyle documentRun,
-                WordParagraphStyle documentParagraph,
-                Map<String, StyleDefinition> definitions
-        ) {
-            this.documentRun = documentRun;
-            this.documentParagraph = documentParagraph;
-            this.definitions = definitions;
-            theme = Theme.DEFAULT;
-        }
-
-        private StyleSheet(
-                WordRunStyle documentRun,
-                WordParagraphStyle documentParagraph,
-                Map<String, StyleDefinition> definitions,
+                WordStyleResolver resolver,
                 Theme theme
         ) {
             this.documentRun = documentRun;
-            this.documentParagraph = documentParagraph;
-            this.definitions = definitions;
+            this.resolver = resolver;
             this.theme = theme;
-        }
-
-        private ResolvedParagraph resolveParagraph(String id)
-                throws WordParseException {
-            if (id == null || id.isEmpty()) {
-                return new ResolvedParagraph(documentParagraph, documentRun);
-            }
-            ResolvedParagraph cached = paragraphCache.get(id);
-            if (cached != null) return cached;
-            ResolvedParagraph resolved = resolveParagraph(
-                    id,
-                    new HashSet<>(),
-                    0
-            );
-            paragraphCache.put(id, resolved);
-            return resolved;
-        }
-
-        private ResolvedParagraph resolveParagraph(
-                String id,
-                Set<String> visiting,
-                int depth
-        ) throws WordParseException {
-            if (depth > DocumentLimits.MAX_WORD_STYLE_DEPTH || !visiting.add(id)) {
-                throw corrupted("Cyclic Word paragraph style inheritance", null);
-            }
-            StyleDefinition definition = definitions.get(id);
-            if (definition == null) {
-                visiting.remove(id);
-                return new ResolvedParagraph(documentParagraph, documentRun);
-            }
-            ResolvedParagraph base = definition.basedOn == null
-                    ? new ResolvedParagraph(documentParagraph, documentRun)
-                    : resolveParagraph(definition.basedOn, visiting, depth + 1);
-            WordParagraphStyle paragraph = WordParagraphStyle.merge(
-                    base.paragraphStyle,
-                    definition.paragraphStyle
-            );
-            int heading = headingLevel(definition.id, definition.name);
-            if (heading > 0) {
-                paragraph = WordParagraphStyle.merge(
-                        paragraph,
-                        new WordParagraphStyle.Builder()
-                                .setHeadingLevel(heading)
-                                .setOutlineLevel(heading - 1)
-                                .build()
-                );
-            }
-            WordRunStyle run = WordRunStyle.merge(base.runStyle, definition.runStyle);
-            visiting.remove(id);
-            return new ResolvedParagraph(paragraph, run);
-        }
-
-        private WordRunStyle resolveCharacter(String id) throws WordParseException {
-            if (id == null || id.isEmpty()) return null;
-            WordRunStyle cached = characterCache.get(id);
-            if (cached != null) return cached;
-            WordRunStyle result = resolveCharacter(id, new HashSet<>(), 0);
-            characterCache.put(id, result);
-            return result;
-        }
-
-        private WordRunStyle resolveCharacter(
-                String id,
-                Set<String> visiting,
-                int depth
-        ) throws WordParseException {
-            if (depth > DocumentLimits.MAX_WORD_STYLE_DEPTH || !visiting.add(id)) {
-                throw corrupted("Cyclic Word character style inheritance", null);
-            }
-            StyleDefinition definition = definitions.get(id);
-            if (definition == null) {
-                visiting.remove(id);
-                return null;
-            }
-            WordRunStyle base = definition.basedOn == null
-                    ? null
-                    : resolveCharacter(definition.basedOn, visiting, depth + 1);
-            WordRunStyle result = WordRunStyle.merge(base, definition.runStyle);
-            visiting.remove(id);
-            return result;
-        }
-
-    }
-
-    private static final class StyleDefinition {
-        private final String id;
-        private final String type;
-        private final String basedOn;
-        private final String name;
-        private final WordParagraphStyle paragraphStyle;
-        private final WordRunStyle runStyle;
-
-        private StyleDefinition(
-                String id,
-                String type,
-                String basedOn,
-                String name,
-                WordParagraphStyle paragraphStyle,
-                WordRunStyle runStyle
-        ) {
-            this.id = id;
-            this.type = type;
-            this.basedOn = basedOn;
-            this.name = name;
-            this.paragraphStyle = paragraphStyle;
-            this.runStyle = runStyle;
-        }
-    }
-
-    private static final class ResolvedParagraph {
-        private final WordParagraphStyle paragraphStyle;
-        private final WordRunStyle runStyle;
-
-        private ResolvedParagraph(
-                WordParagraphStyle paragraphStyle,
-                WordRunStyle runStyle
-        ) {
-            this.paragraphStyle = paragraphStyle;
-            this.runStyle = runStyle;
         }
     }
 
@@ -2081,6 +2098,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                     new WordParagraph(
                             runs,
                             paragraph.getStyle(),
+                            paragraph.getDefaultRunStyle(),
                             paragraph.getListMarker(),
                             paragraph.getRole()
                     ),
@@ -2105,8 +2123,12 @@ public final class DocxDocumentParser implements WordDocumentParser {
     }
 
     private static final class TableProperties {
+        private WordTableWidth width = WordTableWidth.AUTO;
         private WordTable.Alignment alignment = WordTable.Alignment.LEFT;
-        private int cellMarginTwips = 100;
+        private int cellMarginTopTwips;
+        private int cellMarginEndTwips = 100;
+        private int cellMarginBottomTwips;
+        private int cellMarginStartTwips = 100;
         private WordBorder left = WordBorder.NONE;
         private WordBorder top = WordBorder.NONE;
         private WordBorder right = WordBorder.NONE;
@@ -2116,7 +2138,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
     }
 
     private static final class CellProperties {
-        private int widthTwips;
+        private WordTableWidth width = WordTableWidth.AUTO;
         private int gridSpan = 1;
         private WordTableCell.VerticalMerge verticalMerge =
                 WordTableCell.VerticalMerge.NONE;

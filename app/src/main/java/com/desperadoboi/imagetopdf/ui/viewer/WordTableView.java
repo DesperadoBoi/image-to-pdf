@@ -6,8 +6,11 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.text.Layout;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import android.text.style.LineHeightSpan;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
@@ -21,6 +24,10 @@ import androidx.core.view.ViewCompat;
 
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.document.word.WordBorder;
+import com.desperadoboi.imagetopdf.document.word.WordBlock;
+import com.desperadoboi.imagetopdf.document.word.WordMeasurementConverter;
+import com.desperadoboi.imagetopdf.document.word.WordParagraph;
+import com.desperadoboi.imagetopdf.document.word.WordParagraphStyle;
 import com.desperadoboi.imagetopdf.document.word.WordTable;
 import com.desperadoboi.imagetopdf.document.word.WordTableCell;
 
@@ -32,7 +39,6 @@ import java.util.Set;
 public final class WordTableView extends View {
     private static final int MAX_LAYOUT_CACHE = 64;
 
-    private final float density;
     private final int maximumHeight;
     private final Paint fillPaint = new Paint();
     private final Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -51,6 +57,8 @@ public final class WordTableView extends View {
 
     @Nullable private WordTable table;
     @Nullable private WordTableGeometry geometry;
+    private WordMeasurementConverter measurementConverter;
+    private int geometryAvailableWidth = -1;
     private float offsetX;
     private float offsetY;
     private int lastFlingX;
@@ -67,25 +75,33 @@ public final class WordTableView extends View {
 
     public WordTableView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        density = getResources().getDisplayMetrics().density;
+        measurementConverter = new WordMeasurementConverter(
+                getResources().getDisplayMetrics().xdpi,
+                getResources().getDisplayMetrics().density,
+                getResources().getConfiguration().fontScale
+        );
         maximumHeight = getResources().getDimensionPixelSize(
                 R.dimen.viewer_word_table_max_height
         );
         fillPaint.setColor(Color.WHITE);
         borderPaint.setStyle(Paint.Style.STROKE);
         textPaint.setColor(ContextCompat.getColor(context, R.color.viewer_document_text));
-        textPaint.setTextSize(getResources().getDimension(
-                R.dimen.viewer_word_table_text_size
-        ));
+        textPaint.setTextSize(measurementConverter.fontPointsToPixels(11f));
         scroller = new OverScroller(context);
         gestureDetector = new GestureDetector(context, new GestureListener());
         setClickable(true);
         setFocusable(true);
     }
 
-    void submit(WordTable table) {
+    void submit(
+            WordTable table,
+            WordMeasurementConverter measurementConverter
+    ) {
         this.table = table;
-        geometry = WordTableGeometry.create(table, density);
+        this.measurementConverter = measurementConverter;
+        textPaint.setTextSize(measurementConverter.fontPointsToPixels(11f));
+        geometryAvailableWidth = -1;
+        geometry = null;
         offsetX = 0f;
         offsetY = 0f;
         layoutCache.clear();
@@ -96,6 +112,7 @@ public final class WordTableView extends View {
     void clear() {
         table = null;
         geometry = null;
+        geometryAvailableWidth = -1;
         layoutCache.clear();
         if (!scroller.isFinished()) scroller.abortAnimation();
         invalidate();
@@ -104,6 +121,7 @@ public final class WordTableView extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = MeasureSpec.getSize(widthMeasureSpec);
+        ensureGeometry(width);
         WordTableGeometry current = geometry;
         int desiredHeight = current == null
                 ? getSuggestedMinimumHeight()
@@ -118,6 +136,22 @@ public final class WordTableView extends View {
                 resolveSize(desiredHeight, heightMeasureSpec)
         );
         clampOffsets();
+    }
+
+    private void ensureGeometry(int availableWidth) {
+        WordTable currentTable = table;
+        int safeWidth = Math.max(1, availableWidth);
+        if (currentTable == null || (geometry != null
+                && geometryAvailableWidth == safeWidth)) {
+            return;
+        }
+        geometry = WordTableGeometry.create(
+                currentTable,
+                measurementConverter,
+                safeWidth
+        );
+        geometryAvailableWidth = safeWidth;
+        layoutCache.clear();
     }
 
     @Override
@@ -225,15 +259,37 @@ public final class WordTableView extends View {
                         ? currentTable.getRightBorder()
                         : currentTable.getInsideVerticalBorder()));
 
-        String value = cell.getPlainText();
-        if (value.isEmpty()) return;
-        int padding = Math.max(
-                getResources().getDimensionPixelSize(R.dimen.viewer_word_table_cell_padding),
-                Math.round(currentTable.getCellMarginTwips() * density / 9f)
+        int paddingStart = Math.max(0, Math.round(
+                measurementConverter.twipsToPixels(
+                        currentTable.getCellMarginStartTwips()
+                )
+        ));
+        int paddingEnd = Math.max(0, Math.round(
+                measurementConverter.twipsToPixels(
+                        currentTable.getCellMarginEndTwips()
+                )
+        ));
+        int paddingTop = Math.max(
+                0,
+                Math.round(measurementConverter.twipsToPixels(
+                        currentTable.getCellMarginTopTwips()
+                ))
         );
-        int availableWidth = Math.max(1, Math.round(bounds.width()) - padding * 2);
+        int paddingBottom = Math.max(
+                0,
+                Math.round(measurementConverter.twipsToPixels(
+                        currentTable.getCellMarginBottomTwips()
+                ))
+        );
+        int availableWidth = Math.max(
+                1,
+                Math.round(bounds.width()) - paddingStart - paddingEnd
+                        - maximumEndIndent(cell)
+        );
         StaticLayout layout = layoutCache.get(placement.getId());
         if (layout == null || layout.getWidth() != availableWidth) {
+            SpannableStringBuilder value = cellText(cell);
+            if (value.length() == 0) return;
             layout = StaticLayout.Builder.obtain(
                             value,
                             0,
@@ -243,34 +299,162 @@ public final class WordTableView extends View {
                     )
                     .setAlignment(Layout.Alignment.ALIGN_NORMAL)
                     .setIncludePad(false)
-                    .setMaxLines(10)
+                    .setLineSpacing(0f, 1f)
                     .build();
             layoutCache.put(placement.getId(), layout);
         }
         float contentHeight = layout.getHeight();
-        float textTop = bounds.top + padding;
+        float textTop = bounds.top + paddingTop;
         if (cell.getVerticalAlignment() == WordTableCell.VerticalAlignment.CENTER) {
             textTop = bounds.top + Math.max(
-                    padding,
+                    paddingTop,
                     (bounds.height() - contentHeight) / 2f
             );
         } else if (cell.getVerticalAlignment()
                 == WordTableCell.VerticalAlignment.BOTTOM) {
             textTop = Math.max(
-                    bounds.top + padding,
-                    bounds.bottom - padding - contentHeight
+                    bounds.top + paddingTop,
+                    bounds.bottom - paddingBottom - contentHeight
             );
         }
         int save = canvas.save();
         canvas.clipRect(
-                bounds.left + padding,
-                bounds.top + padding,
-                bounds.right - padding,
-                bounds.bottom - padding
+                bounds.left + paddingStart,
+                bounds.top + paddingTop,
+                bounds.right - paddingEnd,
+                bounds.bottom - paddingBottom
         );
-        canvas.translate(bounds.left + padding, textTop);
+        canvas.translate(bounds.left + paddingStart, textTop);
         layout.draw(canvas);
         canvas.restoreToCount(save);
+    }
+
+    private SpannableStringBuilder cellText(WordTableCell cell) {
+        SpannableStringBuilder result = new SpannableStringBuilder();
+        WordParagraph previous = null;
+        for (int blockIndex = 0; blockIndex < cell.getBlocks().size(); blockIndex++) {
+            WordBlock block = cell.getBlocks().get(blockIndex);
+            if (block instanceof WordParagraph) {
+                WordParagraph paragraph = (WordParagraph) block;
+                WordParagraph next = null;
+                if (blockIndex + 1 < cell.getBlocks().size()
+                        && cell.getBlocks().get(blockIndex + 1)
+                        instanceof WordParagraph) {
+                    next = (WordParagraph) cell.getBlocks().get(blockIndex + 1);
+                }
+                ParagraphLayoutMetrics metrics = ParagraphLayoutMetrics.resolve(
+                        paragraph,
+                        previous,
+                        next,
+                        measurementConverter
+                );
+                if (result.length() > 0) {
+                    int separatorStart = result.length();
+                    result.append('\n');
+                    result.setSpan(
+                            new TableParagraphGapSpan(
+                                    metrics.getMarginTopPixels()
+                            ),
+                            separatorStart,
+                            result.length(),
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    );
+                }
+                int paragraphStart = result.length();
+                result.append(WordSpannableFactory.createForTable(
+                        paragraph,
+                        measurementConverter
+                ));
+                if (result.length() > paragraphStart) {
+                    result.setSpan(
+                            new TableLineHeightSpan(
+                                    metrics.getLineSpacingExtraPixels(),
+                                    metrics.getLineSpacingMultiplier()
+                            ),
+                            paragraphStart,
+                            result.length(),
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    );
+                }
+                previous = paragraph;
+            } else if (block instanceof WordTable) {
+                if (result.length() > 0) result.append('\n');
+                result.append('\u25A6');
+                previous = null;
+            }
+        }
+        return result;
+    }
+
+    private int maximumEndIndent(WordTableCell cell) {
+        int maximum = 0;
+        for (WordBlock block : cell.getBlocks()) {
+            if (!(block instanceof WordParagraph)) continue;
+            WordParagraph paragraph = (WordParagraph) block;
+            WordParagraphStyle style = paragraph.getStyle();
+            float fontPixels = measurementConverter.fontPointsToPixels(
+                    paragraph.getDefaultRunStyle().getFontSizePoints()
+            );
+            int pixels = Math.round(style.hasRightIndent()
+                    ? measurementConverter.twipsToPixels(
+                            style.getRightIndentTwips()
+                    )
+                    : measurementConverter.characterUnitsToPixels(
+                            style.getEndIndentCharacters(),
+                            fontPixels
+                    ));
+            maximum = Math.max(maximum, pixels);
+        }
+        return maximum;
+    }
+
+    private static final class TableLineHeightSpan implements LineHeightSpan {
+        private final float extraPixels;
+        private final float multiplier;
+
+        private TableLineHeightSpan(float extraPixels, float multiplier) {
+            this.extraPixels = extraPixels;
+            this.multiplier = multiplier;
+        }
+
+        @Override
+        public void chooseHeight(
+                CharSequence text,
+                int start,
+                int end,
+                int spanStartVertical,
+                int lineHeight,
+                Paint.FontMetricsInt fontMetrics
+        ) {
+            int natural = fontMetrics.descent - fontMetrics.ascent;
+            int additional = Math.max(
+                    0,
+                    Math.round(natural * (multiplier - 1f) + extraPixels)
+            );
+            fontMetrics.descent += additional;
+            fontMetrics.bottom += additional;
+        }
+    }
+
+    private static final class TableParagraphGapSpan implements LineHeightSpan {
+        private final int gapPixels;
+
+        private TableParagraphGapSpan(int gapPixels) {
+            this.gapPixels = Math.max(0, gapPixels);
+        }
+
+        @Override
+        public void chooseHeight(
+                CharSequence text,
+                int start,
+                int end,
+                int spanStartVertical,
+                int lineHeight,
+                Paint.FontMetricsInt fontMetrics
+        ) {
+            fontMetrics.descent += gapPixels;
+            fontMetrics.bottom += gapPixels;
+        }
     }
 
     private WordBorder choose(WordBorder direct, WordBorder fallback) {
@@ -291,10 +475,18 @@ public final class WordTableView extends View {
         borderPaint.setColor(safe.getStyle() == WordBorder.Style.NONE
                 ? ContextCompat.getColor(getContext(), R.color.viewer_table_grid)
                 : safe.getColor());
-        float width = Math.max(1f, safe.getSizeEighthPoints() * density / 8f);
+        float width = Math.max(
+                1f,
+                measurementConverter.eighthPointsToPixels(
+                        safe.getSizeEighthPoints()
+                )
+        );
         if (safe.getStyle() == WordBorder.Style.THICK
                 || safe.getStyle() == WordBorder.Style.DOUBLE) {
-            width = Math.max(width, 2f * density);
+            width = Math.max(
+                    width,
+                    measurementConverter.pointsToPhysicalPixels(1.5f)
+            );
         }
         borderPaint.setStrokeWidth(width);
         canvas.drawLine(startX, startY, endX, endY, borderPaint);

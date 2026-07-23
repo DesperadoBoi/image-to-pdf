@@ -74,7 +74,10 @@ public final class DocxDocumentParserTest {
                         + "<w:rPr><w:b/></w:rPr></w:style>"
                         + "<w:style w:type=\"paragraph\" w:styleId=\"Heading1\">"
                         + "<w:name w:val=\"heading 1\"/><w:basedOn w:val=\"Base\"/>"
+                        + "<w:link w:val=\"Heading1Char\"/>"
                         + "<w:rPr><w:color w:val=\"1F4E79\"/></w:rPr></w:style>"
+                        + "<w:style w:type=\"character\" w:styleId=\"Heading1Char\">"
+                        + "<w:rPr><w:strike/></w:rPr></w:style>"
                         + "<w:style w:type=\"character\" w:styleId=\"Emphasis\">"
                         + "<w:rPr><w:i/><w:u/></w:rPr></w:style>"
                         + "</w:styles>"
@@ -99,8 +102,158 @@ public final class DocxDocumentParserTest {
         assertTrue(style.isBold());
         assertTrue(style.isItalic());
         assertTrue(style.isUnderline());
+        assertTrue(style.isStrike());
         assertEquals(11f, style.getFontSizePoints(), 0.001f);
         assertEquals(Integer.valueOf(0xFF1F4E79), style.getColor());
+    }
+
+    @Test
+    public void parsesCanonicalFontSizesInheritanceOverridesAndCorruption()
+            throws Exception {
+        Map<String, byte[]> parts = new LinkedHashMap<>();
+        parts.put("word/styles.xml", DocxTestFixtures.bytes(
+                "<w:styles xmlns:w=\"" + DocxTestFixtures.WORD_NAMESPACE + "\">"
+                        + "<w:docDefaults><w:rPrDefault><w:rPr>"
+                        + "<w:sz w:val=\"22\"/></w:rPr></w:rPrDefault></w:docDefaults>"
+                        + "<w:style w:type=\"paragraph\" w:styleId=\"Sized\">"
+                        + "<w:rPr><w:sz w:val=\"24\"/></w:rPr></w:style>"
+                        + "</w:styles>"
+        ));
+        StringBuilder body = new StringBuilder("<w:p>");
+        int[] values = {16, 18, 20, 22, 24, 28, 32, 48};
+        for (int value : values) {
+            body.append("<w:r><w:rPr><w:sz w:val=\"")
+                    .append(value)
+                    .append("\"/></w:rPr><w:t>x</w:t></w:r>");
+        }
+        body.append("<w:r><w:rPr><w:sz w:val=\"22\"/>")
+                .append("<w:szCs w:val=\"48\"/></w:rPr><w:t>primary</w:t></w:r>");
+        body.append("</w:p>")
+                .append("<w:p><w:pPr><w:pStyle w:val=\"Sized\"/></w:pPr>")
+                .append("<w:r><w:t>inherited</w:t></w:r></w:p>")
+                .append("<w:p><w:pPr><w:pStyle w:val=\"Sized\"/></w:pPr>")
+                .append("<w:r><w:rPr><w:sz w:val=\"20\"/></w:rPr>")
+                .append("<w:t>override</w:t></w:r></w:p>")
+                .append("<w:p><w:r><w:t>missing</w:t></w:r></w:p>")
+                .append("<w:p><w:r><w:rPr><w:sz w:val=\"-2\"/></w:rPr>")
+                .append("<w:t>negative</w:t></w:r></w:p>")
+                .append("<w:p><w:r><w:rPr><w:sz w:val=\"20000\"/></w:rPr>")
+                .append("<w:t>huge</w:t></w:r></w:p>");
+        WordDocumentModel document = parse(
+                "font-sizes.docx",
+                body.toString(),
+                DocxTestFixtures.relationship("styles", "styles", "styles.xml"),
+                parts,
+                ""
+        );
+
+        WordParagraph canonical = (WordParagraph) document.getBlocks().get(0);
+        float[] expected = {8f, 9f, 10f, 11f, 12f, 14f, 16f, 24f, 11f};
+        for (int index = 0; index < expected.length; index++) {
+            assertEquals(
+                    expected[index],
+                    canonical.getRuns().get(index).getStyle().getFontSizePoints(),
+                    0.001f
+            );
+        }
+        assertEquals(12f, paragraph(document, 1).getRuns().get(0)
+                .getStyle().getFontSizePoints(), 0.001f);
+        assertEquals(10f, paragraph(document, 2).getRuns().get(0)
+                .getStyle().getFontSizePoints(), 0.001f);
+        assertEquals(11f, paragraph(document, 3).getRuns().get(0)
+                .getStyle().getFontSizePoints(), 0.001f);
+        assertEquals(11f, paragraph(document, 4).getRuns().get(0)
+                .getStyle().getFontSizePoints(), 0.001f);
+        assertEquals(11f, paragraph(document, 5).getRuns().get(0)
+                .getStyle().getFontSizePoints(), 0.001f);
+    }
+
+    @Test
+    public void parsesSpacingRulesAutomaticSpacingIndentationAndBaseline()
+            throws Exception {
+        String body = "<w:p><w:pPr>"
+                + "<w:spacing w:before=\"120\" w:after=\"240\" w:line=\"360\""
+                + " w:lineRule=\"auto\" w:beforeAutospacing=\"1\""
+                + " w:afterAutospacing=\"0\"/>"
+                + "<w:contextualSpacing/><w:bidi/>"
+                + "<w:ind w:start=\"720\" w:end=\"360\" w:firstLine=\"240\""
+                + " w:startChars=\"200\" w:endChars=\"100\"/>"
+                + "</w:pPr><w:r><w:rPr><w:position w:val=\"4\"/></w:rPr>"
+                + "<w:t xml:space=\"preserve\">  kept   spaces  </w:t>"
+                + "<w:tab/><w:br/><w:t>end</w:t></w:r></w:p>"
+                + "<w:p><w:pPr><w:spacing w:line=\"300\" w:lineRule=\"exact\"/>"
+                + "<w:ind w:start=\"720\" w:hanging=\"360\"/></w:pPr>"
+                + "<w:r><w:t>exact</w:t></w:r></w:p>"
+                + "<w:p><w:pPr><w:spacing w:line=\"400\""
+                + " w:lineRule=\"atLeast\"/></w:pPr>"
+                + "<w:r><w:t>at least</w:t></w:r></w:p>"
+                + "<w:p><w:r><w:rPr><w:vertAlign w:val=\"subscript\"/>"
+                + "</w:rPr><w:t>sub</w:t></w:r>"
+                + "<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/>"
+                + "</w:rPr><w:t>super</w:t></w:r></w:p>";
+        WordDocumentModel document = parse("spacing-indent.docx", body);
+
+        WordParagraph first = paragraph(document, 0);
+        WordParagraphStyle firstStyle = first.getStyle();
+        assertEquals(120, firstStyle.getSpaceBeforeTwips());
+        assertEquals(240, firstStyle.getSpaceAfterTwips());
+        assertEquals(360, firstStyle.getLineSpacingValue());
+        assertEquals(WordParagraphStyle.LineRule.AUTO, firstStyle.getLineRule());
+        assertTrue(firstStyle.isBeforeAutoSpacing());
+        assertFalse(firstStyle.isAfterAutoSpacing());
+        assertTrue(firstStyle.isContextualSpacing());
+        assertTrue(firstStyle.isBidirectional());
+        assertEquals(720, firstStyle.getLeftIndentTwips());
+        assertEquals(360, firstStyle.getRightIndentTwips());
+        assertEquals(240, firstStyle.getFirstLineIndentTwips());
+        assertEquals(200, firstStyle.getStartIndentCharacters());
+        assertEquals(100, firstStyle.getEndIndentCharacters());
+        assertEquals("  kept   spaces  \t\nend", first.getPlainText());
+        assertEquals(2f, first.getRuns().get(0).getStyle()
+                .getBaselineShiftPoints(), 0.001f);
+
+        WordParagraph second = paragraph(document, 1);
+        assertEquals(WordParagraphStyle.LineRule.EXACT,
+                second.getStyle().getLineRule());
+        assertEquals(360, second.getStyle().getHangingIndentTwips());
+        WordParagraph third = paragraph(document, 2);
+        assertEquals(WordParagraphStyle.LineRule.AT_LEAST,
+                third.getStyle().getLineRule());
+        WordParagraph vertical = paragraph(document, 3);
+        assertEquals(
+                WordRunStyle.VerticalPosition.SUBSCRIPT,
+                vertical.getRuns().get(0).getStyle().getVerticalPosition()
+        );
+        assertEquals(
+                WordRunStyle.VerticalPosition.SUPERSCRIPT,
+                vertical.getRuns().get(1).getStyle().getVerticalPosition()
+        );
+    }
+
+    @Test
+    public void parsesTableAndCellWidthUnits() throws Exception {
+        String table = "<w:tbl><w:tblPr><w:tblW w:type=\"pct\" w:w=\"2500\"/>"
+                + "<w:tblCellMar><w:top w:type=\"dxa\" w:w=\"40\"/>"
+                + "<w:start w:type=\"dxa\" w:w=\"100\"/>"
+                + "<w:end w:type=\"dxa\" w:w=\"120\"/>"
+                + "<w:bottom w:type=\"dxa\" w:w=\"60\"/></w:tblCellMar>"
+                + "</w:tblPr><w:tblGrid><w:gridCol w:w=\"1440\"/>"
+                + "</w:tblGrid><w:tr><w:tc><w:tcPr>"
+                + "<w:tcW w:type=\"pct\" w:w=\"100%\"/>"
+                + "</w:tcPr>" + DocxTestFixtures.paragraph("cell")
+                + "</w:tc></w:tr></w:tbl>";
+        WordTable parsed = (WordTable) parse("table-widths.docx", table)
+                .getBlocks().get(0);
+
+        assertEquals(WordTableWidth.Type.PERCENT, parsed.getWidth().getType());
+        assertEquals(2_500, parsed.getWidth().getValue());
+        assertEquals(40, parsed.getCellMarginTopTwips());
+        assertEquals(100, parsed.getCellMarginStartTwips());
+        assertEquals(120, parsed.getCellMarginEndTwips());
+        assertEquals(60, parsed.getCellMarginBottomTwips());
+        WordTableCell cell = parsed.getRows().get(0).getCells().get(0);
+        assertEquals(WordTableWidth.Type.PERCENT, cell.getWidth().getType());
+        assertEquals(5_000, cell.getWidth().getValue());
     }
 
     @Test
@@ -132,7 +285,8 @@ public final class DocxDocumentParserTest {
                         + "<w:abstractNum w:abstractNumId=\"1\">"
                         + "<w:lvl w:ilvl=\"0\"><w:start w:val=\"3\"/>"
                         + "<w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/>"
-                        + "<w:pPr><w:ind w:left=\"720\"/></w:pPr></w:lvl>"
+                        + "<w:pPr><w:ind w:left=\"720\" w:hanging=\"360\"/>"
+                        + "</w:pPr></w:lvl>"
                         + "<w:lvl w:ilvl=\"1\"><w:numFmt w:val=\"lowerLetter\"/>"
                         + "<w:lvlText w:val=\"%1.%2)\"/></w:lvl></w:abstractNum>"
                         + "<w:abstractNum w:abstractNumId=\"2\"><w:lvl w:ilvl=\"0\">"
@@ -165,6 +319,8 @@ public final class DocxDocumentParserTest {
         assertEquals("• bullet", ((WordParagraph) blocks.get(3)).getPlainText());
         assertEquals(720, ((WordParagraph) blocks.get(0))
                 .getStyle().getLeftIndentTwips());
+        assertEquals(360, ((WordParagraph) blocks.get(0))
+                .getStyle().getHangingIndentTwips());
     }
 
     @Test
@@ -482,6 +638,10 @@ public final class DocxDocumentParserTest {
             }
         }
         throw new AssertionError("Missing image " + index);
+    }
+
+    private WordParagraph paragraph(WordDocumentModel document, int index) {
+        return (WordParagraph) document.getBlocks().get(index);
     }
 
     private String listParagraph(int numId, int level, String text) {

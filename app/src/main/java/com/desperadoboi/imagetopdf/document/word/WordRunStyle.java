@@ -12,6 +12,7 @@ public final class WordRunStyle {
     private final Integer color;
     private final Integer highlight;
     private final VerticalPosition verticalPosition;
+    private final Float baselineShiftPoints;
     private final Boolean hidden;
 
     public enum VerticalPosition {
@@ -30,6 +31,7 @@ public final class WordRunStyle {
         color = builder.color;
         highlight = builder.highlight;
         verticalPosition = builder.verticalPosition;
+        baselineShiftPoints = builder.baselineShiftPoints;
         hidden = builder.hidden;
     }
 
@@ -63,6 +65,10 @@ public final class WordRunStyle {
                         overlay.verticalPosition,
                         base.verticalPosition
                 ))
+                .setBaselineShiftPoints(first(
+                        overlay.baselineShiftPoints,
+                        base.baselineShiftPoints
+                ))
                 .setHidden(first(overlay.hidden, base.hidden))
                 .build();
     }
@@ -76,7 +82,8 @@ public final class WordRunStyle {
     }
 
     public float getFontSizePoints() {
-        return fontSizePoints == null ? 11f : fontSizePoints;
+        float value = fontSizePoints == null ? 11f : fontSizePoints;
+        return Float.isFinite(value) ? Math.max(1f, Math.min(400f, value)) : 11f;
     }
 
     public boolean isBold() { return Boolean.TRUE.equals(bold); }
@@ -88,6 +95,11 @@ public final class WordRunStyle {
     public VerticalPosition getVerticalPosition() {
         return verticalPosition == null ? VerticalPosition.BASELINE : verticalPosition;
     }
+    public float getBaselineShiftPoints() {
+        return baselineShiftPoints == null || !Float.isFinite(baselineShiftPoints)
+                ? 0f
+                : Math.max(-400f, Math.min(400f, baselineShiftPoints));
+    }
     public boolean isHidden() { return Boolean.TRUE.equals(hidden); }
 
     private String safeAndroidFamily(String value) {
@@ -95,6 +107,12 @@ public final class WordRunStyle {
         if (normalized.contains("mono") || normalized.contains("courier")
                 || normalized.contains("consolas")) {
             return "monospace";
+        }
+        if (normalized.contains("sans") || normalized.contains("calibri")
+                || normalized.contains("arial") || normalized.contains("roboto")
+                || normalized.contains("segoe")
+                || normalized.contains("helvetica")) {
+            return "sans-serif";
         }
         if (normalized.contains("serif") || normalized.contains("times")
                 || normalized.contains("georgia") || normalized.contains("cambria")) {
@@ -113,6 +131,7 @@ public final class WordRunStyle {
         private Integer color;
         private Integer highlight;
         private VerticalPosition verticalPosition;
+        private Float baselineShiftPoints;
         private Boolean hidden;
 
         public Builder setFontFamily(String value) { fontFamily = value; return this; }
@@ -125,6 +144,10 @@ public final class WordRunStyle {
         public Builder setHighlight(Integer value) { highlight = value; return this; }
         public Builder setVerticalPosition(VerticalPosition value) {
             verticalPosition = value;
+            return this;
+        }
+        public Builder setBaselineShiftPoints(Float value) {
+            baselineShiftPoints = value;
             return this;
         }
         public Builder setHidden(Boolean value) { hidden = value; return this; }

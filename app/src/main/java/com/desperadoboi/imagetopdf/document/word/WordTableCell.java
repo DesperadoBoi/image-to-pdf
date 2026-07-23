@@ -18,7 +18,7 @@ public final class WordTableCell {
     }
 
     private final List<WordBlock> blocks;
-    private final int widthTwips;
+    private final WordTableWidth width;
     private final int gridSpan;
     private final VerticalMerge verticalMerge;
     private final VerticalAlignment verticalAlignment;
@@ -40,8 +40,34 @@ public final class WordTableCell {
             WordBorder rightBorder,
             WordBorder bottomBorder
     ) {
+        this(
+                blocks,
+                new WordTableWidth(WordTableWidth.Type.DXA, widthTwips),
+                gridSpan,
+                verticalMerge,
+                verticalAlignment,
+                shadingColor,
+                leftBorder,
+                topBorder,
+                rightBorder,
+                bottomBorder
+        );
+    }
+
+    public WordTableCell(
+            List<WordBlock> blocks,
+            WordTableWidth width,
+            int gridSpan,
+            VerticalMerge verticalMerge,
+            VerticalAlignment verticalAlignment,
+            Integer shadingColor,
+            WordBorder leftBorder,
+            WordBorder topBorder,
+            WordBorder rightBorder,
+            WordBorder bottomBorder
+    ) {
         this.blocks = Collections.unmodifiableList(new ArrayList<>(blocks));
-        this.widthTwips = Math.max(0, widthTwips);
+        this.width = width == null ? WordTableWidth.AUTO : width;
         this.gridSpan = Math.max(1, gridSpan);
         this.verticalMerge = verticalMerge == null ? VerticalMerge.NONE : verticalMerge;
         this.verticalAlignment = verticalAlignment == null
@@ -55,7 +81,10 @@ public final class WordTableCell {
     }
 
     public List<WordBlock> getBlocks() { return blocks; }
-    public int getWidthTwips() { return widthTwips; }
+    public WordTableWidth getWidth() { return width; }
+    public int getWidthTwips() {
+        return width.getType() == WordTableWidth.Type.DXA ? width.getValue() : 0;
+    }
     public int getGridSpan() { return gridSpan; }
     public VerticalMerge getVerticalMerge() { return verticalMerge; }
     public VerticalAlignment getVerticalAlignment() { return verticalAlignment; }

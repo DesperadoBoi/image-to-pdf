@@ -48,6 +48,7 @@ import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxWorkbook;
 import com.desperadoboi.imagetopdf.document.text.TextDocumentReader;
 import com.desperadoboi.imagetopdf.document.text.TextPreview;
 import com.desperadoboi.imagetopdf.document.word.WordDocumentModel;
+import com.desperadoboi.imagetopdf.document.word.WordMeasurementConverter;
 import com.desperadoboi.imagetopdf.document.word.WordParseException;
 import com.desperadoboi.imagetopdf.ui.editor.ZoomableImageView;
 import com.desperadoboi.imagetopdf.util.FileSizeFormatter;
@@ -744,6 +745,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         wordAdapter = new WordBlockAdapter(
                 currentDocument.getCachedFile(),
                 ContextCompat.getMainExecutor(this),
+                new WordMeasurementConverter(
+                        getResources().getDisplayMetrics().xdpi,
+                        getResources().getDisplayMetrics().density,
+                        getResources().getConfiguration().fontScale
+                ),
                 this::openSafeHyperlink
         );
         wordContent.setAdapter(wordAdapter);
