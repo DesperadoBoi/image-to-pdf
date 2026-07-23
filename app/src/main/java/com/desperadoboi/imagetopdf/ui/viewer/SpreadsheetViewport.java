@@ -311,7 +311,13 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         pendingState = null;
         zoomMode = state.getZoomMode();
         float scale;
-        if (zoomMode == ZoomController.ZoomMode.FIT_WIDTH) {
+        if (state.shouldApplyDefaultZoomPolicy()) {
+            float fitSheetScale = calculateFitSheetScale();
+            zoomMode = ZoomController.defaultXlsxMode(fitSheetScale);
+            scale = zoomMode == ZoomController.ZoomMode.FIT_SHEET
+                    ? fitSheetScale
+                    : ZoomController.NORMAL_ZOOM;
+        } else if (zoomMode == ZoomController.ZoomMode.FIT_WIDTH) {
             scale = calculateFitScale();
         } else if (zoomMode == ZoomController.ZoomMode.FIT_SHEET) {
             scale = calculateFitSheetScale();
@@ -371,6 +377,8 @@ public final class SpreadsheetViewport extends ViewGroup implements NestedScroll
         TextView header = new TextView(getContext());
         header.setGravity(Gravity.CENTER);
         header.setMaxLines(1);
+        header.setIncludeFontPadding(false);
+        header.setLineSpacing(0f, 1f);
         header.setTextColor(ContextCompat.getColor(getContext(), R.color.viewer_document_text));
         header.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         header.setBackgroundResource(corner

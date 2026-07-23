@@ -31,6 +31,13 @@ public final class ZoomController {
         return mode == ZoomMode.FIT_WIDTH || mode == ZoomMode.FIT_SHEET;
     }
 
+    static ZoomMode defaultXlsxMode(float fitSheetScale) {
+        return Float.isFinite(fitSheetScale)
+                && fitSheetScale >= SpreadsheetRenderMetrics.DEFAULT_FIT_SHEET_THRESHOLD
+                ? ZoomMode.FIT_SHEET
+                : ZoomMode.ZOOM_100;
+    }
+
     static float clampOverviewZoom(float zoom) {
         if (!Float.isFinite(zoom)) return NORMAL_ZOOM;
         return Math.max(MIN_OVERVIEW_ZOOM, Math.min(MAX_ZOOM, zoom));

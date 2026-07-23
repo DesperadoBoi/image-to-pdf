@@ -2,6 +2,7 @@ package com.desperadoboi.imagetopdf.ui.viewer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -96,6 +97,7 @@ public final class SpreadsheetStateStoreTest {
         assertEquals(0f, initial.getHorizontalOffset(), DELTA);
         assertEquals(0f, initial.getVerticalOffset(), DELTA);
         assertFalse(initial.hasViewportPosition());
+        assertTrue(initial.shouldApplyDefaultZoomPolicy());
 
         store.save(3, positioned(
                 1.4f,
@@ -105,6 +107,7 @@ public final class SpreadsheetStateStoreTest {
         ));
         assertEquals(1.4f, store.restoreXlsx(3).getScale(), DELTA);
         assertEquals(ZoomController.ZoomMode.MANUAL, store.restoreXlsx(3).getZoomMode());
+        assertFalse(store.restoreXlsx(3).shouldApplyDefaultZoomPolicy());
     }
 
     @Test

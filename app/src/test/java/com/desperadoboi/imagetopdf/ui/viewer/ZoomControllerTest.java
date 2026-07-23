@@ -55,6 +55,13 @@ public final class ZoomControllerTest {
     }
 
     @Test
+    public void defaultXlsxModeUsesFitSheetOnlyAtReadableThreshold() {
+        assertEquals(ZoomController.ZoomMode.FIT_SHEET, ZoomController.defaultXlsxMode(0.75f));
+        assertEquals(ZoomController.ZoomMode.FIT_SHEET, ZoomController.defaultXlsxMode(0.60f));
+        assertEquals(ZoomController.ZoomMode.ZOOM_100, ZoomController.defaultXlsxMode(0.59f));
+    }
+
+    @Test
     public void zoomModesKeepOverviewSeparateFromManualAndNormal() {
         assertEquals(0.60f, ZoomController.clampZoom(
                 0.25f,
