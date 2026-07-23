@@ -11,6 +11,8 @@ import java.util.Set;
 
 import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxPackageInspector;
 import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxParseException;
+import com.desperadoboi.imagetopdf.document.word.DocxPackageInspector;
+import com.desperadoboi.imagetopdf.document.word.WordParseException;
 
 public final class DocumentTypeResolver {
     private static final byte[] PDF = {'%', 'P', 'D', 'F'};
@@ -60,18 +62,34 @@ public final class DocumentTypeResolver {
             byte[] prefix,
             File cachedFile,
             String displayName
-    ) throws XlsxParseException {
+    ) throws XlsxParseException, WordParseException {
         byte[] safePrefix = prefix == null ? new byte[0] : prefix;
         if (isZip(safePrefix)) {
             String safeName = SafeDisplayName.sanitize(displayName).toLowerCase(Locale.ROOT);
             if (safeName.endsWith(".xlsm")
                     || safeName.endsWith(".xlsb")
-                    || safeName.endsWith(".xlam")) {
+                    || safeName.endsWith(".xlam")
+                    || safeName.endsWith(".docm")
+                    || safeName.endsWith(".dotx")
+                    || safeName.endsWith(".dotm")) {
                 return DocumentType.UNKNOWN;
             }
-            return XlsxPackageInspector.inspect(cachedFile).isXlsx()
-                    ? DocumentType.XLSX
-                    : DocumentType.UNKNOWN;
+            if (DocxPackageInspector.inspect(cachedFile).isDocx()) {
+                return DocumentType.DOCX;
+            }
+            if (XlsxPackageInspector.inspect(cachedFile).isXlsx()) {
+                return DocumentType.XLSX;
+            }
+            return DocumentType.UNKNOWN;
+        }
+        if (startsWith(safePrefix, XLS)) {
+            String safeName = SafeDisplayName.sanitize(displayName).toLowerCase(Locale.ROOT);
+            String normalizedMime = mimeType == null
+                    ? ""
+                    : mimeType.trim().toLowerCase(Locale.ROOT);
+            if (safeName.endsWith(".doc") || "application/msword".equals(normalizedMime)) {
+                return DocumentType.DOC;
+            }
         }
         DocumentType resolved = resolve(
                 mimeType,
@@ -79,7 +97,7 @@ public final class DocumentTypeResolver {
                 Collections.emptySet(),
                 displayName
         );
-        if (resolved == DocumentType.XLSX) {
+        if (resolved == DocumentType.XLSX || resolved == DocumentType.DOCX) {
             return DocumentType.UNKNOWN;
         }
         return resolved;
@@ -94,8 +112,12 @@ public final class DocumentTypeResolver {
                 return DocumentType.PDF;
             case "application/vnd.ms-excel":
                 return DocumentType.XLS;
+            case "application/msword":
+                return DocumentType.DOC;
             case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                 return DocumentType.XLSX;
+            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                return DocumentType.DOCX;
             case "text/csv":
             case "application/csv":
                 return DocumentType.CSV;
@@ -148,7 +170,9 @@ public final class DocumentTypeResolver {
         String name = SafeDisplayName.sanitize(displayName).toLowerCase(Locale.ROOT);
         if (name.endsWith(".pdf")) return DocumentType.PDF;
         if (name.endsWith(".xls")) return DocumentType.XLS;
+        if (name.endsWith(".doc")) return DocumentType.DOC;
         if (name.endsWith(".xlsx")) return DocumentType.XLSX;
+        if (name.endsWith(".docx")) return DocumentType.DOCX;
         if (name.endsWith(".csv")) return DocumentType.CSV;
         if (name.endsWith(".tsv")) return DocumentType.TSV;
         if (name.endsWith(".txt")) return DocumentType.TEXT;

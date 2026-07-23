@@ -29,6 +29,14 @@ public class DocumentLimitsTest {
                 DocumentLimits.MAX_XLSX_BYTES + 1,
                 DocumentType.XLSX
         ));
+        assertTrue(DocumentLimits.isAllowedKnownSize(
+                DocumentLimits.MAX_DOCX_BYTES,
+                DocumentType.DOCX
+        ));
+        assertFalse(DocumentLimits.isAllowedKnownSize(
+                DocumentLimits.MAX_DOCX_BYTES + 1,
+                DocumentType.DOCX
+        ));
         assertFalse(DocumentLimits.isAllowedKnownSize(-1, DocumentType.PNG));
     }
 }

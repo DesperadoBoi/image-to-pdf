@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="tool_document_viewer">File viewer</string>
-    <string name="tool_document_viewer_description">PDF, XLSX, CSV, and images</string>
+    <string name="tool_document_viewer_description">PDFs, DOCX, XLSX, and images</string>
     <string name="viewer_loading_xlsx">Checking and reading XLSX…</string>
+    <string name="viewer_loading_docx">Checking and reading DOCX…</string>
     <string name="viewer_more_content_description">More options</string>
     <string name="viewer_sheet_selector_content_description">Select an XLSX workbook sheet</string>
     <string name="viewer_reset_zoom_100">Reset zoom to 100%</string>
@@ -19,4 +20,23 @@
     <string name="viewer_error_xls_not_supported">The old XLS format is not supported yet. Save the file as XLSX.</string>
     <string name="viewer_error_xlsx_corrupted">The XLSX workbook is damaged, encrypted, or uses an unsupported structure</string>
     <string name="viewer_error_xlsx_too_large">The XLSX workbook exceeds safe local viewing limits</string>
+    <string name="viewer_word_page_break">Page break</string>
+    <string name="viewer_word_image_content_description">Image from the Word document</string>
+    <string name="viewer_word_vector_placeholder">This vector image cannot be rendered safely on this device</string>
+    <string name="viewer_word_image_failed">The document image could not be displayed</string>
+    <string name="viewer_word_table_generic_content_description">Word document table. Scrollable</string>
+    <string name="viewer_word_table_content_description">Word table: %1$d rows, %2$d columns. Scrollable</string>
+    <string name="viewer_word_content_description">Word document in mobile reading view</string>
+    <string name="viewer_word_go_to_top">Go to the start of the document</string>
+    <string name="viewer_info_contents_label">Contents</string>
+    <string name="viewer_word_info_counts">Paragraphs: %1$d · tables: %2$d · images: %3$d</string>
+    <string name="viewer_error_docx_corrupted">The DOCX document is damaged or has no Word main part</string>
+    <string name="viewer_error_docx_too_large">The DOCX document exceeds safe local viewing limits</string>
+    <string name="viewer_error_docx_encrypted">Encrypted DOCX documents cannot be opened without a password</string>
+    <string name="viewer_error_docx_unsupported">The document contains unsupported active or external Word content</string>
+    <string name="viewer_error_doc_not_supported">The old DOC format is not supported yet. Save the file as DOCX.</string>
+    <string name="viewer_type_docx">DOCX</string>
+    <string name="viewer_type_doc">DOC</string>
+    <string name="viewer_word_link_unavailable">No browser is available to open this link</string>
+    <string name="viewer_word_link_failed">The link could not be opened</string>
 </resources>

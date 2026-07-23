@@ -283,6 +283,19 @@
             android:paddingBottom="@dimen/content_spacing_large"
             android:visibility="gone" />
 
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/content_viewer_word"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/viewer_preview_background"
+            android:clipToPadding="false"
+            android:contentDescription="@string/viewer_word_content_description"
+            android:paddingStart="@dimen/viewer_word_canvas_padding"
+            android:paddingTop="@dimen/viewer_word_canvas_padding"
+            android:paddingEnd="@dimen/viewer_word_canvas_padding"
+            android:paddingBottom="@dimen/viewer_word_canvas_bottom_padding"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/content_viewer_spreadsheet"
             android:layout_width="match_parent"

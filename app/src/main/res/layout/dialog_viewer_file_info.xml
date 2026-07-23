@@ -95,6 +95,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/text_viewer_info_pages_label"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/viewer_info_pages_label"

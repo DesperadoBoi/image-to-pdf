@@ -26,6 +26,7 @@ import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -46,6 +47,8 @@ import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxSpreadsheetParser;
 import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxWorkbook;
 import com.desperadoboi.imagetopdf.document.text.TextDocumentReader;
 import com.desperadoboi.imagetopdf.document.text.TextPreview;
+import com.desperadoboi.imagetopdf.document.word.WordDocumentModel;
+import com.desperadoboi.imagetopdf.document.word.WordParseException;
 import com.desperadoboi.imagetopdf.ui.editor.ZoomableImageView;
 import com.desperadoboi.imagetopdf.util.FileSizeFormatter;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -68,6 +71,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             "com.desperadoboi.imagetopdf.action.VIEW_DOCUMENT";
     private static final String STATE_CURRENT_PAGE = "viewer_current_page";
     private static final String STATE_CURRENT_SHEET = "viewer_current_sheet";
+    private static final String STATE_WORD_POSITION = "viewer_word_position";
+    private static final String STATE_WORD_OFFSET = "viewer_word_offset";
 
     private final ExecutorService loadExecutor = Executors.newSingleThreadExecutor();
     private final AtomicLong generations = new AtomicLong();
@@ -82,11 +87,16 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private Bitmap imageBitmap;
     private XlsxWorkbook xlsxWorkbook;
     private List<SpreadsheetCanvasModel> xlsxCanvasModels = Collections.emptyList();
+    private WordDocumentModel wordDocument;
+    @Nullable private WordBlockAdapter wordAdapter;
+    private WordViewerViewModel wordViewModel;
     private boolean cacheWasShared;
     private int restoredPage;
     private int restoredSheet;
     private int selectedSheet;
     private int knownPageCount;
+    private int restoredWordPosition;
+    private int restoredWordOffset;
     private SpreadsheetStateStore spreadsheetStateStore = new SpreadsheetStateStore();
 
     private TextView titleView;
@@ -105,6 +115,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private MaterialButton nextPageButton;
     private ZoomableImageView imageContent;
     private RecyclerView textContent;
+    private RecyclerView wordContent;
     private View spreadsheetContent;
     private SpreadsheetCanvasView spreadsheetCanvasView;
     private TextView zoomIndicator;
@@ -122,6 +133,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         setContentView(R.layout.activity_document_viewer);
         temporaryDocumentStore = new TemporaryDocumentStore(this);
         bindViews();
+        wordViewModel = new ViewModelProvider(this).get(WordViewerViewModel.class);
+        wordViewModel.state().observe(this, this::handleWordState);
         configureInsets();
         configureActions();
         restoredPage = savedInstanceState == null
@@ -130,6 +143,12 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         restoredSheet = savedInstanceState == null
                 ? 0
                 : savedInstanceState.getInt(STATE_CURRENT_SHEET, 0);
+        restoredWordPosition = savedInstanceState == null
+                ? 0
+                : savedInstanceState.getInt(STATE_WORD_POSITION, 0);
+        restoredWordOffset = savedInstanceState == null
+                ? 0
+                : savedInstanceState.getInt(STATE_WORD_OFFSET, 0);
 
         RetainedState retainedState = (RetainedState) getLastCustomNonConfigurationInstance();
         if (retainedState != null && retainedState.document != null) {
@@ -137,9 +156,12 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             imageBitmap = retainedState.imageBitmap;
             xlsxWorkbook = retainedState.xlsxWorkbook;
             xlsxCanvasModels = retainedState.xlsxCanvasModels;
+            wordDocument = retainedState.wordDocument;
             cacheWasShared = retainedState.cacheWasShared;
             spreadsheetStateStore = retainedState.spreadsheetStateStore;
             restoredSheet = spreadsheetStateStore.getSelectedSheet();
+            restoredWordPosition = retainedState.wordPosition;
+            restoredWordOffset = retainedState.wordOffset;
             displayLoadedDocument();
         } else {
             loadFromIntent(getIntent());
@@ -157,24 +179,31 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         saveCurrentSpreadsheetState();
+        captureWordPosition();
         outState.putInt(
                 STATE_CURRENT_PAGE,
                 pdfPageState == null ? restoredPage : pdfPageState.getCurrentPage()
         );
         outState.putInt(STATE_CURRENT_SHEET, selectedSheet);
+        outState.putInt(STATE_WORD_POSITION, restoredWordPosition);
+        outState.putInt(STATE_WORD_OFFSET, restoredWordOffset);
         super.onSaveInstanceState(outState);
     }
 
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
         saveCurrentSpreadsheetState();
+        captureWordPosition();
         return new RetainedState(
                 currentDocument,
                 imageBitmap,
                 xlsxWorkbook,
                 xlsxCanvasModels,
+                wordDocument,
                 cacheWasShared,
-                spreadsheetStateStore.copy()
+                spreadsheetStateStore.copy(),
+                restoredWordPosition,
+                restoredWordOffset
         );
     }
 
@@ -185,8 +214,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             zoomIndicator.removeCallbacks(hideZoomIndicatorAction);
         }
         closeRenderers();
+        closeWordAdapter();
         loadExecutor.shutdownNow();
         if (!isChangingConfigurations()) {
+            wordViewModel.clearDocument();
             recycle(imageBitmap);
             imageBitmap = null;
             if (currentDocument != null && !cacheWasShared) {
@@ -215,6 +246,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         nextPageButton = findViewById(R.id.button_viewer_next_page);
         imageContent = findViewById(R.id.content_viewer_image);
         textContent = findViewById(R.id.content_viewer_text);
+        wordContent = findViewById(R.id.content_viewer_word);
         spreadsheetContent = findViewById(R.id.content_viewer_spreadsheet);
         spreadsheetCanvasView = findViewById(R.id.viewport_viewer_spreadsheet);
         zoomIndicator = findViewById(R.id.text_viewer_zoom_indicator);
@@ -224,6 +256,14 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         noticeView = findViewById(R.id.text_viewer_notice);
         textContent.setLayoutManager(new LinearLayoutManager(this));
         textContent.setAdapter(new TextLineAdapter());
+        wordContent.setLayoutManager(new LinearLayoutManager(this));
+        wordContent.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@androidx.annotation.NonNull RecyclerView recyclerView,
+                    int dx, int dy) {
+                updateOverflowMenu();
+            }
+        });
         spreadsheetCanvasView.setOnZoomChangeListener((scale, zoomMode, finished, userInitiated) -> {
             if (userInitiated && zoomMode == ZoomController.ZoomMode.MANUAL) {
                 spreadsheetStateStore.recordManualZoom(selectedSheet, scale);
@@ -357,7 +397,9 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                     R.string.viewer_error_unsupported_title,
                     type == DocumentType.XLS
                             ? R.string.viewer_error_xls_not_supported
-                            : R.string.viewer_error_unknown_format
+                            : type == DocumentType.DOC
+                                    ? R.string.viewer_error_doc_not_supported
+                                    : R.string.viewer_error_unknown_format
             );
             return;
         }
@@ -367,6 +409,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             showImage();
         } else if (type == DocumentType.XLSX) {
             showXlsx();
+        } else if (type == DocumentType.DOCX) {
+            showDocx();
         } else if (type.isSpreadsheetText()) {
             showSpreadsheet();
         } else {
@@ -651,6 +695,139 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         });
     }
 
+    private void showDocx() {
+        if (wordDocument != null) {
+            bindWordDocument();
+            return;
+        }
+        showLoading(R.string.viewer_loading_docx);
+        wordViewModel.load(currentDocument.getCachedFile());
+    }
+
+    private void handleWordState(@Nullable WordViewerViewModel.State state) {
+        if (state == null || currentDocument == null
+                || currentDocument.getDocumentType() != DocumentType.DOCX
+                || !currentDocument.getCachedFile().getAbsolutePath()
+                .equals(state.getPath())) {
+            return;
+        }
+        if (state.isLoading()) {
+            showLoading(R.string.viewer_loading_docx);
+            return;
+        }
+        if (state.getDocument() != null) {
+            wordDocument = state.getDocument();
+            bindWordDocument();
+            return;
+        }
+        Throwable failure = state.getFailure();
+        if (failure instanceof WordParseException) {
+            showWordFailure((WordParseException) failure);
+        } else if (failure instanceof OutOfMemoryError) {
+            showError(
+                    R.drawable.ic_viewer_state_too_large_48,
+                    R.string.viewer_error_memory_title,
+                    R.string.viewer_error_memory
+            );
+        } else if (failure != null) {
+            showError(
+                    R.drawable.ic_viewer_state_corrupted_48,
+                    R.string.viewer_error_corrupted_title,
+                    R.string.viewer_error_docx_corrupted
+            );
+        }
+    }
+
+    private void bindWordDocument() {
+        if (wordDocument == null || currentDocument == null) return;
+        closeWordAdapter();
+        wordAdapter = new WordBlockAdapter(
+                currentDocument.getCachedFile(),
+                ContextCompat.getMainExecutor(this),
+                this::openSafeHyperlink
+        );
+        wordContent.setAdapter(wordAdapter);
+        wordAdapter.submit(wordDocument);
+        showOnly(wordContent);
+        LinearLayoutManager layoutManager =
+                (LinearLayoutManager) wordContent.getLayoutManager();
+        if (layoutManager != null && restoredWordPosition > 0) {
+            WordBlockAdapter adapter = wordAdapter;
+            WordViewerPosition position = new WordViewerPosition(
+                    restoredWordPosition,
+                    restoredWordOffset
+            ).clampToBlockCount(adapter.getItemCount());
+            wordContent.post(() -> {
+                if (wordContent.getAdapter() != adapter) return;
+                layoutManager.scrollToPositionWithOffset(
+                        position.getBlockPosition(),
+                        position.getOffsetPixels()
+                );
+            });
+        }
+        updateOverflowMenu();
+    }
+
+    private void showWordFailure(WordParseException exception) {
+        switch (exception.getReason()) {
+            case TOO_LARGE:
+                showError(
+                        R.drawable.ic_viewer_state_too_large_48,
+                        R.string.viewer_error_too_large_title,
+                        R.string.viewer_error_docx_too_large
+                );
+                break;
+            case ENCRYPTED:
+                showError(
+                        R.drawable.ic_viewer_state_encrypted_48,
+                        R.string.viewer_error_encrypted_title,
+                        R.string.viewer_error_docx_encrypted
+                );
+                break;
+            case UNSUPPORTED:
+                showError(
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_docx_unsupported
+                );
+                break;
+            case CORRUPTED:
+            default:
+                showError(
+                        R.drawable.ic_viewer_state_corrupted_48,
+                        R.string.viewer_error_corrupted_title,
+                        R.string.viewer_error_docx_corrupted
+                );
+                break;
+        }
+    }
+
+    private void openSafeHyperlink(String value) {
+        if (value == null) return;
+        Uri uri;
+        try {
+            uri = Uri.parse(value);
+        } catch (RuntimeException exception) {
+            return;
+        }
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null) return;
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+        } catch (ActivityNotFoundException exception) {
+            Toast.makeText(
+                    this,
+                    R.string.viewer_word_link_unavailable,
+                    Toast.LENGTH_SHORT
+            ).show();
+        } catch (RuntimeException exception) {
+            Toast.makeText(
+                    this,
+                    R.string.viewer_word_link_failed,
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
+    }
+
     private void bindXlsxWorkbook() {
         List<String> sheetNames = new ArrayList<>();
         for (XlsxSheet sheet : xlsxWorkbook.getSheets()) sheetNames.add(sheet.getName());
@@ -751,13 +928,21 @@ public final class DocumentViewerActivity extends AppCompatActivity {
 
     private void showFileInfo() {
         if (currentDocument == null) return;
-        String pages = knownPageCount > 0
-                ? getResources().getQuantityString(
+        boolean word = currentDocument.getDocumentType() == DocumentType.DOCX;
+        String pages = word && wordDocument != null
+                ? getString(
+                        R.string.viewer_word_info_counts,
+                        wordDocument.getParagraphCount(),
+                        wordDocument.getTableCount(),
+                        wordDocument.getImageCount()
+                )
+                : knownPageCount > 0
+                        ? getResources().getQuantityString(
                         R.plurals.viewer_pages_count,
                         knownPageCount,
                         knownPageCount
                 )
-                : getString(R.string.viewer_info_not_available);
+                        : getString(R.string.viewer_info_not_available);
         View dialogView = getLayoutInflater().inflate(
                 R.layout.dialog_viewer_file_info,
                 null,
@@ -788,7 +973,9 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 dialogView,
                 R.id.row_viewer_info_pages,
                 R.id.text_viewer_info_pages,
-                R.string.viewer_info_pages_label,
+                word
+                        ? R.string.viewer_info_contents_label
+                        : R.string.viewer_info_pages_label,
                 pages
         );
         bindInfoRow(
@@ -816,6 +1003,12 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 spreadsheetCanvasView.resetTo100Percent();
                 return true;
             }
+            if (itemId == R.id.action_viewer_word_top) {
+                wordContent.scrollToPosition(0);
+                restoredWordPosition = 0;
+                restoredWordOffset = 0;
+                return true;
+            }
             if (itemId == R.id.action_viewer_file_info) {
                 showFileInfo();
                 return true;
@@ -838,6 +1031,15 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 );
         popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
                 .setVisible(resetVisible);
+        LinearLayoutManager wordLayoutManager = wordContent == null
+                ? null
+                : (LinearLayoutManager) wordContent.getLayoutManager();
+        boolean wordTopVisible = wordContent != null
+                && wordContent.getVisibility() == View.VISIBLE
+                && wordLayoutManager != null
+                && wordLayoutManager.findFirstVisibleItemPosition() > 0;
+        popupMenu.getMenu().findItem(R.id.action_viewer_word_top)
+                .setVisible(wordTopVisible);
     }
 
     private void showZoomIndicator(float scale) {
@@ -864,6 +1066,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     ) {
         ViewGroup row = dialogView.findViewById(rowId);
         TextView valueView = dialogView.findViewById(valueId);
+        TextView labelView = (TextView) row.getChildAt(0);
+        labelView.setText(labelResId);
         valueView.setText(value);
         row.setContentDescription(getString(
                 R.string.viewer_info_row_content_description,
@@ -890,6 +1094,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             case HEIC: return getString(R.string.viewer_type_heic);
             case XLS: return getString(R.string.viewer_type_xls);
             case XLSX: return getString(R.string.viewer_type_xlsx);
+            case DOC: return getString(R.string.viewer_type_doc);
+            case DOCX: return getString(R.string.viewer_type_docx);
             default: return getString(R.string.viewer_type_unknown);
         }
     }
@@ -915,6 +1121,20 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                         R.drawable.ic_viewer_state_corrupted_48,
                         R.string.viewer_error_corrupted_title,
                         R.string.viewer_error_corrupted
+                );
+                break;
+            case ENCRYPTED:
+                showError(
+                        R.drawable.ic_viewer_state_encrypted_48,
+                        R.string.viewer_error_encrypted_title,
+                        R.string.viewer_error_docx_encrypted
+                );
+                break;
+            case UNSUPPORTED:
+                showError(
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_docx_unsupported
                 );
                 break;
             case CANCELLED:
@@ -980,6 +1200,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         pdfContent.setVisibility(View.GONE);
         imageContent.setVisibility(View.GONE);
         textContent.setVisibility(View.GONE);
+        wordContent.setVisibility(View.GONE);
         spreadsheetContent.setVisibility(View.GONE);
         zoomIndicator.setVisibility(View.GONE);
         noticeView.setVisibility(View.GONE);
@@ -992,6 +1213,9 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         imageBitmap = null;
         xlsxWorkbook = null;
         xlsxCanvasModels = Collections.emptyList();
+        wordDocument = null;
+        if (wordViewModel != null) wordViewModel.clearDocument();
+        closeWordAdapter();
         if (spreadsheetCanvasView != null) spreadsheetCanvasView.clear();
         if (currentDocument != null && !cacheWasShared) {
             temporaryDocumentStore.delete(currentDocument.getCachedFile());
@@ -1003,6 +1227,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         restoredPage = 0;
         restoredSheet = 0;
         selectedSheet = 0;
+        restoredWordPosition = 0;
+        restoredWordOffset = 0;
         spreadsheetStateStore.clear();
         shareButton.setEnabled(false);
         generations.incrementAndGet();
@@ -1020,6 +1246,26 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         imageLoader = null;
     }
 
+    private void captureWordPosition() {
+        if (wordContent == null || wordContent.getVisibility() != View.VISIBLE) return;
+        LinearLayoutManager layoutManager =
+                (LinearLayoutManager) wordContent.getLayoutManager();
+        if (layoutManager == null) return;
+        int position = layoutManager.findFirstVisibleItemPosition();
+        if (position < 0) return;
+        View first = layoutManager.findViewByPosition(position);
+        restoredWordPosition = position;
+        restoredWordOffset = first == null
+                ? 0
+                : first.getTop() - wordContent.getPaddingTop();
+    }
+
+    private void closeWordAdapter() {
+        if (wordContent != null) wordContent.setAdapter(null);
+        if (wordAdapter != null) wordAdapter.close();
+        wordAdapter = null;
+    }
+
     private void recycle(Bitmap bitmap) {
         if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
     }
@@ -1029,23 +1275,32 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         private final Bitmap imageBitmap;
         private final XlsxWorkbook xlsxWorkbook;
         private final List<SpreadsheetCanvasModel> xlsxCanvasModels;
+        private final WordDocumentModel wordDocument;
         private final boolean cacheWasShared;
         private final SpreadsheetStateStore spreadsheetStateStore;
+        private final int wordPosition;
+        private final int wordOffset;
 
         private RetainedState(
                 IncomingDocument document,
                 Bitmap imageBitmap,
                 XlsxWorkbook xlsxWorkbook,
                 List<SpreadsheetCanvasModel> xlsxCanvasModels,
+                WordDocumentModel wordDocument,
                 boolean cacheWasShared,
-                SpreadsheetStateStore spreadsheetStateStore
+                SpreadsheetStateStore spreadsheetStateStore,
+                int wordPosition,
+                int wordOffset
         ) {
             this.document = document;
             this.imageBitmap = imageBitmap;
             this.xlsxWorkbook = xlsxWorkbook;
             this.xlsxCanvasModels = xlsxCanvasModels;
+            this.wordDocument = wordDocument;
             this.cacheWasShared = cacheWasShared;
             this.spreadsheetStateStore = spreadsheetStateStore;
+            this.wordPosition = wordPosition;
+            this.wordOffset = wordOffset;
         }
     }
 }

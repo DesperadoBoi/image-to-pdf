@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="@dimen/viewer_word_block_margin"
+    android:layout_marginTop="@dimen/viewer_word_block_spacing"
+    android:layout_marginEnd="@dimen/viewer_word_block_margin"
+    android:layout_marginBottom="@dimen/viewer_word_block_spacing"
+    android:background="@drawable/bg_viewer_word_table"
+    android:padding="@dimen/viewer_word_table_outer_padding">
+
+    <com.desperadoboi.imagetopdf.ui.viewer.WordTableView
+        android:id="@+id/word_table_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/viewer_word_table_generic_content_description" />
+</FrameLayout>

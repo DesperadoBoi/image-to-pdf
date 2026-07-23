@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="@dimen/viewer_word_block_margin"
+    android:layout_marginTop="@dimen/viewer_word_block_spacing"
+    android:layout_marginEnd="@dimen/viewer_word_block_margin"
+    android:layout_marginBottom="@dimen/viewer_word_block_spacing"
+    android:background="@color/viewer_document_surface">
+
+    <ImageView
+        android:id="@+id/image_word_block"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/viewer_word_image_min_height"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/viewer_word_image_content_description"
+        android:scaleType="fitCenter" />
+
+    <TextView
+        android:id="@+id/text_word_image_placeholder"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/viewer_word_image_placeholder_height"
+        android:gravity="center"
+        android:padding="@dimen/content_spacing_medium"
+        android:text="@string/viewer_word_image_failed"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone" />
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/progress_word_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:contentDescription="@string/viewer_loading_image"
+        android:indeterminate="true" />
+</FrameLayout>

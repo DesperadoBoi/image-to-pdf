@@ -157,6 +157,7 @@ public final class HomeFragment extends Fragment {
         documentPickerLauncher.launch(new String[]{
                 "application/pdf",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 "text/plain",
                 "text/csv",
                 "text/tab-separated-values",

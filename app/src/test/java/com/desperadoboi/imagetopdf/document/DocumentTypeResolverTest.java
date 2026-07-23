@@ -1,6 +1,7 @@
 package com.desperadoboi.imagetopdf.document;
 
 import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxTestFixtures;
+import com.desperadoboi.imagetopdf.document.word.DocxTestFixtures;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -30,6 +31,9 @@ public final class DocumentTypeResolverTest {
         assertEquals(DocumentType.XLS, resolver.fromMimeType("application/vnd.ms-excel"));
         assertEquals(DocumentType.XLSX, resolver.fromMimeType(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ));
+        assertEquals(DocumentType.DOCX, resolver.fromMimeType(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ));
         assertEquals(DocumentType.CSV, resolver.fromMimeType("application/csv"));
         assertEquals(DocumentType.TSV, resolver.fromMimeType("text/tab-separated-values"));
@@ -134,6 +138,56 @@ public final class DocumentTypeResolverTest {
                 text,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "wrong.xlsx"
+        ));
+    }
+
+    @Test
+    public void resolvesOnlyStructurallyValidDocx() throws Exception {
+        Path docx = DocxTestFixtures.minimalDocument(
+                fixture("valid.docx").toPath(),
+                DocxTestFixtures.paragraph("Привет, Word")
+        );
+        assertEquals(DocumentType.DOCX, resolveFile(
+                docx.toFile(),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "valid.docx"
+        ));
+
+        Map<String, byte[]> ordinaryEntries = new LinkedHashMap<>();
+        ordinaryEntries.put("note.txt", DocxTestFixtures.bytes("ordinary zip"));
+        File ordinaryZip = fixture("ordinary-docx.zip");
+        DocxTestFixtures.writeStoredZip(ordinaryZip.toPath(), ordinaryEntries);
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                ordinaryZip,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "renamed.docx"
+        ));
+
+        LinkedHashMap<String, byte[]> missing =
+                DocxTestFixtures.baseEntries(DocxTestFixtures.paragraph("x"), "", "");
+        missing.remove("word/document.xml");
+        File missingDocument = fixture("missing-document.docx");
+        DocxTestFixtures.writeStoredZip(missingDocument.toPath(), missing);
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                missingDocument,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "missing-document.docx"
+        ));
+    }
+
+    @Test
+    public void docxMimeAndExtensionNeverOverrideWrongSignature() throws Exception {
+        File text = fixture("wrong.docx");
+        Files.write(text.toPath(), bytes("plain text"));
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                text,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "wrong.docx"
+        ));
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                text,
+                null,
+                "wrong.docx"
         ));
     }
 

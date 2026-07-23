@@ -6,6 +6,7 @@ public final class DocumentLimits {
     public static final long MAX_IMAGE_BYTES = 100L * 1024L * 1024L;
     public static final long MAX_TEXT_BYTES = 25L * 1024L * 1024L;
     public static final long MAX_XLSX_BYTES = 50L * 1024L * 1024L;
+    public static final long MAX_DOCX_BYTES = 50L * 1024L * 1024L;
     public static final int MAX_TEXT_PREVIEW_CHARS = 2_000_000;
     public static final int MAX_TEXT_LINES = 10_000;
     public static final int MAX_TEXT_LINE_CHARS = 8_192;
@@ -24,6 +25,24 @@ public final class DocumentLimits {
     public static final int MAX_XLSX_PARSED_CELLS = 1_000_000;
     public static final int MAX_XML_DEPTH = 64;
     public static final int MAX_XML_EVENTS = 2_000_000;
+    public static final int MAX_DOCX_ZIP_ENTRIES = 1_024;
+    public static final long MAX_DOCX_UNCOMPRESSED_BYTES = 150L * 1024L * 1024L;
+    public static final long MAX_DOCX_ENTRY_BYTES = 32L * 1024L * 1024L;
+    public static final long MAX_DOCX_MEDIA_ENTRY_BYTES = 16L * 1024L * 1024L;
+    public static final long MAX_DOCX_MEDIA_BYTES = 80L * 1024L * 1024L;
+    public static final int MAX_DOCX_COMPRESSION_RATIO = 100;
+    public static final int MAX_DOCX_XML_EVENTS = 3_000_000;
+    public static final int MAX_WORD_BLOCKS = 30_000;
+    public static final int MAX_WORD_PARAGRAPHS = 20_000;
+    public static final int MAX_WORD_RUNS = 100_000;
+    public static final int MAX_WORD_TABLES = 500;
+    public static final int MAX_WORD_TABLE_ROWS = 20_000;
+    public static final int MAX_WORD_TABLE_CELLS = 50_000;
+    public static final int MAX_WORD_IMAGES = 100;
+    public static final int MAX_WORD_RUN_CHARS = 8_192;
+    public static final int MAX_WORD_TOTAL_CHARS = 8_000_000;
+    public static final int MAX_WORD_STYLE_DEPTH = 32;
+    public static final int MAX_WORD_TABLE_DEPTH = 4;
 
     private DocumentLimits() {
     }
@@ -37,6 +56,9 @@ public final class DocumentLimits {
         }
         if (type == DocumentType.XLSX) {
             return sizeBytes <= MAX_XLSX_BYTES;
+        }
+        if (type == DocumentType.DOCX) {
+            return sizeBytes <= MAX_DOCX_BYTES;
         }
         if (type == DocumentType.PDF) {
             return sizeBytes <= MAX_PDF_BYTES;
