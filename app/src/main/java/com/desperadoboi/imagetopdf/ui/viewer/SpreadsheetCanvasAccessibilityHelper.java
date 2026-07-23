@@ -19,8 +19,6 @@ import java.util.List;
 
 final class SpreadsheetCanvasAccessibilityHelper extends AccessibilityNodeProvider {
     static final int ACTION_ZOOM_100 = R.id.accessibility_action_spreadsheet_zoom_100;
-    static final int ACTION_FIT_WIDTH = R.id.accessibility_action_spreadsheet_fit_width;
-    static final int ACTION_FIT_SHEET = R.id.accessibility_action_spreadsheet_fit_sheet;
     static final int ACTION_SCROLL_LEFT =
             AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_LEFT.getId();
     static final int ACTION_SCROLL_RIGHT =
@@ -281,14 +279,6 @@ final class SpreadsheetCanvasAccessibilityHelper extends AccessibilityNodeProvid
         info.addAction(new AccessibilityNodeInfo.AccessibilityAction(
                 ACTION_ZOOM_100,
                 view.getResources().getString(R.string.viewer_zoom_100)
-        ));
-        info.addAction(new AccessibilityNodeInfo.AccessibilityAction(
-                ACTION_FIT_WIDTH,
-                view.getResources().getString(R.string.viewer_fit_width)
-        ));
-        info.addAction(new AccessibilityNodeInfo.AccessibilityAction(
-                ACTION_FIT_SHEET,
-                view.getResources().getString(R.string.viewer_fit_sheet)
         ));
     }
 

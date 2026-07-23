@@ -113,7 +113,8 @@ public final class DocumentViewerVisualContractTest {
     }
 
     @Test
-    public void overflowContainsLocalizedSpreadsheetZoomCommands() throws Exception {
+    public void overflowContainsOnlyLocalizedOneHundredPercentSpreadsheetCommand()
+            throws Exception {
         Document menu = parse(repositoryRoot().resolve(
                 "app/src/main/res/menu/document_viewer_overflow.xml"
         ));
@@ -121,14 +122,8 @@ public final class DocumentViewerVisualContractTest {
                 "@string/viewer_zoom_100",
                 byId(menu, "@+id/action_viewer_zoom_100").getAttributeNS(ANDROID, "title")
         );
-        assertEquals(
-                "@string/viewer_fit_width",
-                byId(menu, "@+id/action_viewer_fit_width").getAttributeNS(ANDROID, "title")
-        );
-        assertEquals(
-                "@string/viewer_fit_sheet",
-                byId(menu, "@+id/action_viewer_fit_sheet").getAttributeNS(ANDROID, "title")
-        );
+        assertNull(findById(menu, "@+id/action_viewer_fit_width"));
+        assertNull(findById(menu, "@+id/action_viewer_fit_sheet"));
 
         Document russian = parse(repositoryRoot().resolve(
                 "app/src/main/res/values/strings.xml"
@@ -137,10 +132,77 @@ public final class DocumentViewerVisualContractTest {
                 "app/src/main/res/values-en/viewer_strings.xml"
         ));
         assertEquals("Масштаб 100%", namedText(russian, "viewer_zoom_100"));
-        assertEquals("Вписать по ширине", namedText(russian, "viewer_fit_width"));
         assertEquals("Zoom to 100%", namedText(english, "viewer_zoom_100"));
-        assertEquals("Fit to width", namedText(english, "viewer_fit_width"));
-        assertEquals("Fit sheet", namedText(english, "viewer_fit_sheet"));
+        String[] removedFitStrings = {
+                "viewer_fit_width",
+                "viewer_fit_width_content_description",
+                "viewer_fit_width_applied",
+                "viewer_fit_sheet",
+                "viewer_fit_sheet_applied"
+        };
+        for (String removedFitString : removedFitStrings) {
+            assertNull(findNamed(russian, "string", removedFitString));
+            assertNull(findNamed(english, "string", removedFitString));
+        }
+    }
+
+    @Test
+    public void overflowZoomCommandIsSpreadsheetOnlyAndReturnsToOneHundredPercent()
+            throws Exception {
+        String activity = Files.readString(repositoryRoot().resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "DocumentViewerActivity.java"
+        ));
+
+        assertTrue(activity.contains("findItem(R.id.action_viewer_zoom_100)"));
+        assertTrue(activity.contains(".setVisible(spreadsheetVisible);"));
+        assertTrue(activity.contains("spreadsheetCanvasView.zoomToNormal();"));
+    }
+
+    @Test
+    public void spreadsheetDoubleTapAlwaysReturnsToOneHundredPercent() throws Exception {
+        String canvas = Files.readString(repositoryRoot().resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "SpreadsheetCanvasView.java"
+        ));
+
+        assertTrue(canvas.contains("public boolean onDoubleTap(MotionEvent event)"));
+        assertTrue(canvas.contains("zoomToNormalAround("));
+        assertFalse(canvas.contains("fitToWidth()"));
+        assertFalse(canvas.contains("fitToSheet()"));
+    }
+
+    @Test
+    public void spreadsheetAccessibilityHasNoFitActions() throws Exception {
+        Path root = repositoryRoot();
+        String helper = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "SpreadsheetCanvasAccessibilityHelper.java"
+        ));
+        Document ids = parse(root.resolve(
+                "app/src/main/res/values/spreadsheet_accessibility_ids.xml"
+        ));
+
+        assertNotNull(findNamed(
+                ids,
+                "item",
+                "accessibility_action_spreadsheet_zoom_100"
+        ));
+        assertNull(findNamed(ids, "item", "accessibility_action_spreadsheet_fit_width"));
+        assertNull(findNamed(ids, "item", "accessibility_action_spreadsheet_fit_sheet"));
+        assertTrue(helper.contains("ACTION_SCROLL_LEFT"));
+        assertTrue(helper.contains("ACTION_SCROLL_RIGHT"));
+        assertTrue(helper.contains("ACTION_SCROLL_UP"));
+        assertTrue(helper.contains("ACTION_SCROLL_DOWN"));
+        assertFalse(helper.contains("ACTION_FIT_WIDTH"));
+        assertFalse(helper.contains("ACTION_FIT_SHEET"));
+    }
+
+    @Test
+    public void spreadsheetHasNoPermanentFitIcon() {
+        assertFalse(Files.exists(repositoryRoot().resolve(
+                "app/src/main/res/drawable/ic_action_fit_width_24.xml"
+        )));
     }
 
     @Test

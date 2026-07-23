@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="accessibility_action_spreadsheet_zoom_100" type="id" />
-    <item name="accessibility_action_spreadsheet_fit_width" type="id" />
-    <item name="accessibility_action_spreadsheet_fit_sheet" type="id" />
 </resources>

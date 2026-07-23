@@ -1,6 +1,7 @@
 package com.desperadoboi.imagetopdf.ui.viewer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.desperadoboi.imagetopdf.document.spreadsheet.SpreadsheetCellStyle;
 import com.desperadoboi.imagetopdf.document.spreadsheet.SpreadsheetData;
@@ -19,7 +20,7 @@ import java.util.Map;
 
 public final class SpreadsheetLargeSheetTest {
     @Test
-    public void fiveThousandByOneHundredPlansBoundedWorkAtOverviewAndNormalZoom() {
+    public void fiveThousandByOneHundredPlansBoundedWorkAtMinimumAndNormalZoom() {
         SpreadsheetCanvasModel model = largeModel();
         SpreadsheetGeometry geometry = model.getGeometry();
         SpreadsheetViewportTransform transform = new SpreadsheetViewportTransform();
@@ -30,17 +31,14 @@ public final class SpreadsheetLargeSheetTest {
                 geometry.getSheetHeight()
         );
 
-        float fitSheet = transform.fitSheetScale();
-        transform.set(fitSheet, 0f, 0f, ZoomController.ZoomMode.FIT_SHEET);
-        SpreadsheetRenderPlan overview =
+        transform.set(0.60f, 0f, 0f, ZoomController.ZoomMode.MANUAL);
+        SpreadsheetRenderPlan minimumZoom =
                 new SpreadsheetRenderPlanner().plan(geometry, transform);
         assertEquals(
-                SpreadsheetLevelOfDetailPolicy.Detail.OVERVIEW,
-                overview.getDetail()
+                SpreadsheetLevelOfDetailPolicy.Detail.FULL,
+                minimumZoom.getDetail()
         );
-        assertEquals(129, overview.getVisibleRows());
-        assertEquals(24, overview.getVisibleColumns());
-        assertEquals(3_096, overview.getVisibleCells());
+        assertTrue(minimumZoom.getVisibleCells() <= 1_000);
 
         transform.set(1f, 0f, 0f, ZoomController.ZoomMode.ZOOM_100);
         SpreadsheetRenderPlan normal =

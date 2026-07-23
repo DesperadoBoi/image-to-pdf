@@ -34,25 +34,48 @@ public final class SpreadsheetViewportTransformTest {
     }
 
     @Test
-    public void manualAndOverviewZoomUseTheirOwnLimits() {
+    public void manualZoomUsesReadableLimits() {
         SpreadsheetViewportTransform transform = transform(200f, 100f, 1_000f, 500f);
 
         transform.zoomAround(0.1f, 0f, 0f, ZoomController.ZoomMode.MANUAL);
         assertEquals(0.60f, transform.getScale(), DELTA);
         transform.zoomAround(9f, 0f, 0f, ZoomController.ZoomMode.MANUAL);
         assertEquals(3f, transform.getScale(), DELTA);
-        transform.zoomAround(0.1f, 0f, 0f, ZoomController.ZoomMode.FIT_SHEET);
-        assertEquals(0.25f, transform.getScale(), DELTA);
     }
 
     @Test
-    public void fitModesAndOneHundredPercentAreDeterministic() {
-        SpreadsheetViewportTransform transform = transform(360f, 240f, 720f, 960f);
+    public void doubleTapReturnsToNormalAroundTapPoint() {
+        SpreadsheetViewportTransform transform = transform(300f, 200f, 1_000f, 800f);
+        transform.set(2f, 120f, 60f, ZoomController.ZoomMode.MANUAL);
+        float beforeX = transform.getOffsetX() + 90f / transform.getScale();
+        float beforeY = transform.getOffsetY() + 70f / transform.getScale();
 
-        assertEquals(0.5f, transform.fitWidthScale(), DELTA);
-        assertEquals(0.25f, transform.fitSheetScale(), DELTA);
-        transform.set(2f, 0f, 0f, ZoomController.ZoomMode.ZOOM_100);
+        transform.zoomAround(
+                ZoomController.NORMAL_ZOOM,
+                90f,
+                70f,
+                ZoomController.ZoomMode.ZOOM_100
+        );
+
         assertEquals(1f, transform.getScale(), DELTA);
+        assertEquals(beforeX, transform.getOffsetX() + 90f / transform.getScale(), DELTA);
+        assertEquals(beforeY, transform.getOffsetY() + 70f / transform.getScale(), DELTA);
+    }
+
+    @Test
+    public void doubleTapClampsOffsetsAfterReturningToNormal() {
+        SpreadsheetViewportTransform transform = transform(300f, 200f, 1_000f, 800f);
+        transform.set(2f, 0f, 0f, ZoomController.ZoomMode.MANUAL);
+
+        transform.zoomAround(
+                ZoomController.NORMAL_ZOOM,
+                90f,
+                70f,
+                ZoomController.ZoomMode.ZOOM_100
+        );
+
+        assertEquals(0f, transform.getOffsetX(), DELTA);
+        assertEquals(0f, transform.getOffsetY(), DELTA);
     }
 
     @Test

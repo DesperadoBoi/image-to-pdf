@@ -196,56 +196,9 @@ public final class SpreadsheetCanvasView extends View {
         );
     }
 
-    void fitToWidth() {
-        if (model == null || getContentWidth() <= 0f) return;
-        stopMotion();
-        float scale = transform.fitWidthScale();
-        transform.zoomAround(
-                scale,
-                getContentWidth() / 2f,
-                getContentHeight() / 2f,
-                ZoomController.ZoomMode.FIT_WIDTH
-        );
-        transform.set(
-                scale,
-                0f,
-                transform.getOffsetY(),
-                ZoomController.ZoomMode.FIT_WIDTH
-        );
-        zoomMode = ZoomController.ZoomMode.FIT_WIDTH;
-        targetScale = scale;
-        viewportChanged();
-        notifyZoomChanged(true, true);
-    }
-
-    void fitToSheet() {
-        if (model == null || getContentWidth() <= 0f || getContentHeight() <= 0f) return;
-        stopMotion();
-        float scale = transform.fitSheetScale();
-        transform.set(scale, 0f, 0f, ZoomController.ZoomMode.FIT_SHEET);
-        zoomMode = ZoomController.ZoomMode.FIT_SHEET;
-        targetScale = scale;
-        viewportChanged();
-        notifyZoomChanged(true, true);
-    }
-
     void zoomToNormal() {
         if (model == null) return;
-        stopMotion();
-        transform.zoomAround(
-                ZoomController.NORMAL_ZOOM,
-                getContentWidth() / 2f,
-                getContentHeight() / 2f,
-                ZoomController.ZoomMode.ZOOM_100
-        );
-        zoomMode = ZoomController.ZoomMode.ZOOM_100;
-        targetScale = ZoomController.NORMAL_ZOOM;
-        viewportChanged();
-        notifyZoomChanged(true, true);
-    }
-
-    ZoomController.ZoomMode getZoomMode() {
-        return zoomMode;
+        zoomToNormalAround(getContentWidth() / 2f, getContentHeight() / 2f);
     }
 
     void setOnZoomChangeListener(@Nullable OnZoomChangeListener listener) {
@@ -488,14 +441,6 @@ public final class SpreadsheetCanvasView extends View {
             zoomToNormal();
             return true;
         }
-        if (action == SpreadsheetCanvasAccessibilityHelper.ACTION_FIT_WIDTH) {
-            fitToWidth();
-            return true;
-        }
-        if (action == SpreadsheetCanvasAccessibilityHelper.ACTION_FIT_SHEET) {
-            fitToSheet();
-            return true;
-        }
         float horizontal = getContentWidth() * 0.8f;
         float vertical = getContentHeight() * 0.8f;
         if (action == SpreadsheetCanvasAccessibilityHelper.ACTION_SCROLL_LEFT) {
@@ -552,9 +497,21 @@ public final class SpreadsheetCanvasView extends View {
 
     private float scaleForMode(ZoomController.ZoomMode mode, float storedScale) {
         if (mode == ZoomController.ZoomMode.ZOOM_100) return ZoomController.NORMAL_ZOOM;
-        if (mode == ZoomController.ZoomMode.FIT_WIDTH) return transform.fitWidthScale();
-        if (mode == ZoomController.ZoomMode.FIT_SHEET) return transform.fitSheetScale();
         return ZoomController.clampZoom(storedScale);
+    }
+
+    private void zoomToNormalAround(float focalContentX, float focalContentY) {
+        stopMotion();
+        transform.zoomAround(
+                ZoomController.NORMAL_ZOOM,
+                focalContentX,
+                focalContentY,
+                ZoomController.ZoomMode.ZOOM_100
+        );
+        zoomMode = ZoomController.ZoomMode.ZOOM_100;
+        targetScale = ZoomController.NORMAL_ZOOM;
+        viewportChanged();
+        notifyZoomChanged(true, true);
     }
 
     private void drawFills(
@@ -1224,20 +1181,10 @@ public final class SpreadsheetCanvasView extends View {
 
         @Override
         public boolean onDoubleTap(MotionEvent event) {
-            if (zoomMode == ZoomController.ZoomMode.ZOOM_100) {
-                fitToWidth();
-            } else {
-                transform.zoomAround(
-                        ZoomController.NORMAL_ZOOM,
-                        event.getX() - rowHeaderWidth,
-                        event.getY() - columnHeaderHeight,
-                        ZoomController.ZoomMode.ZOOM_100
-                );
-                zoomMode = ZoomController.ZoomMode.ZOOM_100;
-                targetScale = ZoomController.NORMAL_ZOOM;
-                viewportChanged();
-                notifyZoomChanged(true, true);
-            }
+            zoomToNormalAround(
+                    event.getX() - rowHeaderWidth,
+                    event.getY() - columnHeaderHeight
+            );
             return true;
         }
     }

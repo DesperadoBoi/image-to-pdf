@@ -6,11 +6,6 @@
     <string name="viewer_more_content_description">More options</string>
     <string name="viewer_sheet_selector_content_description">Select an XLSX workbook sheet</string>
     <string name="viewer_zoom_100">Zoom to 100%</string>
-    <string name="viewer_fit_width">Fit to width</string>
-    <string name="viewer_fit_width_content_description">Fit spreadsheet to width</string>
-    <string name="viewer_fit_width_applied">Spreadsheet fitted to width</string>
-    <string name="viewer_fit_sheet">Fit sheet</string>
-    <string name="viewer_fit_sheet_applied">Showing the full sheet overview</string>
     <string name="viewer_zoom_announcement">Zoom %1$d percent</string>
     <string name="viewer_column_header_content_description">Column %1$s</string>
     <string name="viewer_row_header_content_description">Row %1$d</string>

@@ -234,19 +234,6 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                         R.string.viewer_zoom_announcement,
                         Math.round(scale * 100f)
                 ));
-                if (userInitiated && zoomMode == ZoomController.ZoomMode.FIT_WIDTH) {
-                    Toast.makeText(
-                            this,
-                            R.string.viewer_fit_width_applied,
-                            Toast.LENGTH_SHORT
-                    ).show();
-                } else if (userInitiated && zoomMode == ZoomController.ZoomMode.FIT_SHEET) {
-                    Toast.makeText(
-                            this,
-                            R.string.viewer_fit_sheet_applied,
-                            Toast.LENGTH_SHORT
-                    ).show();
-                }
             }
         });
         sheetSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -820,31 +807,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         boolean spreadsheetVisible = spreadsheetContent.getVisibility() == View.VISIBLE;
         popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
                 .setVisible(spreadsheetVisible);
-        popupMenu.getMenu().findItem(R.id.action_viewer_fit_width)
-                .setVisible(spreadsheetVisible);
-        popupMenu.getMenu().findItem(R.id.action_viewer_fit_sheet)
-                .setVisible(spreadsheetVisible);
-        if (spreadsheetVisible) {
-            ZoomController.ZoomMode zoomMode = spreadsheetCanvasView.getZoomMode();
-            popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
-                    .setChecked(zoomMode == ZoomController.ZoomMode.ZOOM_100);
-            popupMenu.getMenu().findItem(R.id.action_viewer_fit_width)
-                    .setChecked(zoomMode == ZoomController.ZoomMode.FIT_WIDTH);
-            popupMenu.getMenu().findItem(R.id.action_viewer_fit_sheet)
-                    .setChecked(zoomMode == ZoomController.ZoomMode.FIT_SHEET);
-        }
         popupMenu.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.action_viewer_zoom_100) {
                 spreadsheetCanvasView.zoomToNormal();
-                return true;
-            }
-            if (itemId == R.id.action_viewer_fit_width) {
-                spreadsheetCanvasView.fitToWidth();
-                return true;
-            }
-            if (itemId == R.id.action_viewer_fit_sheet) {
-                spreadsheetCanvasView.fitToSheet();
                 return true;
             }
             if (itemId == R.id.action_viewer_file_info) {

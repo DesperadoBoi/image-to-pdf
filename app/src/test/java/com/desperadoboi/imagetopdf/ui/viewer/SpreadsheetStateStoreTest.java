@@ -13,10 +13,10 @@ public final class SpreadsheetStateStoreTest {
         SpreadsheetStateStore store = new SpreadsheetStateStore();
         store.openDocument("document-a");
         store.save(0, positioned(
-                0.5f,
+                0.6f,
                 10f,
                 20f,
-                ZoomController.ZoomMode.FIT_WIDTH
+                ZoomController.ZoomMode.MANUAL
         ));
         store.save(1, positioned(
                 1.5f,
@@ -25,7 +25,7 @@ public final class SpreadsheetStateStoreTest {
                 ZoomController.ZoomMode.MANUAL
         ));
 
-        assertEquals(0.5f, store.restore(0).getScale(), DELTA);
+        assertEquals(0.6f, store.restore(0).getScale(), DELTA);
         assertEquals(10f, store.restore(0).getHorizontalOffset(), DELTA);
         assertEquals(1.5f, store.restore(1).getScale(), DELTA);
         assertEquals(40f, store.restore(1).getVerticalOffset(), DELTA);
@@ -109,15 +109,9 @@ public final class SpreadsheetStateStoreTest {
     }
 
     @Test
-    public void pinchAfterFitWidthUsesManualClampAndMode() {
+    public void recordedManualZoomUsesManualClampAndMode() {
         SpreadsheetStateStore store = new SpreadsheetStateStore();
         store.openDocument("document-a");
-        store.save(0, positioned(
-                0.25f,
-                0f,
-                0f,
-                ZoomController.ZoomMode.FIT_WIDTH
-        ));
 
         store.recordManualZoom(0, 0.25f);
 

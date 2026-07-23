@@ -65,19 +65,6 @@ final class SpreadsheetViewportTransform {
         clampOffsets();
     }
 
-    float fitWidthScale() {
-        return ZoomController.calculateFitScale(viewportWidth, sheetWidth);
-    }
-
-    float fitSheetScale() {
-        return ZoomController.calculateFitSheetScale(
-                viewportWidth,
-                viewportHeight,
-                sheetWidth,
-                sheetHeight
-        );
-    }
-
     void moveToOrigin() {
         offsetX = 0f;
         offsetY = 0f;

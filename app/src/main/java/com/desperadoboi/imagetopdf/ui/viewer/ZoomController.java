@@ -2,15 +2,12 @@ package com.desperadoboi.imagetopdf.ui.viewer;
 
 public final class ZoomController {
     public static final float MIN_ZOOM = 0.60f;
-    public static final float MIN_OVERVIEW_ZOOM = 0.25f;
     public static final float NORMAL_ZOOM = 1f;
     public static final float MAX_ZOOM = 3f;
 
     enum ZoomMode {
         MANUAL,
-        ZOOM_100,
-        FIT_WIDTH,
-        FIT_SHEET
+        ZOOM_100
     }
 
     private ZoomController() {
@@ -23,52 +20,7 @@ public final class ZoomController {
 
     static float clampZoom(float zoom, ZoomMode mode) {
         if (mode == ZoomMode.ZOOM_100) return NORMAL_ZOOM;
-        if (isOverview(mode)) return clampOverviewZoom(zoom);
         return clampZoom(zoom);
-    }
-
-    static boolean isOverview(ZoomMode mode) {
-        return mode == ZoomMode.FIT_WIDTH || mode == ZoomMode.FIT_SHEET;
-    }
-
-    static float clampOverviewZoom(float zoom) {
-        if (!Float.isFinite(zoom)) return NORMAL_ZOOM;
-        return Math.max(MIN_OVERVIEW_ZOOM, Math.min(MAX_ZOOM, zoom));
-    }
-
-    public static float calculateFitScale(float availableContentWidth, float sheetWidth) {
-        return calculateFitScaleWithMaximum(
-                availableContentWidth,
-                sheetWidth,
-                NORMAL_ZOOM
-        );
-    }
-
-    public static float calculateFitScaleWithMaximum(
-            float availableContentWidth,
-            float sheetWidth,
-            float maximumFitScale
-    ) {
-        if (!Float.isFinite(sheetWidth) || sheetWidth <= 0f) return NORMAL_ZOOM;
-        if (!Float.isFinite(availableContentWidth) || availableContentWidth <= 0f) {
-            return MIN_OVERVIEW_ZOOM;
-        }
-        float fitLimit = clampOverviewZoom(maximumFitScale);
-        return Math.max(
-                MIN_OVERVIEW_ZOOM,
-                Math.min(fitLimit, clampOverviewZoom(availableContentWidth / sheetWidth))
-        );
-    }
-
-    public static float calculateFitSheetScale(
-            float availableContentWidth,
-            float availableContentHeight,
-            float sheetWidth,
-            float sheetHeight
-    ) {
-        float widthScale = calculateFitScale(availableContentWidth, sheetWidth);
-        float heightScale = calculateFitScale(availableContentHeight, sheetHeight);
-        return clampOverviewZoom(Math.min(widthScale, heightScale));
     }
 
 }
