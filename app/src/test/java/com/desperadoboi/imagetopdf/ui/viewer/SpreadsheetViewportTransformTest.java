@@ -1,6 +1,7 @@
 package com.desperadoboi.imagetopdf.ui.viewer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -44,9 +45,9 @@ public final class SpreadsheetViewportTransformTest {
     }
 
     @Test
-    public void doubleTapReturnsToNormalAroundTapPoint() {
+    public void resetFromOneHundredFiftyPercentReturnsToNormalAroundFocalPoint() {
         SpreadsheetViewportTransform transform = transform(300f, 200f, 1_000f, 800f);
-        transform.set(2f, 120f, 60f, ZoomController.ZoomMode.MANUAL);
+        transform.set(1.5f, 120f, 60f, ZoomController.ZoomMode.MANUAL);
         float beforeX = transform.getOffsetX() + 90f / transform.getScale();
         float beforeY = transform.getOffsetY() + 70f / transform.getScale();
 
@@ -63,19 +64,22 @@ public final class SpreadsheetViewportTransformTest {
     }
 
     @Test
-    public void doubleTapClampsOffsetsAfterReturningToNormal() {
+    public void resetFromSixtyPercentReturnsToNormalAndClampsOffsets() {
         SpreadsheetViewportTransform transform = transform(300f, 200f, 1_000f, 800f);
-        transform.set(2f, 0f, 0f, ZoomController.ZoomMode.MANUAL);
+        transform.set(0.60f, 700f, 600f, ZoomController.ZoomMode.MANUAL);
 
         transform.zoomAround(
                 ZoomController.NORMAL_ZOOM,
-                90f,
-                70f,
+                150f,
+                100f,
                 ZoomController.ZoomMode.ZOOM_100
         );
 
-        assertEquals(0f, transform.getOffsetX(), DELTA);
-        assertEquals(0f, transform.getOffsetY(), DELTA);
+        assertEquals(1f, transform.getScale(), DELTA);
+        assertTrue(transform.getOffsetX() >= 0f);
+        assertTrue(transform.getOffsetX() <= transform.getMaximumOffsetX());
+        assertTrue(transform.getOffsetY() >= 0f);
+        assertTrue(transform.getOffsetY() <= transform.getMaximumOffsetY());
     }
 
     @Test

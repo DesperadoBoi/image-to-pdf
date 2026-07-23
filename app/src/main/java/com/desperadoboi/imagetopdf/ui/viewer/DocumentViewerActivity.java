@@ -108,6 +108,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private View spreadsheetContent;
     private SpreadsheetCanvasView spreadsheetCanvasView;
     private TextView zoomIndicator;
+    @Nullable private PopupMenu overflowPopupMenu;
     private View sheetControls;
     private TextView sheetNameView;
     private Spinner sheetSpinner;
@@ -227,12 +228,13 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             if (userInitiated && zoomMode == ZoomController.ZoomMode.MANUAL) {
                 spreadsheetStateStore.recordManualZoom(selectedSheet, scale);
             }
+            updateOverflowMenu();
             if (finished) {
                 saveCurrentSpreadsheetState();
                 showZoomIndicator(scale);
                 spreadsheetCanvasView.announceForAccessibility(getString(
                         R.string.viewer_zoom_announcement,
-                        Math.round(scale * 100f)
+                        ZoomController.percentageForIndicator(scale)
                 ));
             }
         });
@@ -688,6 +690,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 xlsxCanvasModels.get(selectedSheet),
                 spreadsheetStateStore.restoreXlsx(selectedSheet)
         );
+        updateOverflowMenu();
         noticeView.setText(R.string.viewer_notice_xlsx_truncated);
         noticeView.setVisibility(
                 xlsxWorkbook.isTruncated() || sheet.getData().isTruncated()
@@ -701,6 +704,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             SpreadsheetViewportState state
     ) {
         spreadsheetCanvasView.submit(model, state);
+        updateOverflowMenu();
     }
 
     private void saveCurrentSpreadsheetState() {
@@ -804,13 +808,12 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private void showOverflowMenu() {
         PopupMenu popupMenu = new PopupMenu(this, moreButton);
         popupMenu.inflate(R.menu.document_viewer_overflow);
-        boolean spreadsheetVisible = spreadsheetContent.getVisibility() == View.VISIBLE;
-        popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
-                .setVisible(spreadsheetVisible);
+        overflowPopupMenu = popupMenu;
+        updateOverflowMenu();
         popupMenu.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.action_viewer_zoom_100) {
-                spreadsheetCanvasView.zoomToNormal();
+                spreadsheetCanvasView.resetTo100Percent();
                 return true;
             }
             if (itemId == R.id.action_viewer_file_info) {
@@ -819,13 +822,28 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             }
             return false;
         });
+        popupMenu.setOnDismissListener(dismissedMenu -> {
+            if (overflowPopupMenu == dismissedMenu) overflowPopupMenu = null;
+        });
         popupMenu.show();
+    }
+
+    private void updateOverflowMenu() {
+        PopupMenu popupMenu = overflowPopupMenu;
+        if (popupMenu == null) return;
+        boolean spreadsheetVisible = spreadsheetContent.getVisibility() == View.VISIBLE;
+        boolean resetVisible = spreadsheetVisible
+                && ZoomController.shouldShowResetAction(
+                        spreadsheetCanvasView.getCurrentScale()
+                );
+        popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
+                .setVisible(resetVisible);
     }
 
     private void showZoomIndicator(float scale) {
         zoomIndicator.setText(getString(
                 R.string.viewer_zoom_indicator,
-                Math.round(scale * 100f)
+                ZoomController.percentageForIndicator(scale)
         ));
         zoomIndicator.setVisibility(View.VISIBLE);
         zoomIndicator.bringToFront();

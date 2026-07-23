@@ -5,7 +5,7 @@
     <string name="viewer_loading_xlsx">Checking and reading XLSX…</string>
     <string name="viewer_more_content_description">More options</string>
     <string name="viewer_sheet_selector_content_description">Select an XLSX workbook sheet</string>
-    <string name="viewer_zoom_100">Zoom to 100%</string>
+    <string name="viewer_reset_zoom_100">Reset zoom to 100%</string>
     <string name="viewer_zoom_announcement">Zoom %1$d percent</string>
     <string name="viewer_column_header_content_description">Column %1$s</string>
     <string name="viewer_row_header_content_description">Row %1$d</string>

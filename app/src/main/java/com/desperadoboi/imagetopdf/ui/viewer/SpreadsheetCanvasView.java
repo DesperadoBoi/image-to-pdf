@@ -72,6 +72,7 @@ public final class SpreadsheetCanvasView extends View {
     private boolean scaling;
     private boolean gestureContainedScale;
     private boolean skipNextPan;
+    private boolean ignoreScaleUntilGestureEnds;
     private int lastFlingX;
     private int lastFlingY;
     private int[] mergedDrawStamps = new int[0];
@@ -186,6 +187,7 @@ public final class SpreadsheetCanvasView extends View {
 
     SpreadsheetViewportState captureState() {
         if (model == null) return SpreadsheetViewportState.initialNormal();
+        if (pendingState != null) return pendingState;
         return SpreadsheetViewportState.positioned(
                 transform.getScale(),
                 transform.getOffsetX(),
@@ -196,9 +198,17 @@ public final class SpreadsheetCanvasView extends View {
         );
     }
 
-    void zoomToNormal() {
+    void resetTo100Percent() {
         if (model == null) return;
-        zoomToNormalAround(getContentWidth() / 2f, getContentHeight() / 2f);
+        resetTo100Percent(getContentWidth() / 2f, getContentHeight() / 2f);
+    }
+
+    float getCurrentScale() {
+        return pendingState == null ? transform.getScale() : pendingState.getScale();
+    }
+
+    boolean isAtOneHundredPercent() {
+        return ZoomController.isAtOneHundredPercent(getCurrentScale());
     }
 
     void setOnZoomChangeListener(@Nullable OnZoomChangeListener listener) {
@@ -260,6 +270,7 @@ public final class SpreadsheetCanvasView extends View {
             stopMotion();
             gestureContainedScale = false;
             skipNextPan = false;
+            ignoreScaleUntilGestureEnds = false;
             if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
         }
         scaleGestureDetector.onTouchEvent(event);
@@ -438,7 +449,7 @@ public final class SpreadsheetCanvasView extends View {
     boolean performAccessibilityViewportAction(int action) {
         if (model == null) return false;
         if (action == SpreadsheetCanvasAccessibilityHelper.ACTION_ZOOM_100) {
-            zoomToNormal();
+            resetTo100Percent();
             return true;
         }
         float horizontal = getContentWidth() * 0.8f;
@@ -467,8 +478,8 @@ public final class SpreadsheetCanvasView extends View {
             return;
         }
         pendingState = null;
-        zoomMode = state.getZoomMode();
-        float scale = scaleForMode(zoomMode, state.getScale());
+        float scale = scaleForMode(state.getZoomMode(), state.getScale());
+        zoomMode = ZoomController.zoomModeForScale(scale);
         transform.set(scale, state.getHorizontalOffset(), state.getVerticalOffset(), zoomMode);
         if (state.hasViewportPosition()) {
             transform.restoreAroundCenter(
@@ -496,12 +507,19 @@ public final class SpreadsheetCanvasView extends View {
     }
 
     private float scaleForMode(ZoomController.ZoomMode mode, float storedScale) {
-        if (mode == ZoomController.ZoomMode.ZOOM_100) return ZoomController.NORMAL_ZOOM;
-        return ZoomController.clampZoom(storedScale);
+        float scale = ZoomController.clampZoom(storedScale, mode);
+        return ZoomController.isAtOneHundredPercent(scale)
+                ? ZoomController.NORMAL_ZOOM
+                : scale;
     }
 
-    private void zoomToNormalAround(float focalContentX, float focalContentY) {
+    private void resetTo100Percent(float focalContentX, float focalContentY) {
         stopMotion();
+        ignoreScaleUntilGestureEnds = scaling || scaleGestureDetector.isInProgress();
+        scaling = false;
+        gestureContainedScale = false;
+        skipNextPan = true;
+        pendingState = null;
         transform.zoomAround(
                 ZoomController.NORMAL_ZOOM,
                 focalContentX,
@@ -1108,17 +1126,19 @@ public final class SpreadsheetCanvasView extends View {
         @Override
         public boolean onScaleBegin(ScaleGestureDetector detector) {
             stopMotion();
+            ignoreScaleUntilGestureEnds = false;
             scaling = true;
             gestureContainedScale = true;
             skipNextPan = true;
             targetScale = ZoomController.clampZoom(transform.getScale());
-            zoomMode = ZoomController.ZoomMode.MANUAL;
+            zoomMode = ZoomController.zoomModeForScale(targetScale);
             notifyZoomChanged(false, true);
             return true;
         }
 
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
+            if (ignoreScaleUntilGestureEnds) return false;
             targetScale = ZoomController.clampZoom(
                     targetScale * detector.getScaleFactor()
             );
@@ -1128,15 +1148,22 @@ public final class SpreadsheetCanvasView extends View {
                     detector.getFocusY() - columnHeaderHeight,
                     ZoomController.ZoomMode.MANUAL
             );
-            zoomMode = ZoomController.ZoomMode.MANUAL;
+            zoomMode = ZoomController.zoomModeForScale(transform.getScale());
             viewportChanged();
             return true;
         }
 
         @Override
         public void onScaleEnd(ScaleGestureDetector detector) {
+            if (ignoreScaleUntilGestureEnds) {
+                ignoreScaleUntilGestureEnds = false;
+                scaling = false;
+                skipNextPan = true;
+                return;
+            }
             scaling = false;
             skipNextPan = true;
+            zoomMode = ZoomController.zoomModeForScale(transform.getScale());
             viewportChanged();
             notifyZoomChanged(true, true);
         }
@@ -1181,7 +1208,7 @@ public final class SpreadsheetCanvasView extends View {
 
         @Override
         public boolean onDoubleTap(MotionEvent event) {
-            zoomToNormalAround(
+            resetTo100Percent(
                     event.getX() - rowHeaderWidth,
                     event.getY() - columnHeaderHeight
             );

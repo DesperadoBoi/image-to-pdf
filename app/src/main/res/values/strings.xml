@@ -323,7 +323,7 @@
     <string name="viewer_image_content_description">Изображение. Доступны масштабирование и перемещение</string>
     <string name="viewer_text_content_description">Текст документа</string>
     <string name="viewer_table_content_description">Таблица документа</string>
-    <string name="viewer_zoom_100">Масштаб 100%</string>
+    <string name="viewer_reset_zoom_100">Вернуть масштаб 100%</string>
     <string name="viewer_zoom_indicator">%1$d%%</string>
     <string name="viewer_zoom_announcement">Масштаб %1$d процентов</string>
     <string name="viewer_column_header_content_description">Столбец %1$s</string>

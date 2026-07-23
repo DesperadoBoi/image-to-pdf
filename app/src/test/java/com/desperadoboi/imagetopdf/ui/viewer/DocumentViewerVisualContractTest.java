@@ -119,7 +119,7 @@ public final class DocumentViewerVisualContractTest {
                 "app/src/main/res/menu/document_viewer_overflow.xml"
         ));
         assertEquals(
-                "@string/viewer_zoom_100",
+                "@string/viewer_reset_zoom_100",
                 byId(menu, "@+id/action_viewer_zoom_100").getAttributeNS(ANDROID, "title")
         );
         assertNull(findById(menu, "@+id/action_viewer_fit_width"));
@@ -131,8 +131,19 @@ public final class DocumentViewerVisualContractTest {
         Document english = parse(repositoryRoot().resolve(
                 "app/src/main/res/values-en/viewer_strings.xml"
         ));
-        assertEquals("Масштаб 100%", namedText(russian, "viewer_zoom_100"));
-        assertEquals("Zoom to 100%", namedText(english, "viewer_zoom_100"));
+        assertEquals(
+                "Вернуть масштаб 100%",
+                namedText(russian, "viewer_reset_zoom_100")
+        );
+        assertEquals(
+                "Reset zoom to 100%",
+                namedText(english, "viewer_reset_zoom_100")
+        );
+        assertNull(findNamed(russian, "string", "viewer_zoom_100"));
+        assertNull(findNamed(english, "string", "viewer_zoom_100"));
+        assertFalse(Files.readString(repositoryRoot().resolve(
+                "app/src/main/res/values/strings.xml"
+        )).contains("Масштаб " + "100%"));
         String[] removedFitStrings = {
                 "viewer_fit_width",
                 "viewer_fit_width_content_description",
@@ -155,8 +166,9 @@ public final class DocumentViewerVisualContractTest {
         ));
 
         assertTrue(activity.contains("findItem(R.id.action_viewer_zoom_100)"));
-        assertTrue(activity.contains(".setVisible(spreadsheetVisible);"));
-        assertTrue(activity.contains("spreadsheetCanvasView.zoomToNormal();"));
+        assertTrue(activity.contains("ZoomController.shouldShowResetAction("));
+        assertTrue(activity.contains(".setVisible(resetVisible);"));
+        assertTrue(activity.contains("spreadsheetCanvasView.resetTo100Percent();"));
     }
 
     @Test
@@ -167,9 +179,31 @@ public final class DocumentViewerVisualContractTest {
         ));
 
         assertTrue(canvas.contains("public boolean onDoubleTap(MotionEvent event)"));
-        assertTrue(canvas.contains("zoomToNormalAround("));
+        assertTrue(canvas.contains("resetTo100Percent("));
         assertFalse(canvas.contains("fitToWidth()"));
         assertFalse(canvas.contains("fitToSheet()"));
+    }
+
+    @Test
+    public void spreadsheetResetIsOneAtomicPathForOverflowAndDoubleTap() throws Exception {
+        String canvas = Files.readString(repositoryRoot().resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "SpreadsheetCanvasView.java"
+        ));
+        int resetImplementation = canvas.indexOf(
+                "private void resetTo100Percent(float focalContentX, float focalContentY)"
+        );
+        int resetEnd = canvas.indexOf("private void drawFills(", resetImplementation);
+        String resetBody = canvas.substring(resetImplementation, resetEnd);
+
+        assertTrue(resetBody.contains("stopMotion();"));
+        assertTrue(resetBody.contains("pendingState = null;"));
+        assertTrue(resetBody.contains("transform.zoomAround("));
+        assertTrue(resetBody.contains("ZoomController.NORMAL_ZOOM"));
+        assertTrue(resetBody.contains("zoomMode = ZoomController.ZoomMode.ZOOM_100;"));
+        assertTrue(resetBody.contains("viewportChanged();"));
+        assertTrue(resetBody.contains("notifyZoomChanged(true, true);"));
+        assertFalse(canvas.contains("zoomToNormal"));
     }
 
     @Test

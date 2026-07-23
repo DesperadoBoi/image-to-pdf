@@ -18,8 +18,9 @@ final class SpreadsheetViewportState {
             ZoomController.ZoomMode zoomMode,
             boolean hasViewportPosition
     ) {
-        this.zoomMode = zoomMode;
-        this.scale = ZoomController.clampZoom(scale, zoomMode);
+        float normalizedScale = ZoomController.clampZoom(scale, zoomMode);
+        this.zoomMode = ZoomController.zoomModeForScale(normalizedScale);
+        this.scale = ZoomController.clampZoom(normalizedScale, this.zoomMode);
         this.horizontalOffset = Math.max(0f, horizontalOffset);
         this.verticalOffset = Math.max(0f, verticalOffset);
         this.centerContentX = Math.max(0f, centerContentX);

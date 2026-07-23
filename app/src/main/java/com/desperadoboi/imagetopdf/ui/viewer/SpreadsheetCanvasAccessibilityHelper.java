@@ -276,10 +276,12 @@ final class SpreadsheetCanvasAccessibilityHelper extends AccessibilityNodeProvid
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_RIGHT);
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_UP);
         info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_DOWN);
-        info.addAction(new AccessibilityNodeInfo.AccessibilityAction(
-                ACTION_ZOOM_100,
-                view.getResources().getString(R.string.viewer_zoom_100)
-        ));
+        if (!view.isAtOneHundredPercent()) {
+            info.addAction(new AccessibilityNodeInfo.AccessibilityAction(
+                    ACTION_ZOOM_100,
+                    view.getResources().getString(R.string.viewer_reset_zoom_100)
+            ));
+        }
     }
 
     private int hitTest(float x, float y) {

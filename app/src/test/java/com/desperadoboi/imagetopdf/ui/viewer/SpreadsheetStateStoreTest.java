@@ -2,6 +2,7 @@ package com.desperadoboi.imagetopdf.ui.viewer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -117,6 +118,74 @@ public final class SpreadsheetStateStoreTest {
 
         assertEquals(ZoomController.ZoomMode.MANUAL, store.restore(0).getZoomMode());
         assertEquals(0.60f, store.restore(0).getScale(), DELTA);
+    }
+
+    @Test
+    public void resetStateIsStoredForCurrentSheetWithoutChangingSelection() {
+        SpreadsheetStateStore store = new SpreadsheetStateStore();
+        store.openDocument("document-a");
+        store.setSelectedSheet(3);
+        store.save(3, positioned(
+                0.60f,
+                300f,
+                200f,
+                ZoomController.ZoomMode.MANUAL
+        ));
+
+        store.save(3, SpreadsheetViewportState.positioned(
+                1f,
+                150f,
+                100f,
+                300f,
+                200f,
+                ZoomController.ZoomMode.ZOOM_100
+        ));
+
+        assertEquals(3, store.getSelectedSheet());
+        assertEquals(1f, store.restore(3).getScale(), DELTA);
+        assertEquals(ZoomController.ZoomMode.ZOOM_100, store.restore(3).getZoomMode());
+        assertFalse(ZoomController.shouldShowResetAction(store.restore(3).getScale()));
+    }
+
+    @Test
+    public void sheetSwitchAndRotationUseEachRestoredScaleForMenuState() {
+        SpreadsheetStateStore store = new SpreadsheetStateStore();
+        store.openDocument("document-a");
+        store.save(0, positioned(
+                0.60f,
+                10f,
+                20f,
+                ZoomController.ZoomMode.MANUAL
+        ));
+        store.save(1, positioned(
+                1f,
+                30f,
+                40f,
+                ZoomController.ZoomMode.ZOOM_100
+        ));
+        store.setSelectedSheet(1);
+
+        assertFalse(ZoomController.shouldShowResetAction(store.restore(1).getScale()));
+        assertTrue(ZoomController.shouldShowResetAction(store.restore(0).getScale()));
+
+        SpreadsheetStateStore rotated = store.copy();
+        assertEquals(1, rotated.getSelectedSheet());
+        assertFalse(ZoomController.shouldShowResetAction(
+                rotated.restore(rotated.getSelectedSheet()).getScale()
+        ));
+    }
+
+    @Test
+    public void nearOneHundredPercentRestoresAsZoomOneHundredMode() {
+        SpreadsheetViewportState state = positioned(
+                0.9995f,
+                10f,
+                20f,
+                ZoomController.ZoomMode.MANUAL
+        );
+
+        assertEquals(1f, state.getScale(), DELTA);
+        assertEquals(ZoomController.ZoomMode.ZOOM_100, state.getZoomMode());
     }
 
     private SpreadsheetViewportState positioned(
