@@ -332,11 +332,13 @@
     <string name="viewer_zoom_indicator">%1$d%%</string>
     <string name="viewer_zoom_announcement">Масштаб %1$d процентов</string>
     <string name="viewer_column_header_content_description">Столбец %1$s</string>
+    <string name="viewer_row_header_content_description">Строка %1$d</string>
+    <string name="viewer_merged_cell_content_description">Строки %1$d–%3$d, столбцы %2$s–%4$s: %5$s</string>
     <string name="viewer_sheet_selector_content_description">Выбор листа книги XLSX</string>
     <string name="viewer_sheet_label">Лист</string>
     <string name="viewer_current_sheet">%1$s</string>
     <string name="viewer_current_sheet_content_description">Лист %1$s, %2$d из %3$d</string>
-    <string name="viewer_cell_content_description">Строка %1$d, столбец %2$s: %3$s</string>
+    <string name="viewer_cell_content_description">Строка %1$d, столбец %2$s, %3$s</string>
     <string name="viewer_notice_text_truncated">Показана безопасная часть большого текстового файла</string>
     <string name="viewer_notice_table_truncated">Показана безопасная часть большой таблицы</string>
     <string name="viewer_notice_xlsx_truncated">Показана безопасная часть большой книги XLSX</string>

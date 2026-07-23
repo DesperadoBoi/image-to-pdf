@@ -19,6 +19,7 @@ public final class SpreadsheetCellStyle {
 
     public static final SpreadsheetCellStyle DEFAULT = new Builder().build();
 
+    private final int styleId;
     @Nullable private final Integer fillColor;
     @Nullable private final Integer fontColor;
     private final boolean bold;
@@ -34,6 +35,7 @@ public final class SpreadsheetCellStyle {
     private final SpreadsheetBorder bottomBorder;
 
     private SpreadsheetCellStyle(Builder builder) {
+        styleId = Math.max(0, builder.styleId);
         fillColor = builder.fillColor;
         fontColor = builder.fontColor;
         bold = builder.bold;
@@ -47,6 +49,10 @@ public final class SpreadsheetCellStyle {
         topBorder = builder.topBorder;
         rightBorder = builder.rightBorder;
         bottomBorder = builder.bottomBorder;
+    }
+
+    public int getStyleId() {
+        return styleId;
     }
 
     @Nullable
@@ -104,6 +110,7 @@ public final class SpreadsheetCellStyle {
     }
 
     public static final class Builder {
+        private int styleId;
         @Nullable private Integer fillColor;
         @Nullable private Integer fontColor;
         private boolean bold;
@@ -117,6 +124,11 @@ public final class SpreadsheetCellStyle {
         private SpreadsheetBorder topBorder = SpreadsheetBorder.NONE;
         private SpreadsheetBorder rightBorder = SpreadsheetBorder.NONE;
         private SpreadsheetBorder bottomBorder = SpreadsheetBorder.NONE;
+
+        public Builder setStyleId(int styleId) {
+            this.styleId = Math.max(0, styleId);
+            return this;
+        }
 
         public Builder setFillColor(@Nullable Integer fillColor) {
             this.fillColor = fillColor;

@@ -13,6 +13,9 @@
     <string name="viewer_fit_sheet_applied">Showing the full sheet overview</string>
     <string name="viewer_zoom_announcement">Zoom %1$d percent</string>
     <string name="viewer_column_header_content_description">Column %1$s</string>
+    <string name="viewer_row_header_content_description">Row %1$d</string>
+    <string name="viewer_merged_cell_content_description">Rows %1$d–%3$d, columns %2$s–%4$s: %5$s</string>
+    <string name="viewer_cell_content_description">Row %1$d, column %2$s, %3$s</string>
     <string name="viewer_sheet_label">Sheet</string>
     <string name="viewer_current_sheet">%1$s</string>
     <string name="viewer_current_sheet_content_description">Sheet %1$s, %2$d of %3$d</string>

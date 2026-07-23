@@ -22,8 +22,8 @@ public final class ZoomControllerTest {
     }
 
     @Test
-    public void fitWidthAccountsForRowHeaderAndZoomBounds() {
-        assertEquals(0.5f, ZoomController.calculateFitScale(400f, 40f, 720f), DELTA);
+    public void fitWidthAccountsForContentAreaAndZoomBounds() {
+        assertEquals(0.5f, ZoomController.calculateFitScale(360f, 720f), DELTA);
         assertEquals(ZoomController.MIN_OVERVIEW_ZOOM,
                 ZoomController.calculateFitScale(100f, 1_000f), DELTA);
         assertEquals(ZoomController.MAX_ZOOM,
@@ -55,13 +55,6 @@ public final class ZoomControllerTest {
     }
 
     @Test
-    public void defaultXlsxModeUsesFitSheetOnlyAtReadableThreshold() {
-        assertEquals(ZoomController.ZoomMode.FIT_SHEET, ZoomController.defaultXlsxMode(0.75f));
-        assertEquals(ZoomController.ZoomMode.FIT_SHEET, ZoomController.defaultXlsxMode(0.60f));
-        assertEquals(ZoomController.ZoomMode.ZOOM_100, ZoomController.defaultXlsxMode(0.59f));
-    }
-
-    @Test
     public void zoomModesKeepOverviewSeparateFromManualAndNormal() {
         assertEquals(0.60f, ZoomController.clampZoom(
                 0.25f,
@@ -81,22 +74,4 @@ public final class ZoomControllerTest {
         ), DELTA);
     }
 
-    @Test
-    public void zoomPreservesContentCoordinateAtFocalPoint() {
-        float oldOffset = 120f;
-        float oldScale = 1f;
-        float newScale = 2.25f;
-        float focalPoint = 180f;
-
-        float newOffset = ZoomController.preserveFocalPoint(
-                oldOffset,
-                oldScale,
-                newScale,
-                focalPoint
-        );
-
-        float before = (oldOffset + focalPoint) / oldScale;
-        float after = (newOffset + focalPoint) / newScale;
-        assertEquals(before, after, DELTA);
-    }
 }

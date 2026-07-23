@@ -8,7 +8,6 @@ final class SpreadsheetViewportState {
     private final float centerContentY;
     private final ZoomController.ZoomMode zoomMode;
     private final boolean hasViewportPosition;
-    private final boolean applyDefaultZoomPolicy;
 
     private SpreadsheetViewportState(
             float scale,
@@ -17,8 +16,7 @@ final class SpreadsheetViewportState {
             float centerContentX,
             float centerContentY,
             ZoomController.ZoomMode zoomMode,
-            boolean hasViewportPosition,
-            boolean applyDefaultZoomPolicy
+            boolean hasViewportPosition
     ) {
         this.zoomMode = zoomMode;
         this.scale = ZoomController.clampZoom(scale, zoomMode);
@@ -27,7 +25,6 @@ final class SpreadsheetViewportState {
         this.centerContentX = Math.max(0f, centerContentX);
         this.centerContentY = Math.max(0f, centerContentY);
         this.hasViewportPosition = hasViewportPosition;
-        this.applyDefaultZoomPolicy = applyDefaultZoomPolicy;
     }
 
     static SpreadsheetViewportState initialNormal() {
@@ -38,21 +35,7 @@ final class SpreadsheetViewportState {
                 0f,
                 0f,
                 ZoomController.ZoomMode.ZOOM_100,
-                false,
                 false
-        );
-    }
-
-    static SpreadsheetViewportState initialFitSheet() {
-        return new SpreadsheetViewportState(
-                ZoomController.NORMAL_ZOOM,
-                0f,
-                0f,
-                0f,
-                0f,
-                ZoomController.ZoomMode.FIT_SHEET,
-                false,
-                true
         );
     }
 
@@ -71,8 +54,7 @@ final class SpreadsheetViewportState {
                 centerContentX,
                 centerContentY,
                 zoomMode,
-                true,
-                false
+                true
         );
     }
 
@@ -84,8 +66,7 @@ final class SpreadsheetViewportState {
                 centerContentX,
                 centerContentY,
                 ZoomController.ZoomMode.MANUAL,
-                hasViewportPosition,
-                false
+                hasViewportPosition
         );
     }
 
@@ -117,7 +98,4 @@ final class SpreadsheetViewportState {
         return hasViewportPosition;
     }
 
-    boolean shouldApplyDefaultZoomPolicy() {
-        return applyDefaultZoomPolicy;
-    }
 }

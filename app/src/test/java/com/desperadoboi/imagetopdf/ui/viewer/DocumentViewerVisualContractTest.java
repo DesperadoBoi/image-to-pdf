@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.w3c.dom.Document;
@@ -70,11 +71,32 @@ public final class DocumentViewerVisualContractTest {
         Element viewport = byId(document, "@+id/viewport_viewer_spreadsheet");
         Element indicator = byId(document, "@+id/text_viewer_zoom_indicator");
 
-        assertEquals("com.desperadoboi.imagetopdf.ui.viewer.SpreadsheetViewport",
+        assertEquals("com.desperadoboi.imagetopdf.ui.viewer.SpreadsheetCanvasView",
                 viewport.getTagName());
         assertEquals("false", indicator.getAttributeNS(ANDROID, "clickable"));
         assertEquals("no", indicator.getAttributeNS(ANDROID, "importantForAccessibility"));
         assertEquals(0, document.getElementsByTagName("HorizontalScrollView").getLength());
+    }
+
+    @Test
+    public void xlsxCsvAndTsvShareCanvasModelPipelineWithoutLegacyRenderer() throws Exception {
+        Path root = repositoryRoot();
+        String activity = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "DocumentViewerActivity.java"
+        ));
+
+        assertTrue(activity.contains("SpreadsheetCanvasModel.create(0, data, density)"));
+        assertTrue(activity.contains("SpreadsheetCanvasModel.create("));
+        assertTrue(activity.contains("workbook.getSheets().get(sheetIndex)"));
+        assertFalse(Files.exists(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "SpreadsheetRowAdapter.java"
+        )));
+        assertFalse(Files.exists(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "SpreadsheetCellView.java"
+        )));
     }
 
     @Test
@@ -119,23 +141,6 @@ public final class DocumentViewerVisualContractTest {
         assertEquals("Zoom to 100%", namedText(english, "viewer_zoom_100"));
         assertEquals("Fit to width", namedText(english, "viewer_fit_width"));
         assertEquals("Fit sheet", namedText(english, "viewer_fit_sheet"));
-    }
-
-    @Test
-    public void manualZoomKeepsReadableCellFloors() throws Exception {
-        Document dimensions = parse(repositoryRoot().resolve(
-                "app/src/main/res/values/dimens.xml"
-        ));
-
-        assertEquals("14sp", namedText(dimensions, "viewer_cell_text_size"));
-        assertEquals("10.5sp", namedText(
-                dimensions,
-                "viewer_cell_manual_min_text_size"
-        ));
-        assertEquals("40dp", namedText(
-                dimensions,
-                "viewer_cell_manual_min_height"
-        ));
     }
 
     @Test

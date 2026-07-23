@@ -53,11 +53,15 @@ com.desperadoboi.imagetopdf
 XLSX обрабатывается из app-cache копии через изолированный `SpreadsheetParser`:
 `XlsxPackageInspector` проверяет ZIP/OOXML package и relationships, а
 `XlsxSpreadsheetParser` потоково читает workbook, shared strings, styles и worksheets через
-`XmlPullParser`. UI использует `SpreadsheetViewport` с единым 2D gesture pipeline,
-логическим масштабом ячеек и виртуализированным по строкам `RecyclerView`; закреплённые
-заголовки получают синхронизированные offsets, а состояние масштаба и позиции хранится
-отдельно для каждого листа и переживает rotation без повторного parser pass. View для всей
-книги не создаются. Старый XLS остаётся отдельным будущим этапом.
+`XmlPullParser`. UI использует единый `SpreadsheetCanvasView` для XLSX, CSV и TSV.
+`SpreadsheetGeometry` один раз строит базовые размеры и prefix sums, viewport хранит
+`offsetX`, `offsetY` и `scale` в координатах листа, а binary search ограничивает каждый draw
+видимыми строками и столбцами с небольшим overscan. Ячейки, строки и заголовки не являются
+отдельными Android View; fills, borders, text, merged ranges и sticky headers рисуются на
+одном hardware-accelerated Canvas. Состояние масштаба и позиции хранится отдельно для каждого
+листа и переживает rotation без повторного parser pass. Виртуальная accessibility-иерархия
+содержит только видимые непустые ячейки и видимые заголовки. Старый XLS остаётся отдельным
+будущим этапом.
 
 ## Целевая UI-архитектура
 

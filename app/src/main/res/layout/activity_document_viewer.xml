@@ -340,7 +340,7 @@
                     tools:visibility="visible" />
             </LinearLayout>
 
-            <com.desperadoboi.imagetopdf.ui.viewer.SpreadsheetViewport
+            <com.desperadoboi.imagetopdf.ui.viewer.SpreadsheetCanvasView
                 android:id="@+id/viewport_viewer_spreadsheet"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"

@@ -167,6 +167,7 @@ public final class XlsxSpreadsheetParserTest {
         assertEquals(30f, layout.getRowHeightPoints(0), 0.001f);
         assertEquals(16f, layout.getRowHeightPoints(1), 0.001f);
         assertEquals(Integer.valueOf(0xFF00B050), style.getFillColor());
+        assertEquals(2, style.getStyleId());
         assertEquals(Integer.valueOf(0xFFFFFFFF), style.getFontColor());
         assertTrue(style.isBold());
         assertTrue(style.isItalic());
@@ -187,6 +188,26 @@ public final class XlsxSpreadsheetParserTest {
         SpreadsheetMergedRange merged = layout.findMergedRange(0, 1);
         assertNotNull(merged);
         assertTrue(merged.isAnchor(0, 0));
+    }
+
+    @Test
+    public void preservesHiddenRowsAndColumnsForCanvasGeometry() throws Exception {
+        Path file = XlsxTestFixtures.minimalWorkbook(
+                fixture("hidden-axes.xlsx"),
+                XlsxTestFixtures.worksheet(
+                        "<dimension ref=\"A1:B2\"/>"
+                                + "<cols><col min=\"2\" max=\"2\" hidden=\"1\"/></cols>"
+                                + "<sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c></row>"
+                                + "<row r=\"2\" hidden=\"1\"><c r=\"B2\"><v>2</v></c></row>"
+                                + "</sheetData>"
+                )
+        );
+
+        SpreadsheetSheetLayout layout =
+                parser.parse(file.toFile()).getSheets().get(0).getLayout();
+
+        assertEquals(0f, layout.getColumnWidthCharacters(1), 0.001f);
+        assertEquals(0f, layout.getRowHeightPoints(1), 0.001f);
     }
 
     @Test

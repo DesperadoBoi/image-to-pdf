@@ -31,13 +31,6 @@ public final class ZoomController {
         return mode == ZoomMode.FIT_WIDTH || mode == ZoomMode.FIT_SHEET;
     }
 
-    static ZoomMode defaultXlsxMode(float fitSheetScale) {
-        return Float.isFinite(fitSheetScale)
-                && fitSheetScale >= SpreadsheetRenderMetrics.DEFAULT_FIT_SHEET_THRESHOLD
-                ? ZoomMode.FIT_SHEET
-                : ZoomMode.ZOOM_100;
-    }
-
     static float clampOverviewZoom(float zoom) {
         if (!Float.isFinite(zoom)) return NORMAL_ZOOM;
         return Math.max(MIN_OVERVIEW_ZOOM, Math.min(MAX_ZOOM, zoom));
@@ -48,17 +41,6 @@ public final class ZoomController {
                 availableContentWidth,
                 sheetWidth,
                 NORMAL_ZOOM
-        );
-    }
-
-    public static float calculateFitScale(
-            float viewportWidth,
-            float rowHeaderWidth,
-            float sheetWidth
-    ) {
-        return calculateFitScale(
-                Math.max(0f, viewportWidth - Math.max(0f, rowHeaderWidth)),
-                sheetWidth
         );
     }
 
@@ -89,21 +71,4 @@ public final class ZoomController {
         return clampOverviewZoom(Math.min(widthScale, heightScale));
     }
 
-    public static float preserveFocalPoint(
-            float oldOffset,
-            float oldScale,
-            float newScale,
-            float focalPosition
-    ) {
-        if (!Float.isFinite(oldOffset)
-                || !Float.isFinite(oldScale)
-                || oldScale <= 0f
-                || !Float.isFinite(newScale)
-                || newScale <= 0f
-                || !Float.isFinite(focalPosition)) {
-            return 0f;
-        }
-        float contentCoordinate = (oldOffset + focalPosition) / oldScale;
-        return (contentCoordinate * newScale) - focalPosition;
-    }
 }

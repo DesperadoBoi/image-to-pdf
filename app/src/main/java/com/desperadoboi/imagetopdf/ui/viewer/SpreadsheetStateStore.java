@@ -50,7 +50,7 @@ final class SpreadsheetStateStore {
 
     SpreadsheetViewportState restoreXlsx(int sheet) {
         SpreadsheetViewportState state = sheetStates.get(Math.max(0, sheet));
-        return state == null ? SpreadsheetViewportState.initialFitSheet() : state;
+        return state == null ? SpreadsheetViewportState.initialNormal() : state;
     }
 
     void recordManualZoom(int sheet, float scale) {

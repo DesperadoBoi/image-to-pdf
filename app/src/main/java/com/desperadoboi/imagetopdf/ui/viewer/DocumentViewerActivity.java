@@ -56,6 +56,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -80,6 +81,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private PdfPageState pdfPageState;
     private Bitmap imageBitmap;
     private XlsxWorkbook xlsxWorkbook;
+    private List<SpreadsheetCanvasModel> xlsxCanvasModels = Collections.emptyList();
     private boolean cacheWasShared;
     private int restoredPage;
     private int restoredSheet;
@@ -104,7 +106,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private ZoomableImageView imageContent;
     private RecyclerView textContent;
     private View spreadsheetContent;
-    private SpreadsheetViewport spreadsheetViewport;
+    private SpreadsheetCanvasView spreadsheetCanvasView;
     private TextView zoomIndicator;
     private View sheetControls;
     private TextView sheetNameView;
@@ -133,6 +135,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             currentDocument = retainedState.document;
             imageBitmap = retainedState.imageBitmap;
             xlsxWorkbook = retainedState.xlsxWorkbook;
+            xlsxCanvasModels = retainedState.xlsxCanvasModels;
             cacheWasShared = retainedState.cacheWasShared;
             spreadsheetStateStore = retainedState.spreadsheetStateStore;
             restoredSheet = spreadsheetStateStore.getSelectedSheet();
@@ -168,6 +171,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 currentDocument,
                 imageBitmap,
                 xlsxWorkbook,
+                xlsxCanvasModels,
                 cacheWasShared,
                 spreadsheetStateStore.copy()
         );
@@ -211,7 +215,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         imageContent = findViewById(R.id.content_viewer_image);
         textContent = findViewById(R.id.content_viewer_text);
         spreadsheetContent = findViewById(R.id.content_viewer_spreadsheet);
-        spreadsheetViewport = findViewById(R.id.viewport_viewer_spreadsheet);
+        spreadsheetCanvasView = findViewById(R.id.viewport_viewer_spreadsheet);
         zoomIndicator = findViewById(R.id.text_viewer_zoom_indicator);
         sheetControls = findViewById(R.id.layout_viewer_sheet_controls);
         sheetNameView = findViewById(R.id.text_viewer_sheet_name);
@@ -219,14 +223,14 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         noticeView = findViewById(R.id.text_viewer_notice);
         textContent.setLayoutManager(new LinearLayoutManager(this));
         textContent.setAdapter(new TextLineAdapter());
-        spreadsheetViewport.setOnZoomChangeListener((scale, zoomMode, finished, userInitiated) -> {
+        spreadsheetCanvasView.setOnZoomChangeListener((scale, zoomMode, finished, userInitiated) -> {
             if (userInitiated && zoomMode == ZoomController.ZoomMode.MANUAL) {
                 spreadsheetStateStore.recordManualZoom(selectedSheet, scale);
             }
             if (finished) {
                 saveCurrentSpreadsheetState();
                 showZoomIndicator(scale);
-                spreadsheetViewport.announceForAccessibility(getString(
+                spreadsheetCanvasView.announceForAccessibility(getString(
                         R.string.viewer_zoom_announcement,
                         Math.round(scale * 100f)
                 ));
@@ -553,6 +557,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         sheetNameView.setVisibility(View.GONE);
         sheetSpinner.setVisibility(View.GONE);
         long generation = generations.get();
+        float density = getResources().getDisplayMetrics().density;
         loadExecutor.execute(() -> {
             try {
                 TextDocumentReader textReader = new TextDocumentReader();
@@ -567,6 +572,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 )) {
                     data = new CsvParser().parse(reader, delimiter);
                 }
+                SpreadsheetCanvasModel canvasModel =
+                        SpreadsheetCanvasModel.create(0, data, density);
                 runOnUiThread(() -> {
                     if (generation != generations.get()) return;
                     if (data.getRows().isEmpty()) {
@@ -577,7 +584,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                         );
                         return;
                     }
-                    submitSpreadsheetData(data);
+                    submitSpreadsheetModel(
+                            canvasModel,
+                            spreadsheetStateStore.restore(0)
+                    );
                     showOnly(spreadsheetContent);
                     noticeView.setText(R.string.viewer_notice_table_truncated);
                     noticeView.setVisibility(data.isTruncated() ? View.VISIBLE : View.GONE);
@@ -599,14 +609,26 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         }
         showLoading(R.string.viewer_loading_xlsx);
         long generation = generations.get();
+        float density = getResources().getDisplayMetrics().density;
         loadExecutor.execute(() -> {
             try {
                 XlsxWorkbook workbook = new XlsxSpreadsheetParser().parse(
                         currentDocument.getCachedFile()
                 );
+                List<SpreadsheetCanvasModel> canvasModels = new ArrayList<>();
+                for (int sheetIndex = 0;
+                        sheetIndex < workbook.getSheets().size();
+                        sheetIndex++) {
+                    canvasModels.add(SpreadsheetCanvasModel.create(
+                            sheetIndex,
+                            workbook.getSheets().get(sheetIndex),
+                            density
+                    ));
+                }
                 runOnUiThread(() -> {
                     if (generation != generations.get()) return;
                     xlsxWorkbook = workbook;
+                    xlsxCanvasModels = Collections.unmodifiableList(canvasModels);
                     bindXlsxWorkbook();
                 });
             } catch (XlsxParseException exception) {
@@ -675,7 +697,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 selectedSheet + 1,
                 xlsxWorkbook.getSheets().size()
         ));
-        spreadsheetViewport.submit(sheet, spreadsheetStateStore.restoreXlsx(selectedSheet));
+        spreadsheetCanvasView.submit(
+                xlsxCanvasModels.get(selectedSheet),
+                spreadsheetStateStore.restoreXlsx(selectedSheet)
+        );
         noticeView.setText(R.string.viewer_notice_xlsx_truncated);
         noticeView.setVisibility(
                 xlsxWorkbook.isTruncated() || sheet.getData().isTruncated()
@@ -684,25 +709,21 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         );
     }
 
-    private void submitSpreadsheetData(SpreadsheetData data) {
-        submitSpreadsheetData(data, spreadsheetStateStore.restore(0));
-    }
-
-    private void submitSpreadsheetData(
-            SpreadsheetData data,
+    private void submitSpreadsheetModel(
+            SpreadsheetCanvasModel model,
             SpreadsheetViewportState state
     ) {
-        spreadsheetViewport.submit(data, state);
+        spreadsheetCanvasView.submit(model, state);
     }
 
     private void saveCurrentSpreadsheetState() {
-        if (spreadsheetViewport == null
+        if (spreadsheetCanvasView == null
                 || currentDocument == null
                 || (!currentDocument.getDocumentType().isSpreadsheetText()
                 && currentDocument.getDocumentType() != DocumentType.XLSX)) {
             return;
         }
-        spreadsheetStateStore.save(selectedSheet, spreadsheetViewport.captureState());
+        spreadsheetStateStore.save(selectedSheet, spreadsheetCanvasView.captureState());
         spreadsheetStateStore.setSelectedSheet(selectedSheet);
     }
 
@@ -804,7 +825,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         popupMenu.getMenu().findItem(R.id.action_viewer_fit_sheet)
                 .setVisible(spreadsheetVisible);
         if (spreadsheetVisible) {
-            ZoomController.ZoomMode zoomMode = spreadsheetViewport.getZoomMode();
+            ZoomController.ZoomMode zoomMode = spreadsheetCanvasView.getZoomMode();
             popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
                     .setChecked(zoomMode == ZoomController.ZoomMode.ZOOM_100);
             popupMenu.getMenu().findItem(R.id.action_viewer_fit_width)
@@ -815,15 +836,15 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         popupMenu.setOnMenuItemClickListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.action_viewer_zoom_100) {
-                spreadsheetViewport.zoomToNormal();
+                spreadsheetCanvasView.zoomToNormal();
                 return true;
             }
             if (itemId == R.id.action_viewer_fit_width) {
-                spreadsheetViewport.fitToWidth();
+                spreadsheetCanvasView.fitToWidth();
                 return true;
             }
             if (itemId == R.id.action_viewer_fit_sheet) {
-                spreadsheetViewport.fitToSheet();
+                spreadsheetCanvasView.fitToSheet();
                 return true;
             }
             if (itemId == R.id.action_viewer_file_info) {
@@ -986,6 +1007,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         recycle(imageBitmap);
         imageBitmap = null;
         xlsxWorkbook = null;
+        xlsxCanvasModels = Collections.emptyList();
+        if (spreadsheetCanvasView != null) spreadsheetCanvasView.clear();
         if (currentDocument != null && !cacheWasShared) {
             temporaryDocumentStore.delete(currentDocument.getCachedFile());
         }
@@ -1021,6 +1044,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         private final IncomingDocument document;
         private final Bitmap imageBitmap;
         private final XlsxWorkbook xlsxWorkbook;
+        private final List<SpreadsheetCanvasModel> xlsxCanvasModels;
         private final boolean cacheWasShared;
         private final SpreadsheetStateStore spreadsheetStateStore;
 
@@ -1028,12 +1052,14 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 IncomingDocument document,
                 Bitmap imageBitmap,
                 XlsxWorkbook xlsxWorkbook,
+                List<SpreadsheetCanvasModel> xlsxCanvasModels,
                 boolean cacheWasShared,
                 SpreadsheetStateStore spreadsheetStateStore
         ) {
             this.document = document;
             this.imageBitmap = imageBitmap;
             this.xlsxWorkbook = xlsxWorkbook;
+            this.xlsxCanvasModels = xlsxCanvasModels;
             this.cacheWasShared = cacheWasShared;
             this.spreadsheetStateStore = spreadsheetStateStore;
         }

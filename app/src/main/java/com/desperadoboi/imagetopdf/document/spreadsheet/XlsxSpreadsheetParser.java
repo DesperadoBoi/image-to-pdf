@@ -244,11 +244,13 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
             }
         }
         List<ResolvedStyle> resolvedStyles = new ArrayList<>();
-        for (CellFormat format : cellFormats) {
+        for (int styleIndex = 0; styleIndex < cellFormats.size(); styleIndex++) {
+            CellFormat format = cellFormats.get(styleIndex);
             FontStyle font = getOrDefault(fonts, format.fontId, FontStyle.DEFAULT);
             Integer fill = getOrDefault(fills, format.fillId, null);
             BorderStyle border = getOrDefault(borders, format.borderId, BorderStyle.NONE);
             SpreadsheetCellStyle visual = new SpreadsheetCellStyle.Builder()
+                    .setStyleId(styleIndex + 1)
                     .setFillColor(fill)
                     .setFontColor(font.color)
                     .setBold(font.bold)
