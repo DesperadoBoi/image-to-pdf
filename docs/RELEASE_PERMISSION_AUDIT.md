@@ -41,3 +41,9 @@ Preview и ImageCapture при этом сохраняются.
 
 Сохранение PDF выполняется через Storage Access Framework в выбранный пользователем `Uri`,
 поэтому широкие storage permissions не требуются.
+
+Локальный document viewer также не добавляет permissions. Внешний `ACTION_VIEW` получает
+только временный read grant к переданному пользователем `content://`; внутренний вход
+использует `ACTION_OPEN_DOCUMENT` и пытается сохранить read permission только для явно
+выбранного файла. Временные seekable copies находятся в приватном app cache и выдаются при
+Share через существующий non-exported FileProvider с точечным read grant.

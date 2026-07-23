@@ -19,5 +19,6 @@ public enum ToolId {
     ADD_TEXT,
     SIGN_PDF,
     LOCK_PDF,
-    UNLOCK_PDF
+    UNLOCK_PDF,
+    DOCUMENT_VIEWER
 }

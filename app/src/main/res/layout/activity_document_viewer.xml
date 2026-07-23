@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/document_viewer_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/layout_viewer_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/viewer_toolbar_height"
+        android:background="?attr/colorSurface"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/viewer_controls_padding"
+        android:paddingEnd="@dimen/viewer_controls_padding">
+
+        <ImageButton
+            android:id="@+id/button_viewer_back"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="@drawable/bg_icon_button_round"
+            android:contentDescription="@string/viewer_back_content_description"
+            android:padding="@dimen/editor_overlay_button_padding"
+            android:src="@drawable/ic_action_back_24"
+            app:tint="?attr/colorOnSurface" />
+
+        <TextView
+            android:id="@+id/text_viewer_title"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="@dimen/tool_grid_half_gap"
+            android:layout_marginEnd="@dimen/tool_grid_half_gap"
+            android:layout_weight="1"
+            android:ellipsize="middle"
+            android:gravity="center_vertical"
+            android:maxLines="1"
+            android:text="@string/viewer_title_default"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold"
+            tools:text="ImageToPDF_20260721_041622.pdf" />
+
+        <ImageButton
+            android:id="@+id/button_viewer_share"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="@drawable/bg_icon_button_round"
+            android:contentDescription="@string/viewer_share_content_description"
+            android:enabled="false"
+            android:padding="@dimen/editor_overlay_button_padding"
+            android:src="@drawable/ic_action_share_24"
+            app:tint="?attr/colorOnSurface" />
+
+        <ImageButton
+            android:id="@+id/button_viewer_more"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="@drawable/bg_icon_button_round"
+            android:contentDescription="@string/viewer_more_content_description"
+            android:padding="@dimen/editor_overlay_button_padding"
+            android:src="@drawable/ic_action_more_vert_24"
+            app:tint="?attr/colorOnSurface" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ScrollView
+            android:id="@+id/state_viewer_loading"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?android:attr/colorBackground"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="@dimen/content_spacing_large">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/viewer_loading_content_description"
+                    android:indeterminate="true" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/content_spacing_medium"
+                    android:gravity="center"
+                    android:maxWidth="@dimen/viewer_state_max_width"
+                    android:text="@string/viewer_loading_title"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/text_viewer_loading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/content_spacing_small"
+                    android:gravity="center"
+                    android:maxWidth="@dimen/viewer_state_max_width"
+                    android:text="@string/viewer_loading_opening"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_viewer_cancel_loading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_marginTop="@dimen/content_spacing_large"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/viewer_action_cancel" />
+            </LinearLayout>
+        </ScrollView>
+
+        <ScrollView
+            android:id="@+id/state_viewer_error"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?android:attr/colorBackground"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="@dimen/content_spacing_large">
+
+                <ImageView
+                    android:id="@+id/image_viewer_error"
+                    android:layout_width="@dimen/viewer_state_icon_size"
+                    android:layout_height="@dimen/viewer_state_icon_size"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_viewer_state_corrupted_48"
+                    app:tint="?attr/colorPrimary" />
+
+                <TextView
+                    android:id="@+id/text_viewer_error_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/content_spacing_medium"
+                    android:gravity="center"
+                    android:maxWidth="@dimen/viewer_state_max_width"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold"
+                    tools:text="Не удалось прочитать файл" />
+
+                <TextView
+                    android:id="@+id/text_viewer_error_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/content_spacing_small"
+                    android:gravity="center"
+                    android:maxWidth="@dimen/viewer_state_max_width"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    tools:text="Файл повреждён или имеет неподдерживаемую структуру" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_viewer_close_error"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_marginTop="@dimen/content_spacing_large"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/viewer_action_close" />
+            </LinearLayout>
+        </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/content_viewer_pdf"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/viewer_preview_background"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <com.desperadoboi.imagetopdf.ui.editor.ZoomableImageView
+                android:id="@+id/image_viewer_pdf_page"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_margin="@dimen/viewer_content_margin"
+                android:layout_weight="1"
+                android:background="@drawable/bg_viewer_preview_canvas"
+                android:contentDescription="@string/viewer_pdf_page_content_description" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/layout_viewer_page_navigation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_viewer_navigation_surface"
+                android:minHeight="@dimen/viewer_navigation_min_height"
+                android:padding="@dimen/viewer_controls_padding">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_viewer_previous_page"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/touch_target"
+                    android:ellipsize="end"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:maxLines="1"
+                    android:minWidth="0dp"
+                    android:text="@string/viewer_previous_page"
+                    app:icon="@drawable/ic_action_chevron_left_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconTint="?attr/colorOnSurface"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/text_viewer_page_counter"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/text_viewer_page_counter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/touch_target"
+                    android:background="@drawable/bg_viewer_page_indicator"
+                    android:gravity="center"
+                    android:minWidth="@dimen/viewer_page_indicator_min_width"
+                    android:paddingStart="@dimen/content_spacing_small"
+                    android:paddingEnd="@dimen/content_spacing_small"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnSurface"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:text="3 из 5" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_viewer_next_page"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/touch_target"
+                    android:ellipsize="end"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:maxLines="1"
+                    android:minWidth="0dp"
+                    android:text="@string/viewer_next_page"
+                    app:icon="@drawable/ic_action_chevron_right_24"
+                    app:iconGravity="textEnd"
+                    app:iconPadding="0dp"
+                    app:iconTint="?attr/colorOnSurface"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/text_viewer_page_counter"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
+
+        <com.desperadoboi.imagetopdf.ui.editor.ZoomableImageView
+            android:id="@+id/content_viewer_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/viewer_image_background"
+            android:contentDescription="@string/viewer_image_content_description"
+            android:visibility="gone" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/content_viewer_text"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/viewer_content_margin"
+            android:background="@drawable/bg_viewer_text_surface"
+            android:clipToPadding="false"
+            android:contentDescription="@string/viewer_text_content_description"
+            android:paddingTop="@dimen/content_spacing_small"
+            android:paddingBottom="@dimen/content_spacing_large"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/content_viewer_spreadsheet"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/viewer_document_surface"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/layout_viewer_sheet_controls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_viewer_sheet_bar"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/viewer_toolbar_height"
+                android:orientation="horizontal"
+                android:paddingStart="@dimen/viewer_content_margin"
+                android:paddingEnd="@dimen/viewer_content_margin"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/viewer_sheet_label"
+                    android:textAppearance="?attr/textAppearanceLabelLarge"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:id="@+id/text_viewer_sheet_name"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_marginStart="@dimen/viewer_content_margin"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_viewer_sheet_value"
+                    android:ellipsize="end"
+                    android:gravity="center_vertical"
+                    android:maxLines="1"
+                    android:paddingStart="@dimen/content_spacing_small"
+                    android:paddingEnd="@dimen/content_spacing_small"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:visibility="gone"
+                    tools:text="Данные"
+                    tools:visibility="visible" />
+
+                <Spinner
+                    android:id="@+id/spinner_viewer_sheets"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_marginStart="@dimen/viewer_content_margin"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/viewer_sheet_selector_content_description"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </LinearLayout>
+
+            <com.desperadoboi.imagetopdf.ui.viewer.SpreadsheetCanvasView
+                android:id="@+id/viewport_viewer_spreadsheet"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@color/viewer_document_surface"
+                android:contentDescription="@string/viewer_table_content_description" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/text_viewer_zoom_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_viewer_zoom_indicator"
+            android:clickable="false"
+            android:elevation="@dimen/viewer_zoom_indicator_elevation"
+            android:focusable="false"
+            android:importantForAccessibility="no"
+            android:textAppearance="?attr/textAppearanceLabelLarge"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:visibility="gone"
+            tools:text="100%"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/text_viewer_notice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="?attr/colorPrimaryContainer"
+            android:gravity="center"
+            android:padding="@dimen/content_spacing_small"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:visibility="gone" />
+    </FrameLayout>
+
+</LinearLayout>

@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/catalog_tool_item_height"
+    android:layout_height="wrap_content"
     android:layout_margin="@dimen/tool_grid_half_gap"
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
@@ -49,15 +49,35 @@
     <TextView
         android:id="@+id/text_tool_title"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/tool_title_spacing"
-        android:layout_weight="1"
         android:ellipsize="end"
+        android:breakStrategy="simple"
         android:gravity="top|center_horizontal"
+        android:hyphenationFrequency="none"
+        android:includeFontPadding="false"
         android:importantForAccessibility="no"
         android:maxLines="2"
         android:textAppearance="?attr/textAppearanceLabelLarge"
         android:textColor="?attr/colorOnSurface"
         tools:text="Изображение в PDF" />
+
+    <TextView
+        android:id="@+id/text_tool_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/tool_description_spacing"
+        android:breakStrategy="simple"
+        android:ellipsize="end"
+        android:gravity="top|center_horizontal"
+        android:hyphenationFrequency="none"
+        android:includeFontPadding="false"
+        android:importantForAccessibility="no"
+        android:maxLines="1"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:text="Открывайте документы локально"
+        tools:visibility="visible" />
 
 </LinearLayout>

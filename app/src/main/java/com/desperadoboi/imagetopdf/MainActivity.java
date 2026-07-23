@@ -13,6 +13,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
+import com.desperadoboi.imagetopdf.document.TemporaryDocumentStore;
 import com.desperadoboi.imagetopdf.model.ImageImportMode;
 import com.desperadoboi.imagetopdf.model.ImageImportResult;
 import com.desperadoboi.imagetopdf.model.PageItem;
@@ -28,6 +29,9 @@ import com.desperadoboi.imagetopdf.ui.smartscan.ScanReviewFragment;
 import com.desperadoboi.imagetopdf.ui.smartscan.ScanSessionViewModel;
 import com.desperadoboi.imagetopdf.ui.smartscan.SmartScanFragment;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity
         implements HomeFragment.NavigationCallback,
@@ -54,6 +58,7 @@ public class MainActivity extends AppCompatActivity
         sessionViewModel = new ViewModelProvider(this).get(DocumentSessionViewModel.class);
         scanSessionViewModel = new ViewModelProvider(this).get(ScanSessionViewModel.class);
         capturedImageStorage = new CapturedImageStorage(this);
+        cleanupViewerCache();
         configureWindowInsets();
         configureBackNavigation();
 
@@ -64,6 +69,18 @@ public class MainActivity extends AppCompatActivity
                 showHome();
             }
         }
+    }
+
+    private void cleanupViewerCache() {
+        TemporaryDocumentStore store = new TemporaryDocumentStore(this);
+        ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
+        cleanupExecutor.execute(() -> {
+            try {
+                store.cleanupOldFiles();
+            } finally {
+                cleanupExecutor.shutdown();
+            }
+        });
     }
 
     @Override

@@ -65,6 +65,8 @@ public class ToolCatalogTest {
                 ToolCatalog.get(ToolId.SMART_SCAN).getAvailability());
         assertEquals(ToolAvailability.AVAILABLE,
                 ToolCatalog.get(ToolId.MORE).getAvailability());
+        assertEquals(ToolAvailability.AVAILABLE,
+                ToolCatalog.get(ToolId.DOCUMENT_VIEWER).getAvailability());
     }
 
     @Test

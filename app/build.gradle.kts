@@ -79,6 +79,8 @@ dependencies {
     implementation(libs.camera.lifecycle)
     implementation(libs.camera.view)
     testImplementation(libs.junit)
+    // Host-JVM XmlPullParser runtime for synthetic XLSX unit fixtures only.
+    testImplementation(libs.kxml)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)
 }

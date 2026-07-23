@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 
@@ -18,6 +19,7 @@ public final class ZoomableImageView extends AppCompatImageView {
     private final RectF drawableRect = new RectF();
     private final RectF mappedRect = new RectF();
     private final ScaleGestureDetector scaleGestureDetector;
+    private final GestureDetector gestureDetector;
 
     private float minScale = 1f;
     private float maxScale = MAX_EXTRA_SCALE;
@@ -26,6 +28,7 @@ public final class ZoomableImageView extends AppCompatImageView {
     private float lastTouchY;
     private boolean dragging;
     private boolean gesturesEnabled = true;
+    private OnSwipeListener onSwipeListener;
 
     public ZoomableImageView(Context context) {
         this(context, null);
@@ -39,6 +42,7 @@ public final class ZoomableImageView extends AppCompatImageView {
         super(context, attrs, defStyleAttr);
         setScaleType(ScaleType.MATRIX);
         scaleGestureDetector = new ScaleGestureDetector(context, new ScaleListener());
+        gestureDetector = new GestureDetector(context, new GestureListener());
     }
 
     @Override
@@ -63,6 +67,7 @@ public final class ZoomableImageView extends AppCompatImageView {
         }
 
         scaleGestureDetector.onTouchEvent(event);
+        gestureDetector.onTouchEvent(event);
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 dragging = true;
@@ -251,5 +256,54 @@ public final class ZoomableImageView extends AppCompatImageView {
             zoomBy(detector.getScaleFactor(), detector.getFocusX(), detector.getFocusY());
             return true;
         }
+    }
+
+    public void setOnSwipeListener(@Nullable OnSwipeListener onSwipeListener) {
+        this.onSwipeListener = onSwipeListener;
+    }
+
+    private final class GestureListener extends GestureDetector.SimpleOnGestureListener {
+        @Override
+        public boolean onDown(MotionEvent event) {
+            return true;
+        }
+
+        @Override
+        public boolean onDoubleTap(MotionEvent event) {
+            if (currentScale > minScale * 1.5f) {
+                resetZoom();
+            } else {
+                zoomBy(2.5f, event.getX(), event.getY());
+            }
+            return true;
+        }
+
+        @Override
+        public boolean onFling(
+                MotionEvent first,
+                MotionEvent second,
+                float velocityX,
+                float velocityY
+        ) {
+            if (onSwipeListener == null || first == null || second == null
+                    || currentScale > minScale * 1.05f
+                    || Math.abs(velocityX) < 500f
+                    || Math.abs(second.getX() - first.getX()) < 96f
+                    || Math.abs(second.getY() - first.getY())
+                    > Math.abs(second.getX() - first.getX())) {
+                return false;
+            }
+            if (second.getX() < first.getX()) {
+                onSwipeListener.onSwipeLeft();
+            } else {
+                onSwipeListener.onSwipeRight();
+            }
+            return true;
+        }
+    }
+
+    public interface OnSwipeListener {
+        void onSwipeLeft();
+        void onSwipeRight();
     }
 }

@@ -34,12 +34,34 @@ com.desperadoboi.imagetopdf
 │   ├── export
 │   └── result
 ├── model
+├── document
+│   ├── image
+│   ├── pdf
+│   ├── spreadsheet
+│   └── text
 ├── image
 ├── pdf
 └── util
 ```
 
 `MainActivity` сейчас является контейнером экранов. `HomeFragment` является dashboard, `ImagePickerFragment` показывает внутреннюю MediaStore-галерею и системные fallback-источники, `AllToolsFragment` показывает секционный каталог инструментов, `EditorFragment` отвечает за страницы и генерацию, `PdfResultFragment` — за отдельный успешный сценарий, а `AboutFragment` и `PrivacyPolicyFragment` — за публикационную информацию и локальную политику конфиденциальности.
+
+`DocumentViewerActivity` является отдельной exported read-only точкой `ACTION_VIEW`. Она не
+участвует в fragment navigation `MainActivity`, не получает общий editor ViewModel и не
+импортирует внешние документы в текущую сессию.
+
+XLSX обрабатывается из app-cache копии через изолированный `SpreadsheetParser`:
+`XlsxPackageInspector` проверяет ZIP/OOXML package и relationships, а
+`XlsxSpreadsheetParser` потоково читает workbook, shared strings, styles и worksheets через
+`XmlPullParser`. UI использует единый `SpreadsheetCanvasView` для XLSX, CSV и TSV.
+`SpreadsheetGeometry` один раз строит базовые размеры и prefix sums, viewport хранит
+`offsetX`, `offsetY` и `scale` в координатах листа, а binary search ограничивает каждый draw
+видимыми строками и столбцами с небольшим overscan. Ячейки, строки и заголовки не являются
+отдельными Android View; fills, borders, text, merged ranges и sticky headers рисуются на
+одном hardware-accelerated Canvas. Состояние масштаба и позиции хранится отдельно для каждого
+листа и переживает rotation без повторного parser pass. Виртуальная accessibility-иерархия
+содержит только видимые непустые ячейки и видимые заголовки. Старый XLS остаётся отдельным
+будущим этапом.
 
 ## Целевая UI-архитектура
 
@@ -98,6 +120,12 @@ CameraX captures создаются в `filesDir/captured_images`. При отм
 - открывать данные через `InputStream`;
 - поддерживать изображения из галереи и `document providers`.
 - снимки камеры хранить в app-specific storage как app-owned файлы и также читать через `ContentResolver` по `content://` Uri.
+
+Для viewer `IncomingDocumentLoader` читает metadata и bytes через `ContentResolver`,
+`DocumentTypeResolver` проверяет MIME/signature/extension, а `TemporaryDocumentStore`
+создаёт bounded случайно именованную копию в app cache. Seekable PDF открывается только из
+этой копии. Старые viewer files имеют age-based cleanup; Share выдаёт FileProvider URI после
+явного действия пользователя. Подробный контракт — в [docs/DOCUMENT_VIEWER.md](docs/DOCUMENT_VIEWER.md).
 
 ### Обработка изображений
 
