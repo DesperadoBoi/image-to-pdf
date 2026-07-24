@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
@@ -48,7 +49,6 @@ import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxWorkbook;
 import com.desperadoboi.imagetopdf.document.text.TextDocumentReader;
 import com.desperadoboi.imagetopdf.document.text.TextPreview;
 import com.desperadoboi.imagetopdf.document.word.WordDocumentModel;
-import com.desperadoboi.imagetopdf.document.word.WordMeasurementConverter;
 import com.desperadoboi.imagetopdf.document.word.WordParseException;
 import com.desperadoboi.imagetopdf.ui.editor.ZoomableImageView;
 import com.desperadoboi.imagetopdf.util.FileSizeFormatter;
@@ -72,8 +72,9 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             "com.desperadoboi.imagetopdf.action.VIEW_DOCUMENT";
     private static final String STATE_CURRENT_PAGE = "viewer_current_page";
     private static final String STATE_CURRENT_SHEET = "viewer_current_sheet";
-    private static final String STATE_WORD_POSITION = "viewer_word_position";
-    private static final String STATE_WORD_OFFSET = "viewer_word_offset";
+    private static final String STATE_WORD_SCROLL_X = "viewer_word_scroll_x";
+    private static final String STATE_WORD_SCROLL_Y = "viewer_word_scroll_y";
+    private static final String STATE_WORD_SCALE = "viewer_word_scale";
 
     private final ExecutorService loadExecutor = Executors.newSingleThreadExecutor();
     private final AtomicLong generations = new AtomicLong();
@@ -89,15 +90,17 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private XlsxWorkbook xlsxWorkbook;
     private List<SpreadsheetCanvasModel> xlsxCanvasModels = Collections.emptyList();
     private WordDocumentModel wordDocument;
-    @Nullable private WordBlockAdapter wordAdapter;
+    @Nullable private String wordHtml;
+    private int wordPageCount;
     private WordViewerViewModel wordViewModel;
     private boolean cacheWasShared;
     private int restoredPage;
     private int restoredSheet;
     private int selectedSheet;
     private int knownPageCount;
-    private int restoredWordPosition;
-    private int restoredWordOffset;
+    private int restoredWordScrollX;
+    private int restoredWordScrollY;
+    private float restoredWordScale;
     private SpreadsheetStateStore spreadsheetStateStore = new SpreadsheetStateStore();
 
     private TextView titleView;
@@ -116,7 +119,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     private MaterialButton nextPageButton;
     private ZoomableImageView imageContent;
     private RecyclerView textContent;
-    private RecyclerView wordContent;
+    private WebView wordContent;
+    private DocxWebViewController wordWebViewController;
     private View spreadsheetContent;
     private SpreadsheetCanvasView spreadsheetCanvasView;
     private TextView zoomIndicator;
@@ -144,12 +148,15 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         restoredSheet = savedInstanceState == null
                 ? 0
                 : savedInstanceState.getInt(STATE_CURRENT_SHEET, 0);
-        restoredWordPosition = savedInstanceState == null
+        restoredWordScrollX = savedInstanceState == null
                 ? 0
-                : savedInstanceState.getInt(STATE_WORD_POSITION, 0);
-        restoredWordOffset = savedInstanceState == null
+                : savedInstanceState.getInt(STATE_WORD_SCROLL_X, 0);
+        restoredWordScrollY = savedInstanceState == null
                 ? 0
-                : savedInstanceState.getInt(STATE_WORD_OFFSET, 0);
+                : savedInstanceState.getInt(STATE_WORD_SCROLL_Y, 0);
+        restoredWordScale = savedInstanceState == null
+                ? 0f
+                : savedInstanceState.getFloat(STATE_WORD_SCALE, 0f);
 
         RetainedState retainedState = (RetainedState) getLastCustomNonConfigurationInstance();
         if (retainedState != null && retainedState.document != null) {
@@ -158,11 +165,14 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             xlsxWorkbook = retainedState.xlsxWorkbook;
             xlsxCanvasModels = retainedState.xlsxCanvasModels;
             wordDocument = retainedState.wordDocument;
+            wordHtml = retainedState.wordHtml;
+            wordPageCount = retainedState.wordPageCount;
             cacheWasShared = retainedState.cacheWasShared;
             spreadsheetStateStore = retainedState.spreadsheetStateStore;
             restoredSheet = spreadsheetStateStore.getSelectedSheet();
-            restoredWordPosition = retainedState.wordPosition;
-            restoredWordOffset = retainedState.wordOffset;
+            restoredWordScrollX = retainedState.wordScrollX;
+            restoredWordScrollY = retainedState.wordScrollY;
+            restoredWordScale = retainedState.wordScale;
             displayLoadedDocument();
         } else {
             loadFromIntent(getIntent());
@@ -180,31 +190,35 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         saveCurrentSpreadsheetState();
-        captureWordPosition();
+        captureWordState();
         outState.putInt(
                 STATE_CURRENT_PAGE,
                 pdfPageState == null ? restoredPage : pdfPageState.getCurrentPage()
         );
         outState.putInt(STATE_CURRENT_SHEET, selectedSheet);
-        outState.putInt(STATE_WORD_POSITION, restoredWordPosition);
-        outState.putInt(STATE_WORD_OFFSET, restoredWordOffset);
+        outState.putInt(STATE_WORD_SCROLL_X, restoredWordScrollX);
+        outState.putInt(STATE_WORD_SCROLL_Y, restoredWordScrollY);
+        outState.putFloat(STATE_WORD_SCALE, restoredWordScale);
         super.onSaveInstanceState(outState);
     }
 
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
         saveCurrentSpreadsheetState();
-        captureWordPosition();
+        captureWordState();
         return new RetainedState(
                 currentDocument,
                 imageBitmap,
                 xlsxWorkbook,
                 xlsxCanvasModels,
                 wordDocument,
+                wordHtml,
+                wordPageCount,
                 cacheWasShared,
                 spreadsheetStateStore.copy(),
-                restoredWordPosition,
-                restoredWordOffset
+                restoredWordScrollX,
+                restoredWordScrollY,
+                restoredWordScale
         );
     }
 
@@ -215,7 +229,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             zoomIndicator.removeCallbacks(hideZoomIndicatorAction);
         }
         closeRenderers();
-        closeWordAdapter();
+        if (wordWebViewController != null) {
+            wordWebViewController.destroy();
+            wordWebViewController = null;
+        }
         loadExecutor.shutdownNow();
         if (!isChangingConfigurations()) {
             wordViewModel.clearDocument();
@@ -257,14 +274,11 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         noticeView = findViewById(R.id.text_viewer_notice);
         textContent.setLayoutManager(new LinearLayoutManager(this));
         textContent.setAdapter(new TextLineAdapter());
-        wordContent.setLayoutManager(new LinearLayoutManager(this));
-        wordContent.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@androidx.annotation.NonNull RecyclerView recyclerView,
-                    int dx, int dy) {
-                updateOverflowMenu();
-            }
-        });
+        wordWebViewController = new DocxWebViewController(
+                wordContent,
+                this::openSafeHyperlink,
+                this::updateOverflowMenu
+        );
         spreadsheetCanvasView.setOnZoomChangeListener((scale, zoomMode, finished, userInitiated) -> {
             if (userInitiated && zoomMode == ZoomController.ZoomMode.MANUAL) {
                 spreadsheetStateStore.recordManualZoom(selectedSheet, scale);
@@ -697,12 +711,19 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     }
 
     private void showDocx() {
-        if (wordDocument != null) {
+        if (wordDocument != null && wordHtml != null) {
             bindWordDocument();
             return;
         }
         showLoading(R.string.viewer_loading_docx);
-        wordViewModel.load(currentDocument.getCachedFile());
+        wordViewModel.load(
+                currentDocument.getCachedFile(),
+                new DocxHtmlRenderer.Labels(
+                        getString(R.string.viewer_word_image_content_description),
+                        getString(R.string.viewer_word_vector_placeholder),
+                        getString(R.string.viewer_word_image_failed)
+                )
+        );
     }
 
     private void handleWordState(@Nullable WordViewerViewModel.State state) {
@@ -718,6 +739,8 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         }
         if (state.getDocument() != null) {
             wordDocument = state.getDocument();
+            wordHtml = state.getHtml();
+            wordPageCount = state.getPageCount();
             bindWordDocument();
             return;
         }
@@ -740,37 +763,19 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     }
 
     private void bindWordDocument() {
-        if (wordDocument == null || currentDocument == null) return;
-        closeWordAdapter();
-        wordAdapter = new WordBlockAdapter(
-                currentDocument.getCachedFile(),
-                ContextCompat.getMainExecutor(this),
-                new WordMeasurementConverter(
-                        getResources().getDisplayMetrics().xdpi,
-                        getResources().getDisplayMetrics().density,
-                        getResources().getConfiguration().fontScale
-                ),
-                this::openSafeHyperlink
-        );
-        wordContent.setAdapter(wordAdapter);
-        wordAdapter.submit(wordDocument);
-        showOnly(wordContent);
-        LinearLayoutManager layoutManager =
-                (LinearLayoutManager) wordContent.getLayoutManager();
-        if (layoutManager != null && restoredWordPosition > 0) {
-            WordBlockAdapter adapter = wordAdapter;
-            WordViewerPosition position = new WordViewerPosition(
-                    restoredWordPosition,
-                    restoredWordOffset
-            ).clampToBlockCount(adapter.getItemCount());
-            wordContent.post(() -> {
-                if (wordContent.getAdapter() != adapter) return;
-                layoutManager.scrollToPositionWithOffset(
-                        position.getBlockPosition(),
-                        position.getOffsetPixels()
-                );
-            });
+        if (wordDocument == null || wordHtml == null || currentDocument == null
+                || wordWebViewController == null) {
+            return;
         }
+        DocxWebViewController.State restored = restoredWordScale > 0f
+                ? new DocxWebViewController.State(
+                        restoredWordScrollX,
+                        restoredWordScrollY,
+                        restoredWordScale
+                )
+                : null;
+        wordWebViewController.load(wordHtml, restored);
+        showOnly(wordContent);
         updateOverflowMenu();
     }
 
@@ -1010,9 +1015,9 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 return true;
             }
             if (itemId == R.id.action_viewer_word_top) {
-                wordContent.scrollToPosition(0);
-                restoredWordPosition = 0;
-                restoredWordOffset = 0;
+                if (wordWebViewController != null) wordWebViewController.goToTop();
+                restoredWordScrollX = 0;
+                restoredWordScrollY = 0;
                 return true;
             }
             if (itemId == R.id.action_viewer_file_info) {
@@ -1037,13 +1042,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 );
         popupMenu.getMenu().findItem(R.id.action_viewer_zoom_100)
                 .setVisible(resetVisible);
-        LinearLayoutManager wordLayoutManager = wordContent == null
-                ? null
-                : (LinearLayoutManager) wordContent.getLayoutManager();
         boolean wordTopVisible = wordContent != null
                 && wordContent.getVisibility() == View.VISIBLE
-                && wordLayoutManager != null
-                && wordLayoutManager.findFirstVisibleItemPosition() > 0;
+                && wordWebViewController != null
+                && !wordWebViewController.isAtTop();
         popupMenu.getMenu().findItem(R.id.action_viewer_word_top)
                 .setVisible(wordTopVisible);
     }
@@ -1220,8 +1222,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         xlsxWorkbook = null;
         xlsxCanvasModels = Collections.emptyList();
         wordDocument = null;
+        wordHtml = null;
+        wordPageCount = 0;
         if (wordViewModel != null) wordViewModel.clearDocument();
-        closeWordAdapter();
+        if (wordWebViewController != null) wordWebViewController.clear();
         if (spreadsheetCanvasView != null) spreadsheetCanvasView.clear();
         if (currentDocument != null && !cacheWasShared) {
             temporaryDocumentStore.delete(currentDocument.getCachedFile());
@@ -1233,8 +1237,9 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         restoredPage = 0;
         restoredSheet = 0;
         selectedSheet = 0;
-        restoredWordPosition = 0;
-        restoredWordOffset = 0;
+        restoredWordScrollX = 0;
+        restoredWordScrollY = 0;
+        restoredWordScale = 0f;
         spreadsheetStateStore.clear();
         shareButton.setEnabled(false);
         generations.incrementAndGet();
@@ -1252,24 +1257,15 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         imageLoader = null;
     }
 
-    private void captureWordPosition() {
-        if (wordContent == null || wordContent.getVisibility() != View.VISIBLE) return;
-        LinearLayoutManager layoutManager =
-                (LinearLayoutManager) wordContent.getLayoutManager();
-        if (layoutManager == null) return;
-        int position = layoutManager.findFirstVisibleItemPosition();
-        if (position < 0) return;
-        View first = layoutManager.findViewByPosition(position);
-        restoredWordPosition = position;
-        restoredWordOffset = first == null
-                ? 0
-                : first.getTop() - wordContent.getPaddingTop();
-    }
-
-    private void closeWordAdapter() {
-        if (wordContent != null) wordContent.setAdapter(null);
-        if (wordAdapter != null) wordAdapter.close();
-        wordAdapter = null;
+    private void captureWordState() {
+        if (wordContent == null || wordContent.getVisibility() != View.VISIBLE
+                || wordWebViewController == null) {
+            return;
+        }
+        DocxWebViewController.State state = wordWebViewController.captureState();
+        restoredWordScrollX = state.getScrollX();
+        restoredWordScrollY = state.getScrollY();
+        restoredWordScale = state.getScale();
     }
 
     private void recycle(Bitmap bitmap) {
@@ -1282,10 +1278,13 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         private final XlsxWorkbook xlsxWorkbook;
         private final List<SpreadsheetCanvasModel> xlsxCanvasModels;
         private final WordDocumentModel wordDocument;
+        private final String wordHtml;
+        private final int wordPageCount;
         private final boolean cacheWasShared;
         private final SpreadsheetStateStore spreadsheetStateStore;
-        private final int wordPosition;
-        private final int wordOffset;
+        private final int wordScrollX;
+        private final int wordScrollY;
+        private final float wordScale;
 
         private RetainedState(
                 IncomingDocument document,
@@ -1293,20 +1292,26 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 XlsxWorkbook xlsxWorkbook,
                 List<SpreadsheetCanvasModel> xlsxCanvasModels,
                 WordDocumentModel wordDocument,
+                String wordHtml,
+                int wordPageCount,
                 boolean cacheWasShared,
                 SpreadsheetStateStore spreadsheetStateStore,
-                int wordPosition,
-                int wordOffset
+                int wordScrollX,
+                int wordScrollY,
+                float wordScale
         ) {
             this.document = document;
             this.imageBitmap = imageBitmap;
             this.xlsxWorkbook = xlsxWorkbook;
             this.xlsxCanvasModels = xlsxCanvasModels;
             this.wordDocument = wordDocument;
+            this.wordHtml = wordHtml;
+            this.wordPageCount = wordPageCount;
             this.cacheWasShared = cacheWasShared;
             this.spreadsheetStateStore = spreadsheetStateStore;
-            this.wordPosition = wordPosition;
-            this.wordOffset = wordOffset;
+            this.wordScrollX = wordScrollX;
+            this.wordScrollY = wordScrollY;
+            this.wordScale = wordScale;
         }
     }
 }

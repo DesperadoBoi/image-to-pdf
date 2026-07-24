@@ -67,12 +67,15 @@ DOCX обрабатывается отдельным `DocxPackageInspector` и `
 копии. Inspector проверяет ZIP central/local headers, `[Content_Types].xml`, package
 relationships и выбранный relationship основной WordprocessingML part. Потоковый
 `XmlPullParser` строит контролируемую read-only `WordDocumentModel` из paragraph, table,
-image и page-break blocks; DOM и WebView не используются. `WordBlockAdapter` виртуализирует
-только блоки документа, run formatting переносится в один `Spannable` на paragraph,
-`WordTableView` рисует видимые строки таблицы на Canvas без View на каждую ячейку, а
-`WordImageLoader` лениво декодирует raster media с downsampling и bounded cache.
-`WordViewerViewModel` сохраняет выполняющийся parse и готовую модель при rotation, а позиция
-RecyclerView сохраняется как block index и pixel offset. Старый DOC не регистрируется:
+image и page-break blocks; DOM не используется. Presentation layer через
+`DocxHtmlRenderer` преобразует только эту доверенную модель в полностью экранированные
+локальные HTML/CSS и приблизительно разбивает поток на белые page boxes с размерами и полями
+section. `DocxLocalImageStore` допускает только проверенные raster data URI.
+`DocxWebViewController` использует системный WebView только как локальный layout engine:
+JavaScript, file/content access, storage, mixed content и network loads выключены, а любая
+навигация перехватывается. Только явная HTTPS-ссылка передаётся внешнему `ACTION_VIEW`.
+`WordViewerViewModel` сохраняет выполняющийся parse, готовую модель и HTML при rotation;
+Activity отдельно восстанавливает scroll X/Y и page zoom. Старый DOC не регистрируется:
 результат отдельного compatibility spike описан в
 [docs/WORD_DOC_COMPATIBILITY_SPIKE.md](docs/WORD_DOC_COMPATIBILITY_SPIKE.md).
 

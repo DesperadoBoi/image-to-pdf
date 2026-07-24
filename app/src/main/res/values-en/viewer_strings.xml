@@ -20,13 +20,10 @@
     <string name="viewer_error_xls_not_supported">The old XLS format is not supported yet. Save the file as XLSX.</string>
     <string name="viewer_error_xlsx_corrupted">The XLSX workbook is damaged, encrypted, or uses an unsupported structure</string>
     <string name="viewer_error_xlsx_too_large">The XLSX workbook exceeds safe local viewing limits</string>
-    <string name="viewer_word_page_break">Page break</string>
     <string name="viewer_word_image_content_description">Image from the Word document</string>
     <string name="viewer_word_vector_placeholder">This vector image cannot be rendered safely on this device</string>
     <string name="viewer_word_image_failed">The document image could not be displayed</string>
-    <string name="viewer_word_table_generic_content_description">Word document table. Scrollable</string>
-    <string name="viewer_word_table_content_description">Word table: %1$d rows, %2$d columns. Scrollable</string>
-    <string name="viewer_word_content_description">Word document in mobile reading view</string>
+    <string name="viewer_word_content_description">Word document in page view</string>
     <string name="viewer_word_go_to_top">Go to the start of the document</string>
     <string name="viewer_info_contents_label">Contents</string>
     <string name="viewer_word_info_counts">Paragraphs: %1$d · tables: %2$d · images: %3$d</string>

@@ -177,16 +177,4 @@
     <dimen name="viewer_zoom_indicator_horizontal_padding">12dp</dimen>
     <dimen name="viewer_zoom_indicator_vertical_padding">6dp</dimen>
     <dimen name="viewer_zoom_indicator_elevation">4dp</dimen>
-    <dimen name="viewer_word_block_margin">8dp</dimen>
-    <dimen name="viewer_word_block_spacing">6dp</dimen>
-    <dimen name="viewer_word_paragraph_horizontal_padding">4dp</dimen>
-    <dimen name="viewer_word_table_outer_padding">2dp</dimen>
-    <dimen name="viewer_word_table_min_height">48dp</dimen>
-    <dimen name="viewer_word_table_max_height">480dp</dimen>
-    <dimen name="viewer_word_image_min_height">120dp</dimen>
-    <dimen name="viewer_word_image_max_height">480dp</dimen>
-    <dimen name="viewer_word_image_placeholder_height">120dp</dimen>
-    <dimen name="viewer_word_page_break_padding">12dp</dimen>
-    <dimen name="viewer_word_canvas_padding">8dp</dimen>
-    <dimen name="viewer_word_canvas_bottom_padding">32dp</dimen>
 </resources>
