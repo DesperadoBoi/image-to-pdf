@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxParseException;
+import com.desperadoboi.imagetopdf.document.word.WordParseException;
 
 public final class IncomingDocumentLoader {
     private static final int SIGNATURE_BYTES = 8 * 1024;
@@ -83,6 +84,32 @@ public final class IncomingDocumentLoader {
                             ? DocumentLoadException.Reason.TOO_LARGE
                             : DocumentLoadException.Reason.CORRUPTED,
                     "Unable to inspect XLSX package",
+                    exception
+            );
+        } catch (WordParseException exception) {
+            temporaryDocumentStore.delete(cachedFile);
+            DocumentLoadException.Reason reason;
+            switch (exception.getReason()) {
+                case TOO_LARGE:
+                    reason = DocumentLoadException.Reason.TOO_LARGE;
+                    break;
+                case ENCRYPTED:
+                    reason = DocumentLoadException.Reason.ENCRYPTED;
+                    break;
+                case UNSUPPORTED:
+                    reason = DocumentLoadException.Reason.UNSUPPORTED;
+                    break;
+                case CANCELLED:
+                    reason = DocumentLoadException.Reason.CANCELLED;
+                    break;
+                case CORRUPTED:
+                default:
+                    reason = DocumentLoadException.Reason.CORRUPTED;
+                    break;
+            }
+            throw new DocumentLoadException(
+                    reason,
+                    "Unable to inspect DOCX package",
                     exception
             );
         } catch (IOException | RuntimeException exception) {

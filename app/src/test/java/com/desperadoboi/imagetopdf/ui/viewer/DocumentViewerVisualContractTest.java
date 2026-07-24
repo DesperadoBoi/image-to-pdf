@@ -40,10 +40,131 @@ public final class DocumentViewerVisualContractTest {
                 byId(document, "@+id/content_viewer_text").getAttributeNS(ANDROID, "background")
         );
         assertEquals(
+                "@color/viewer_preview_background",
+                byId(document, "@+id/content_viewer_word").getAttributeNS(ANDROID, "background")
+        );
+        assertEquals(
                 "@color/viewer_document_surface",
                 byId(document, "@+id/content_viewer_spreadsheet")
                         .getAttributeNS(ANDROID, "background")
         );
+    }
+
+    @Test
+    public void docxUsesVirtualizedNativeBlocksAndWhiteDocumentSurfaces()
+            throws Exception {
+        Path root = repositoryRoot();
+        Document viewer = parse(root.resolve(
+                "app/src/main/res/layout/activity_document_viewer.xml"
+        ));
+        Element word = byId(viewer, "@+id/content_viewer_word");
+        assertEquals(
+                "androidx.recyclerview.widget.RecyclerView",
+                word.getTagName()
+        );
+        assertEquals(0, viewer.getElementsByTagName("WebView").getLength());
+
+        Document paragraph = parse(root.resolve(
+                "app/src/main/res/layout/item_word_paragraph.xml"
+        ));
+        assertEquals(
+                "true",
+                paragraph.getDocumentElement()
+                        .getAttributeNS(ANDROID, "textIsSelectable")
+        );
+        assertEquals(
+                "@color/viewer_document_surface",
+                paragraph.getDocumentElement().getAttributeNS(ANDROID, "background")
+        );
+        assertEquals(
+                "false",
+                paragraph.getDocumentElement()
+                        .getAttributeNS(ANDROID, "includeFontPadding")
+        );
+        assertEquals(
+                "",
+                paragraph.getDocumentElement().getAttributeNS(ANDROID, "minLines")
+        );
+
+        Document table = parse(root.resolve(
+                "app/src/main/res/layout/item_word_table.xml"
+        ));
+        assertNotNull(byId(table, "@+id/word_table_view"));
+        assertEquals(0, table.getElementsByTagName("TableLayout").getLength());
+        assertEquals(0, table.getElementsByTagName("TextView").getLength());
+    }
+
+    @Test
+    public void paragraphRendererMapsRunsToSpansWithoutOneViewPerRun()
+            throws Exception {
+        Path root = repositoryRoot();
+        String factory = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "WordSpannableFactory.java"
+        ));
+        String adapter = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "WordBlockAdapter.java"
+        ));
+        String table = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "WordTableView.java"
+        ));
+        String activity = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "DocumentViewerActivity.java"
+        ));
+        String images = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "WordImageSizeCalculator.java"
+        ));
+
+        assertTrue(factory.contains("new StyleSpan("));
+        assertTrue(factory.contains("new UnderlineSpan()"));
+        assertTrue(factory.contains("new StrikethroughSpan()"));
+        assertTrue(factory.contains("new ForegroundColorSpan("));
+        assertTrue(factory.contains("new BackgroundColorSpan("));
+        assertTrue(factory.contains("new AbsoluteSizeSpan("));
+        assertTrue(factory.contains("new AbsoluteSizeSpan(sizePixels, false)"));
+        assertFalse(factory.contains("RelativeSizeSpan"));
+        assertTrue(factory.contains("new SubscriptSpan()"));
+        assertTrue(factory.contains("new SuperscriptSpan()"));
+        assertTrue(adapter.contains("RecyclerView.Adapter<RecyclerView.ViewHolder>"));
+        assertFalse(adapter.contains("for (WordRun"));
+        assertFalse(adapter.contains("setTextSize("));
+        assertFalse(adapter.contains("getTextSize()"));
+        assertFalse(activity.contains("wordContent.addItemDecoration"));
+        assertTrue(table.contains("WordSpannableFactory.createForTable("));
+        assertTrue(table.contains("measurementConverter"));
+        assertFalse(table.contains("viewer_word_table_text_size"));
+        assertTrue(images.contains("converter.emuToPixels("));
+    }
+
+    @Test
+    public void docxParsingSurvivesRotationAndImagesStayLazyAndBounded()
+            throws Exception {
+        Path root = repositoryRoot();
+        String activity = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "DocumentViewerActivity.java"
+        ));
+        String viewModel = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "WordViewerViewModel.java"
+        ));
+        String images = Files.readString(root.resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/document/word/"
+                        + "WordImageLoader.java"
+        ));
+
+        assertTrue(activity.contains("new ViewModelProvider(this)"));
+        assertTrue(viewModel.contains("extends ViewModel"));
+        assertTrue(viewModel.contains("Executors.newSingleThreadExecutor()"));
+        assertTrue(viewModel.contains("new DocxDocumentParser().parse("));
+        assertTrue(images.contains("MAX_CACHE_BYTES"));
+        assertTrue(images.contains("inSampleSize"));
+        assertTrue(images.contains("decodeExecutor"));
+        assertTrue(images.contains("MAX_PIXELS"));
     }
 
     @Test

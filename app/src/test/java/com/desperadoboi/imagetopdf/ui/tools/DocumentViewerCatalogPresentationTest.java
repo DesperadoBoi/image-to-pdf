@@ -41,17 +41,17 @@ public final class DocumentViewerCatalogPresentationTest {
 
         assertEquals("Просмотр файлов", ruTitle);
         assertEquals("File viewer", enTitle);
-        assertEquals("PDF, XLSX, CSV и изображения", ru);
-        assertEquals("PDF, XLSX, CSV, and images", en);
+        assertEquals("PDF, DOCX, XLSX и изображения", ru);
+        assertEquals("PDFs, DOCX, XLSX, and images", en);
         assertFalse(ru.toLowerCase(Locale.ROOT).contains("excel"));
         assertFalse(en.toLowerCase(Locale.ROOT).contains("excel"));
         assertContainsAll(
                 ru.toLowerCase(Locale.ROOT),
-                "pdf", "xlsx", "csv", "изображен"
+                "pdf", "docx", "xlsx", "изображен"
         );
         assertContainsAll(
                 en.toLowerCase(Locale.ROOT),
-                "pdf", "xlsx", "csv", "image"
+                "pdf", "docx", "xlsx", "image"
         );
         assertFalse(ru.toLowerCase(Locale.ROOT).contains("таблиц"));
         assertFalse(en.toLowerCase(Locale.ROOT).contains("table"));

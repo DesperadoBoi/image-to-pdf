@@ -47,3 +47,8 @@ Preview и ImageCapture при этом сохраняются.
 использует `ACTION_OPEN_DOCUMENT` и пытается сохранить read permission только для явно
 выбранного файла. Временные seekable copies находятся в приватном app cache и выдаются при
 Share через существующий non-exported FileProvider с точечным read grant.
+
+Поддержка DOCX использует ту же временную копию и platform `java.util.zip`/`XmlPullParser`.
+Новые permissions и production dependencies не добавлены. External relationships документа
+не загружаются; переход по сохранённой `https`-ссылке возможен только после явного нажатия и
+через внешнее приложение. Собственный `INTERNET` permission viewer не запрашивает.

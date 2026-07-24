@@ -4,6 +4,9 @@
         android:id="@+id/action_viewer_zoom_100"
         android:title="@string/viewer_reset_zoom_100" />
     <item
+        android:id="@+id/action_viewer_word_top"
+        android:title="@string/viewer_word_go_to_top" />
+    <item
         android:id="@+id/action_viewer_file_info"
         android:title="@string/viewer_file_info_action" />
 </menu>

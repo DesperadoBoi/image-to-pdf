@@ -7,6 +7,8 @@ public class DocumentLoadException extends IOException {
         PERMISSION_LOST,
         TOO_LARGE,
         CORRUPTED,
+        ENCRYPTED,
+        UNSUPPORTED,
         CANCELLED,
         UNREADABLE
     }

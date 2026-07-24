@@ -195,13 +195,18 @@ ImageToPDF локально читает выбранные изображени
 | Редактор и PDF | Rotation, crop, perspective metadata, bitmap и создаваемый PDF | Нет |
 | Save | Запись PDF в выбранный пользователем document provider | Только явное действие пользователя; собственного upload нет |
 | Open / Share | Временный read grant выбранному приложению | Только явное действие пользователя |
-| Document viewer | Выбранный или переданный системой Uri и bounded временная копия в app cache | Нет; Share только по явному действию пользователя |
+| Document viewer | Выбранный или переданный системой PDF/DOCX/XLSX/text/image Uri и bounded временная копия в app cache | Нет; Share и внешний переход по `https`-ссылке только по явному действию пользователя |
 
 Read-only viewer принимает user-provided `content://` через системный Open with или
 `ACTION_OPEN_DOCUMENT`. Тип проверяется локально, parser/render выполняется на устройстве,
 а seekable temporary copy остаётся в приватном cache и удаляется lifecycle/age cleanup.
 Приложение не отправляет просмотренный файл разработчику; FileProvider read grant выдаётся
 другому приложению только после нажатия Share.
+
+DOCX разбирается локально. External templates/images/relationships не загружаются, macros,
+VBA, ActiveX, OLE и поля-команды не выполняются. Сохранённая внешняя `https`-гиперссылка
+передаётся браузеру только после явного нажатия; ImageToPDF не добавляет для viewer
+`INTERNET` permission.
 
 ## Release dependency audit
 

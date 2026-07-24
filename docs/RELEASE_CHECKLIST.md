@@ -78,13 +78,17 @@ unsigned `assembleRelease` остаются доступны; production `bundle
 - [ ] Result preview и metadata
 - [ ] Share
 - [ ] Open и отсутствие PDF viewer
-- [ ] Внешнее Open with для PDF, XLSX, TXT, CSV/TSV и поддерживаемых изображений
+- [ ] Внешнее Open with для PDF, DOCX, XLSX, TXT, CSV/TSV и поддерживаемых изображений
 - [ ] Внутренний «Просмотр документов» через системный ACTION_OPEN_DOCUMENT
 - [ ] Viewer: permission loss, rotation, onNewIntent, Share и cache cleanup
 - [ ] Viewer: empty/corrupted/encrypted/large PDF и page zoom/swipe
 - [ ] Viewer: multiline quoted CSV, UTF-8 BOM, legacy TXT и EXIF image
 - [ ] Viewer: XLSX sheets, dates, cached formulas, merged cells и partial preview limits
-- [ ] Viewer не предлагается для XLS, XLSM/XLSB, DOC/DOCX, archives, octet-stream и wildcard
+- [ ] Viewer: DOCX paragraphs/styles/lists, большие и merged tables, lazy images и page breaks
+- [ ] Viewer: DOCX rotation без повторного parsing, возврат позиции, Share и File information
+- [ ] Viewer: damaged/encrypted/oversized DOCX, fake ZIP, macro/embedded/external-resource reject
+- [ ] Viewer: `https` hyperlink открывается только по нажатию; external image/template не загружается
+- [ ] Viewer не предлагается для XLS, XLSM/XLSB, DOC, DOCM/DOTX/DOTM/RTF/ODT, archives, octet-stream и wildcard
 - [ ] Последовательное создание нескольких PDF
 - [ ] Process recreation на gallery/editor/scan/result flow
 - [ ] Светлая и тёмная тема
