@@ -2,6 +2,7 @@ package com.desperadoboi.imagetopdf.ui.tools;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -94,6 +95,60 @@ public class ToolCatalogTest {
     }
 
     @Test
+    public void allToolsCatalogOrderRemainsStable() {
+        assertToolOrder(
+                ToolCatalog.getByCategories(ToolCategory.CREATE, ToolCategory.CONVERT),
+                ToolId.IMAGE_TO_PDF,
+                ToolId.DOCX_TO_PDF,
+                ToolId.PPT_TO_PDF,
+                ToolId.PDF_TO_JPG,
+                ToolId.PDF_TO_WORD,
+                ToolId.PDF_TO_PPT
+        );
+        assertToolOrder(
+                ToolCatalog.getByCategories(ToolCategory.POPULAR),
+                ToolId.SMART_SCAN,
+                ToolId.ID_SCAN,
+                ToolId.IMPORT_PDF,
+                ToolId.PRINT_PDF,
+                ToolId.DOCUMENT_VIEWER
+        );
+        assertToolOrder(
+                ToolCatalog.getByCategories(ToolCategory.EDIT),
+                ToolId.MERGE_PDF,
+                ToolId.COMPRESS_PDF,
+                ToolId.DRAW_ON_PDF,
+                ToolId.ADD_TEXT,
+                ToolId.SIGN_PDF
+        );
+        assertToolOrder(
+                ToolCatalog.getByCategories(ToolCategory.SECURITY),
+                ToolId.LOCK_PDF,
+                ToolId.UNLOCK_PDF
+        );
+    }
+
+    @Test
+    public void allToolsOnlyImplementedActionsAreAvailable() {
+        Set<ToolId> available = EnumSet.of(
+                ToolId.IMAGE_TO_PDF,
+                ToolId.SMART_SCAN,
+                ToolId.DOCUMENT_VIEWER
+        );
+        for (ToolDefinition definition : ToolCatalog.getTools()) {
+            if (definition.getId() == ToolId.CAMERA
+                    || definition.getId() == ToolId.MORE) {
+                continue;
+            }
+            assertEquals(
+                    definition.getId().name(),
+                    available.contains(definition.getId()),
+                    definition.isAvailable()
+            );
+        }
+    }
+
+    @Test
     public void everyDefinitionHasResourcesAndNoNullValues() {
         for (ToolDefinition definition : ToolCatalog.getTools()) {
             assertNotNull(definition);
@@ -147,5 +202,13 @@ public class ToolCatalogTest {
             assertTrue(actualIds.contains(expectedId));
         }
         assertFalse(actualIds.isEmpty());
+    }
+
+    private void assertToolOrder(List<ToolDefinition> definitions, ToolId... expectedIds) {
+        assertEquals(Arrays.asList(expectedIds), definitions.stream()
+                .filter(definition -> definition.getId() != ToolId.CAMERA)
+                .filter(definition -> definition.getId() != ToolId.MORE)
+                .map(ToolDefinition::getId)
+                .collect(java.util.stream.Collectors.toList()));
     }
 }

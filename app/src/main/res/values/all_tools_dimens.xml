@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="catalog_tool_grid_half_gap">4dp</dimen>
+    <dimen name="catalog_tool_item_vertical_padding">6dp</dimen>
+    <dimen name="catalog_tool_title_spacing">6dp</dimen>
+    <dimen name="catalog_tool_badge_horizontal_padding">4dp</dimen>
+    <dimen name="catalog_tool_badge_vertical_padding">1dp</dimen>
+    <dimen name="catalog_tool_badge_corner_radius">6dp</dimen>
+    <dimen name="catalog_tool_badge_text_size">10sp</dimen>
+    <dimen name="catalog_section_top_spacing">28dp</dimen>
+    <dimen name="catalog_section_bottom_spacing">8dp</dimen>
+    <dimen name="catalog_toolbar_divider_height">1dp</dimen>
+</resources>

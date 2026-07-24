@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="all_tools_title">All tools</string>
+    <string name="tool_coming_soon">Coming soon</string>
+    <string name="catalog_tool_coming_soon_content_description">%1$s. Coming soon</string>
+    <string name="tool_image_to_pdf">Image to PDF</string>
+    <string name="tool_smart_scan">Scan document</string>
+    <string name="tool_smart_scan_description">Photograph pages and create a PDF</string>
+    <string name="tool_title_with_description">%1$s. %2$s</string>
+    <string name="tool_import_pdf">Import PDF</string>
+    <string name="tool_compress_pdf">Compress PDF</string>
+    <string name="tool_pdf_to_jpg">PDF to JPG</string>
+    <string name="tool_merge_pdf">Merge PDF</string>
+    <string name="tool_docx_to_pdf">DOCX to PDF</string>
+    <string name="tool_ppt_to_pdf">PPT to PDF</string>
+    <string name="tool_pdf_to_word">PDF to Word</string>
+    <string name="tool_pdf_to_ppt">PDF to PPT</string>
+    <string name="tool_id_scan">ID scan</string>
+    <string name="tool_print_pdf">Print PDF</string>
+    <string name="tool_draw_on_pdf">Draw on PDF</string>
+    <string name="tool_add_text">Add text</string>
+    <string name="tool_sign_pdf">Signature</string>
+    <string name="tool_lock_pdf">Lock PDF</string>
+    <string name="tool_unlock_pdf">Unlock PDF</string>
+    <string name="tool_category_create_convert">Create and convert</string>
+    <string name="tool_category_popular">Popular</string>
+    <string name="tool_category_edit">Edit PDF</string>
+    <string name="tool_category_security">Security</string>
+    <string name="all_tools_content_description">PDF tools catalog</string>
+    <string name="action_all_tools_back_content_description">Return to the home screen</string>
+</resources>

@@ -22,7 +22,7 @@ public final class AllToolsAdapter
     public static final int VIEW_TYPE_TOOL = 1;
 
     private static final float AVAILABLE_ALPHA = 1f;
-    private static final float COMING_SOON_ALPHA = 0.62f;
+    private static final float DISABLED_ICON_ALPHA = 0.58f;
 
     private final OnToolSelectedListener listener;
 
@@ -79,19 +79,12 @@ public final class AllToolsAdapter
         CharSequence title = holder.itemView.getContext().getText(definition.getTitleResId());
         holder.icon.setImageResource(definition.getIconResId());
         holder.title.setText(title);
-        int descriptionResId = definition.getId() == ToolId.DOCUMENT_VIEWER
-                ? R.string.tool_document_viewer_description
-                : definition.getId() == ToolId.SMART_SCAN
-                        ? R.string.tool_smart_scan_description
-                        : 0;
-        holder.description.setVisibility(descriptionResId == 0 ? View.GONE : View.VISIBLE);
-        if (descriptionResId != 0) {
-            holder.description.setText(descriptionResId);
-        }
+        int descriptionResId = getDescriptionResId(definition.getId());
         holder.badge.setVisibility(available ? View.GONE : View.VISIBLE);
-        holder.icon.setAlpha(available ? AVAILABLE_ALPHA : COMING_SOON_ALPHA);
-        holder.title.setAlpha(available ? AVAILABLE_ALPHA : COMING_SOON_ALPHA);
-        holder.description.setAlpha(available ? AVAILABLE_ALPHA : COMING_SOON_ALPHA);
+        holder.icon.setAlpha(available ? AVAILABLE_ALPHA : DISABLED_ICON_ALPHA);
+        holder.title.setEnabled(available);
+        holder.title.setAlpha(AVAILABLE_ALPHA);
+        holder.badge.setAlpha(AVAILABLE_ALPHA);
         holder.itemView.setEnabled(available);
         holder.itemView.setClickable(available);
         CharSequence availableDescription = descriptionResId != 0
@@ -104,12 +97,22 @@ public final class AllToolsAdapter
         holder.itemView.setContentDescription(available
                 ? availableDescription
                 : holder.itemView.getContext().getString(
-                        R.string.tool_coming_soon_content_description,
+                        R.string.catalog_tool_coming_soon_content_description,
                         title
                 ));
         holder.itemView.setOnClickListener(available
                 ? view -> listener.onToolSelected(definition.getId())
                 : null);
+    }
+
+    private static int getDescriptionResId(ToolId toolId) {
+        if (toolId == ToolId.DOCUMENT_VIEWER) {
+            return R.string.tool_document_viewer_description;
+        }
+        if (toolId == ToolId.SMART_SCAN) {
+            return R.string.tool_smart_scan_description;
+        }
+        return 0;
     }
 
     public interface OnToolSelectedListener {
@@ -169,14 +172,12 @@ public final class AllToolsAdapter
         private final AppCompatImageView icon;
         private final TextView title;
         private final TextView badge;
-        private final TextView description;
 
         ToolViewHolder(@NonNull View itemView) {
             super(itemView);
             icon = itemView.findViewById(R.id.image_tool_icon);
             title = itemView.findViewById(R.id.text_tool_title);
             badge = itemView.findViewById(R.id.text_tool_badge);
-            description = itemView.findViewById(R.id.text_tool_description);
         }
     }
 
