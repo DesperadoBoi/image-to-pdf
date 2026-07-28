@@ -43,6 +43,7 @@
     <string name="action_add_page_content_description">Добавить изображения</string>
     <string name="action_cancel">Отмена</string>
     <string name="action_create_pdf">Создать PDF</string>
+    <string name="editor_selected_page_counter">%1$d из %2$d</string>
     <string name="action_cancel_pdf_generation">Отменить</string>
     <string name="action_open_pdf">Открыть PDF</string>
     <string name="action_share_pdf">Поделиться</string>
@@ -295,6 +296,19 @@
         <item quantity="few">Выбрано %1$d изображения</item>
         <item quantity="many">Выбрано %1$d изображений</item>
         <item quantity="other">Выбрано %1$d изображения</item>
+    </plurals>
+
+    <plurals name="editor_page_count">
+        <item quantity="one">%1$d страница</item>
+        <item quantity="few">%1$d страницы</item>
+        <item quantity="many">%1$d страниц</item>
+        <item quantity="other">%1$d страницы</item>
+    </plurals>
+    <plurals name="create_pdf_page_count">
+        <item quantity="one">Создать PDF · %1$d страница</item>
+        <item quantity="few">Создать PDF · %1$d страницы</item>
+        <item quantity="many">Создать PDF · %1$d страниц</item>
+        <item quantity="other">Создать PDF · %1$d страницы</item>
     </plurals>
 
     <string name="tool_document_viewer">Просмотр файлов</string>

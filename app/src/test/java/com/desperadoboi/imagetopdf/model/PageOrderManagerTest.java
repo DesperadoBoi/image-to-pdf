@@ -35,6 +35,17 @@ public class PageOrderManagerTest {
     }
 
     @Test
+    public void movingSelectedPageKeepsItsIdAndUpdatesItsPosition() {
+        List<Long> pages = new ArrayList<>(Arrays.asList(10L, 20L, 30L, 40L));
+        long selectedPageId = 20L;
+
+        assertTrue(PageOrderManager.move(pages, 1, 3));
+
+        assertEquals(20L, selectedPageId);
+        assertEquals(3, pages.indexOf(selectedPageId));
+    }
+
+    @Test
     public void movesPageOnePositionUp() {
         List<String> pages = new ArrayList<>(Arrays.asList("A", "B", "C"));
 

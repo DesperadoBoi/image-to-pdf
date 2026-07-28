@@ -86,6 +86,7 @@
     <dimen name="page_edit_strip_number_spacing">2dp</dimen>
     <dimen name="page_edit_strip_corner_radius">8dp</dimen>
     <dimen name="page_edit_strip_selected_stroke">2dp</dimen>
+    <dimen name="page_edit_strip_item_height">64dp</dimen>
     <dimen name="page_edit_tool_spacing">4dp</dimen>
     <dimen name="page_edit_tool_row_spacing">4dp</dimen>
     <dimen name="page_edit_done_spacing">8dp</dimen>

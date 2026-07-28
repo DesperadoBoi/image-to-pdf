@@ -1,12 +1,14 @@
 package com.desperadoboi.imagetopdf.ui.editor;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -25,6 +27,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.image.ThumbnailLoader;
+import com.desperadoboi.imagetopdf.image.PreviewImageLoader;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.ImageImportMode;
 import com.desperadoboi.imagetopdf.model.PageItem;
@@ -52,29 +55,36 @@ public final class EditorFragment extends Fragment {
     public static final String TAG = "EditorFragment";
 
     private static final String PDF_MIME_TYPE = "application/pdf";
-    private static final float DRAG_ACTIVE_ALPHA = 0.94f;
-    private static final float DRAG_ACTIVE_SCALE = 1.015f;
+    private static final String STATE_SELECTED_PAGE_ID = "selected_page_id";
 
     private DocumentSessionViewModel sessionViewModel;
     private NavigationCallback navigationCallback;
     private ActivityResultLauncher<String> createDocumentLauncher;
 
     private TextView selectedImagesTextView;
-    private TextView reorderHintTextView;
     private TextView operationStatusTextView;
     private ProgressBar progressBar;
     private TextView generationProgressTextView;
     private Button cancelGenerationButton;
     private RecyclerView pagesRecyclerView;
+    private ImageView selectedPageImageView;
+    private TextView selectedPageCounterView;
+    private ProgressBar previewProgressBar;
+    private ImageButton rotateSelectedPageButton;
+    private ImageButton deleteSelectedPageButton;
     private ImageButton backButton;
     private MaterialButton addImagesButton;
     private Button createPdfButton;
 
     private ThumbnailLoader thumbnailLoader;
+    private PreviewImageLoader previewImageLoader;
     private CapturedImageStorage capturedImageStorage;
-    private PageAdapter pageAdapter;
+    private EditorPageStripAdapter pageAdapter;
     private ItemTouchHelper pageTouchHelper;
     private DocumentSessionViewModel.PdfGenerationStateObserver pdfGenerationStateObserver;
+    private long selectedPageId = SelectedPageResolver.NO_PAGE_ID;
+    private String activePreviewKey;
+    private Bitmap currentPreviewBitmap;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -95,6 +105,8 @@ public final class EditorFragment extends Fragment {
                 requireContext().getApplicationContext().getContentResolver(),
                 ContextCompat.getMainExecutor(requireContext())
         );
+        previewImageLoader = new PreviewImageLoader(requireContext().getApplicationContext().getContentResolver(), ContextCompat.getMainExecutor(requireContext()));
+        if (savedInstanceState != null) selectedPageId = savedInstanceState.getLong(STATE_SELECTED_PAGE_ID, SelectedPageResolver.NO_PAGE_ID);
         capturedImageStorage = new CapturedImageStorage(requireContext());
         createDocumentLauncher = registerForActivityResult(
                 new ActivityResultContracts.CreateDocument(PDF_MIME_TYPE),
@@ -134,6 +146,8 @@ public final class EditorFragment extends Fragment {
             sessionViewModel.removePdfGenerationStateObserver(pdfGenerationStateObserver);
             pdfGenerationStateObserver = null;
         }
+        activePreviewKey = null;
+        releaseCurrentPreviewBitmap();
         super.onDestroyView();
     }
 
@@ -142,6 +156,7 @@ public final class EditorFragment extends Fragment {
         if (thumbnailLoader != null) {
             thumbnailLoader.shutdown();
         }
+        if (previewImageLoader != null) previewImageLoader.shutdown();
         super.onDestroy();
     }
 
@@ -153,61 +168,46 @@ public final class EditorFragment extends Fragment {
 
     private void bindViews(View view) {
         selectedImagesTextView = view.findViewById(R.id.text_selection_status);
-        reorderHintTextView = view.findViewById(R.id.text_reorder_hint);
         operationStatusTextView = view.findViewById(R.id.text_operation_status);
         progressBar = view.findViewById(R.id.progress_generation);
         generationProgressTextView = view.findViewById(R.id.text_generation_progress);
         cancelGenerationButton = view.findViewById(R.id.button_cancel_generation);
         pagesRecyclerView = view.findViewById(R.id.recycler_pages);
+        selectedPageImageView = view.findViewById(R.id.image_selected_page);
+        selectedPageCounterView = view.findViewById(R.id.text_selected_page_counter);
+        previewProgressBar = view.findViewById(R.id.progress_editor_preview);
+        rotateSelectedPageButton = view.findViewById(R.id.button_rotate_selected_page);
+        deleteSelectedPageButton = view.findViewById(R.id.button_delete_selected_page);
         backButton = view.findViewById(R.id.button_back);
         addImagesButton = view.findViewById(R.id.button_add_images);
         createPdfButton = view.findViewById(R.id.button_create_pdf);
     }
 
     private void configurePageList() {
-        pageAdapter = new PageAdapter(
+        pageAdapter = new EditorPageStripAdapter(
                 sessionViewModel.getPages(),
                 thumbnailLoader,
-                new PageAdapter.PageActionCallback() {
-                    @Override
-                    public void onRotate(int position) {
-                        rotatePage(position);
-                    }
-
-                    @Override
-                    public void onDelete(int position) {
-                        deletePage(position);
-                    }
-
-                    @Override
-                    public void onPreview(int position) {
-                        openPagePreview(position);
-                    }
-
-                    @Override
-                    public boolean onDragStart(RecyclerView.ViewHolder viewHolder) {
-                        return startPageDrag(viewHolder);
-                    }
-
-                    @Override
-                    public boolean onMoveUp(int position) {
-                        return movePage(position, position - 1);
-                    }
-
-                    @Override
-                    public boolean onMoveDown(int position) {
-                        return movePage(position, position + 1);
+                selectedPageId,
+                getResources().getBoolean(R.bool.editor_page_strip_show_add_item),
+                new EditorPageStripAdapter.Listener() {
+                    @Override public void onPageSelected(long pageId) { selectPage(pageId); }
+                    @Override public void onAddRequested() { openImagePicker(); }
+                    @Override public boolean onPageDragStart(RecyclerView.ViewHolder viewHolder) {
+                        if (!sessionViewModel.canEditPages()) return false;
+                        pageTouchHelper.startDrag(viewHolder);
+                        return true;
                     }
                 }
         );
-        pagesRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        boolean verticalStrip = getResources().getBoolean(R.bool.editor_page_strip_vertical);
+        pagesRecyclerView.setLayoutManager(new LinearLayoutManager(
+                requireContext(),
+                verticalStrip ? RecyclerView.VERTICAL : RecyclerView.HORIZONTAL,
+                false
+        ));
         pagesRecyclerView.setAdapter(pageAdapter);
-        pageTouchHelper = new ItemTouchHelper(new PageMoveCallback());
+        pageTouchHelper = new ItemTouchHelper(new PageMoveCallback(verticalStrip));
         pageTouchHelper.attachToRecyclerView(pagesRecyclerView);
-        int scrollPosition = sessionViewModel.consumePendingEditorScrollPosition();
-        if (scrollPosition >= 0 && scrollPosition < sessionViewModel.getPageCount()) {
-            pagesRecyclerView.scrollToPosition(scrollPosition);
-        }
     }
 
     private void configurePageEditResultListener() {
@@ -228,7 +228,11 @@ public final class EditorFragment extends Fragment {
         addImagesButton.setOnClickListener(v -> openImagePicker());
         createPdfButton.setOnClickListener(v -> showPdfExportSheet());
         cancelGenerationButton.setOnClickListener(v -> cancelPdfGeneration());
+        rotateSelectedPageButton.setOnClickListener(v -> rotateSelectedPage());
+        deleteSelectedPageButton.setOnClickListener(v -> deleteSelectedPage());
     }
+
+    @Override public void onSaveInstanceState(@NonNull Bundle outState) { outState.putLong(STATE_SELECTED_PAGE_ID, selectedPageId); super.onSaveInstanceState(outState); }
 
     private void openImagePicker() {
         if (!sessionViewModel.canEditPages()) {
@@ -352,72 +356,136 @@ public final class EditorFragment extends Fragment {
         if (position == PreviewPageNavigator.POSITION_NOT_FOUND) {
             return;
         }
-        pageAdapter.notifyItemChanged(position, PageAdapter.PAYLOAD_IMAGE_EDITS);
+        pageAdapter.notifyPageChanged(pageId);
+        if (selectedPageId == pageId) renderSelectedPage();
         updateUiState();
     }
 
-    private void rotatePage(int position) {
+    private void selectPage(long pageId) {
+        if (!sessionViewModel.canEditPages() || PreviewPageNavigator.findPositionById(sessionViewModel.getPages(), pageId) == PreviewPageNavigator.POSITION_NOT_FOUND) return;
+        selectedPageId = pageId;
+        pageAdapter.setSelectedPageId(pageId);
+        renderSelectedPage();
+    }
+
+    private void rotateSelectedPage() {
+        int position = PreviewPageNavigator.findPositionById(sessionViewModel.getPages(), selectedPageId);
         if (!sessionViewModel.canEditPages()
                 || position < 0
                 || position >= sessionViewModel.getPageCount()) {
             return;
         }
         sessionViewModel.rotatePage(position);
-        pageAdapter.notifyItemChanged(position, PageAdapter.PAYLOAD_IMAGE_EDITS);
+        pageAdapter.notifyPageChanged(selectedPageId);
+        renderSelectedPage();
         updateUiState();
     }
 
-    private void deletePage(int position) {
+    private void deleteSelectedPage() {
+        int position = PreviewPageNavigator.findPositionById(sessionViewModel.getPages(), selectedPageId);
         if (!sessionViewModel.canEditPages()
                 || position < 0
                 || position >= sessionViewModel.getPageCount()) {
             return;
         }
-        int oldPageCount = sessionViewModel.getPageCount();
         PageItem removedPage = sessionViewModel.deletePage(position);
-        pageAdapter.notifyItemRemoved(position);
         deleteCapturedFileIfNeeded(removedPage);
-        int changedPageCount = oldPageCount - position - 1;
-        if (changedPageCount > 0) {
-            pageAdapter.notifyItemRangeChanged(
-                    position,
-                    changedPageCount,
-                    PageAdapter.PAYLOAD_PAGE_NUMBER
-            );
-        }
+        java.util.ArrayList<Long> ids = new java.util.ArrayList<>();
+        for (PageItem page : sessionViewModel.getPages()) ids.add(page.getId());
+        selectedPageId = SelectedPageResolver.selectAfterDeletion(ids, position);
+        pageAdapter.notifyDataSetChanged();
+        pageAdapter.setSelectedPageId(selectedPageId);
+        renderSelectedPage();
         updateUiState();
-    }
-
-    private boolean startPageDrag(RecyclerView.ViewHolder viewHolder) {
-        if (sessionViewModel.canEditPages()) {
-            pageTouchHelper.startDrag(viewHolder);
-            return true;
-        }
-        return false;
     }
 
     private boolean movePage(int fromPosition, int toPosition) {
-        if (!sessionViewModel.canEditPages()) {
+        int pageCount = sessionViewModel.getPageCount();
+        if (!sessionViewModel.canEditPages()
+                || fromPosition < 0 || fromPosition >= pageCount
+                || toPosition < 0 || toPosition >= pageCount) {
             return false;
         }
-        boolean moved = sessionViewModel.movePage(fromPosition, toPosition);
-        if (!moved) {
+        if (!sessionViewModel.movePage(fromPosition, toPosition)) {
             return false;
         }
         pageAdapter.notifyItemMoved(fromPosition, toPosition);
-        notifyPageNumbersChanged(fromPosition, toPosition);
-        updateUiState();
+        int firstChangedPosition = Math.min(fromPosition, toPosition);
+        pageAdapter.notifyItemRangeChanged(
+                firstChangedPosition,
+                Math.abs(fromPosition - toPosition) + 1
+        );
+        renderSelectedPage();
         return true;
     }
 
-    private void notifyPageNumbersChanged(int fromPosition, int toPosition) {
-        int firstChangedPosition = Math.min(fromPosition, toPosition);
-        int changedItemCount = Math.abs(fromPosition - toPosition) + 1;
-        pageAdapter.notifyItemRangeChanged(
-                firstChangedPosition,
-                changedItemCount,
-                PageAdapter.PAYLOAD_PAGE_NUMBER
-        );
+    private void renderSelectedPage() {
+        int position = PreviewPageNavigator.findPositionById(sessionViewModel.getPages(), selectedPageId);
+        if (position == PreviewPageNavigator.POSITION_NOT_FOUND) { activePreviewKey = null; releaseCurrentPreviewBitmap(); selectedPageImageView.setImageDrawable(null); selectedPageCounterView.setVisibility(View.GONE); previewProgressBar.setVisibility(View.GONE); return; }
+        PageItem page = sessionViewModel.getPages().get(position);
+        selectedPageCounterView.setVisibility(View.VISIBLE);
+        selectedPageCounterView.setText(getString(R.string.editor_selected_page_counter, position + 1, sessionViewModel.getPageCount()));
+        if (selectedPageImageView.getWidth() == 0 || selectedPageImageView.getHeight() == 0) { selectedPageImageView.post(this::renderSelectedPage); return; }
+        String key = PreviewImageLoader.buildKey(page, selectedPageImageView.getWidth(), selectedPageImageView.getHeight());
+        if (key.equals(activePreviewKey)) return;
+        activePreviewKey = key; releaseCurrentPreviewBitmap(); selectedPageImageView.setImageDrawable(null); previewProgressBar.setVisibility(View.VISIBLE);
+        previewImageLoader.load(page, selectedPageImageView.getWidth(), selectedPageImageView.getHeight(), new PreviewImageLoader.Callback() {
+            @Override public void onLoaded(String loadedKey, Bitmap bitmap) { if (!loadedKey.equals(activePreviewKey) || selectedPageImageView == null) { recycle(bitmap); return; } releaseCurrentPreviewBitmap(); currentPreviewBitmap = bitmap; selectedPageImageView.setImageBitmap(bitmap); previewProgressBar.setVisibility(View.GONE); }
+            @Override public void onError(String loadedKey) { if (loadedKey.equals(activePreviewKey) && previewProgressBar != null) previewProgressBar.setVisibility(View.GONE); }
+        });
+    }
+    private void releaseCurrentPreviewBitmap() { recycle(currentPreviewBitmap); currentPreviewBitmap = null; }
+    private static void recycle(Bitmap bitmap) { if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle(); }
+
+    private final class PageMoveCallback extends ItemTouchHelper.SimpleCallback {
+        PageMoveCallback(boolean verticalStrip) {
+            super(verticalStrip ? ItemTouchHelper.UP | ItemTouchHelper.DOWN
+                    : ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT, 0);
+        }
+
+        @Override public boolean isLongPressDragEnabled() { return false; }
+        @Override public boolean isItemViewSwipeEnabled() { return false; }
+
+        @Override public int getMovementFlags(@NonNull RecyclerView recyclerView,
+                @NonNull RecyclerView.ViewHolder viewHolder) {
+            if (!sessionViewModel.canEditPages()
+                    || viewHolder.getBindingAdapterPosition() == RecyclerView.NO_POSITION
+                    || viewHolder.getBindingAdapterPosition() >= sessionViewModel.getPageCount()) {
+                return 0;
+            }
+            return super.getMovementFlags(recyclerView, viewHolder);
+        }
+
+        @Override public boolean canDropOver(@NonNull RecyclerView recyclerView,
+                @NonNull RecyclerView.ViewHolder current, @NonNull RecyclerView.ViewHolder target) {
+            return target.getBindingAdapterPosition() != RecyclerView.NO_POSITION
+                    && target.getBindingAdapterPosition() < sessionViewModel.getPageCount();
+        }
+
+        @Override public boolean onMove(@NonNull RecyclerView recyclerView,
+                @NonNull RecyclerView.ViewHolder viewHolder,
+                @NonNull RecyclerView.ViewHolder target) {
+            return movePage(viewHolder.getBindingAdapterPosition(), target.getBindingAdapterPosition());
+        }
+
+        @Override public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) { }
+
+        @Override public void onSelectedChanged(@Nullable RecyclerView.ViewHolder viewHolder,
+                int actionState) {
+            super.onSelectedChanged(viewHolder, actionState);
+            if (viewHolder != null && actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                viewHolder.itemView.setAlpha(0.86f);
+                viewHolder.itemView.setElevation(getResources().getDimension(R.dimen.page_drag_elevation));
+            }
+        }
+
+        @Override public void clearView(@NonNull RecyclerView recyclerView,
+                @NonNull RecyclerView.ViewHolder viewHolder) {
+            super.clearView(recyclerView, viewHolder);
+            viewHolder.itemView.setAlpha(1f);
+            viewHolder.itemView.setElevation(0f);
+            pageAdapter.onDragFinished(viewHolder);
+        }
     }
 
     private void startPdfGeneration(PdfExportRequest exportRequest) {
@@ -499,11 +567,18 @@ public final class EditorFragment extends Fragment {
         backButton.setEnabled(controlsEnabled);
         addImagesButton.setEnabled(controlsEnabled);
         createPdfButton.setEnabled(controlsEnabled && hasPages);
+        createPdfButton.setText(getResources().getQuantityString(R.plurals.create_pdf_page_count, sessionViewModel.getPageCount(), sessionViewModel.getPageCount()));
         updateGenerationProgressState(generationState);
         pagesRecyclerView.setVisibility(hasPages ? View.VISIBLE : View.GONE);
         pageAdapter.setActionsEnabled(controlsEnabled);
-        selectedImagesTextView.setText(buildSelectionStatusText());
-        reorderHintTextView.setVisibility(sessionViewModel.getPageCount() >= 2 ? View.VISIBLE : View.GONE);
+        selectedImagesTextView.setText(getResources().getQuantityString(R.plurals.editor_page_count, sessionViewModel.getPageCount(), sessionViewModel.getPageCount()));
+        if (hasPages && PreviewPageNavigator.findPositionById(sessionViewModel.getPages(), selectedPageId) == PreviewPageNavigator.POSITION_NOT_FOUND) {
+            selectedPageId = sessionViewModel.getPages().get(0).getId();
+            pageAdapter.setSelectedPageId(selectedPageId);
+        }
+        rotateSelectedPageButton.setEnabled(controlsEnabled && hasPages);
+        deleteSelectedPageButton.setEnabled(controlsEnabled && hasPages);
+        renderSelectedPage();
         String operationStatus = buildOperationStatusText();
         operationStatusTextView.setText(operationStatus);
         operationStatusTextView.setVisibility(
@@ -530,14 +605,6 @@ public final class EditorFragment extends Fragment {
         );
         generationProgressTextView.setVisibility(View.VISIBLE);
         cancelGenerationButton.setVisibility(View.VISIBLE);
-    }
-
-    private String buildSelectionStatusText() {
-        return getResources().getQuantityString(
-                R.plurals.selected_images_count,
-                sessionViewModel.getPageCount(),
-                sessionViewModel.getPageCount()
-        );
     }
 
     private String buildOperationStatusText() {
@@ -642,72 +709,4 @@ public final class EditorFragment extends Fragment {
         }
     }
 
-    private final class PageMoveCallback extends ItemTouchHelper.SimpleCallback {
-        PageMoveCallback() {
-            super(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
-        }
-
-        @Override
-        public boolean isLongPressDragEnabled() {
-            return false;
-        }
-
-        @Override
-        public boolean isItemViewSwipeEnabled() {
-            return false;
-        }
-
-        @Override
-        public float getMoveThreshold(@NonNull RecyclerView.ViewHolder viewHolder) {
-            return 0.15f;
-        }
-
-        @Override
-        public boolean onMove(
-                @NonNull RecyclerView recyclerView,
-                @NonNull RecyclerView.ViewHolder viewHolder,
-                @NonNull RecyclerView.ViewHolder target
-        ) {
-            int fromPosition = viewHolder.getBindingAdapterPosition();
-            int toPosition = target.getBindingAdapterPosition();
-            if (fromPosition == RecyclerView.NO_POSITION || toPosition == RecyclerView.NO_POSITION) {
-                return false;
-            }
-            return movePage(fromPosition, toPosition);
-        }
-
-        @Override
-        public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-        }
-
-        @Override
-        public void onSelectedChanged(@Nullable RecyclerView.ViewHolder viewHolder, int actionState) {
-            super.onSelectedChanged(viewHolder, actionState);
-            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
-                viewHolder.itemView.setAlpha(DRAG_ACTIVE_ALPHA);
-                viewHolder.itemView.setScaleX(DRAG_ACTIVE_SCALE);
-                viewHolder.itemView.setScaleY(DRAG_ACTIVE_SCALE);
-                viewHolder.itemView.setElevation(
-                        getResources().getDimensionPixelSize(R.dimen.page_drag_elevation)
-                );
-                viewHolder.itemView.setActivated(true);
-                viewHolder.itemView.setPressed(true);
-            }
-        }
-
-        @Override
-        public void clearView(
-                @NonNull RecyclerView recyclerView,
-                @NonNull RecyclerView.ViewHolder viewHolder
-        ) {
-            super.clearView(recyclerView, viewHolder);
-            viewHolder.itemView.setAlpha(1f);
-            viewHolder.itemView.setScaleX(1f);
-            viewHolder.itemView.setScaleY(1f);
-            viewHolder.itemView.setElevation(0f);
-            viewHolder.itemView.setActivated(false);
-            viewHolder.itemView.setPressed(false);
-            pageAdapter.onDragFinished(viewHolder);
-        }
-    }
 }
