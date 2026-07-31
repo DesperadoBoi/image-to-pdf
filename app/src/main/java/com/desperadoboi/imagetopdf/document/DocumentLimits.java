@@ -51,7 +51,8 @@ public final class DocumentLimits {
         if (sizeBytes < 0L || sizeBytes > MAX_INCOMING_BYTES) {
             return false;
         }
-        if (type == null || type == DocumentType.UNKNOWN || type == DocumentType.XLS) {
+        if (type == null || type == DocumentType.UNKNOWN || type == DocumentType.XLS
+                || type == DocumentType.XLSM || type == DocumentType.PPTX) {
             return true;
         }
         if (type == DocumentType.XLSX) {

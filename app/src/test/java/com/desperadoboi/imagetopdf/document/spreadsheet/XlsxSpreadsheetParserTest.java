@@ -222,7 +222,7 @@ public final class XlsxSpreadsheetParserTest {
         );
 
         XlsxSheet sheet = parser.parse(file.toFile()).getSheets().get(0);
-        assertEquals("=1+1", sheet.getData().getRows().get(0).get(0));
+        assertEquals("", sheet.getData().getRows().get(0).get(0));
         assertTrue(sheet.getData().getRows().get(1).isEmpty());
         assertEquals("tail", sheet.getData().getRows().get(2).get(2));
     }
@@ -309,7 +309,7 @@ public final class XlsxSpreadsheetParserTest {
     }
 
     @Test
-    public void rejectsMacrosExternalLinksOleAndExecutables() throws Exception {
+    public void rejectsMacrosActiveXOleAndExecutables() throws Exception {
         Path base = XlsxTestFixtures.minimalWorkbook(
                 fixture("safe-base.xlsx"),
                 XlsxTestFixtures.worksheet(
@@ -318,7 +318,7 @@ public final class XlsxSpreadsheetParserTest {
         );
         String[] forbiddenParts = {
                 "xl/vbaProject.bin",
-                "xl/externalLinks/externalLink1.xml",
+                "xl/activeX/activeX1.bin",
                 "xl/embeddings/oleObject1.bin",
                 "xl/media/payload.exe"
         };
@@ -327,8 +327,56 @@ public final class XlsxSpreadsheetParserTest {
             entries.put(forbiddenParts[index], new byte[]{1, 2, 3});
             Path file = fixture("forbidden-" + index + ".xlsx");
             XlsxTestFixtures.writeStoredZip(file, entries);
-            assertReason(file, XlsxParseException.Reason.UNSUPPORTED);
+            assertReason(file, XlsxParseException.Reason.ACTIVE_CONTENT);
         }
+    }
+
+    @Test
+    public void ignoresExternalWorkbookLinksAndUsesOnlyCachedFormulaValues() throws Exception {
+        Path base = XlsxTestFixtures.minimalWorkbook(
+                fixture("external-base.xlsx"),
+                XlsxTestFixtures.worksheet(
+                        "<sheetData><row r=\"1\">"
+                                + "<c r=\"A1\"><f>[1]Sheet1!A1</f><v>17</v></c>"
+                                + "<c r=\"B1\"><f>[1]Sheet1!B1</f></c>"
+                                + "</row></sheetData>"
+                )
+        );
+        Map<String, byte[]> entries = readEntries(base);
+        String relationships = new String(
+                entries.get("xl/_rels/workbook.xml.rels"),
+                java.nio.charset.StandardCharsets.UTF_8
+        ).replace(
+                "</Relationships>",
+                "<Relationship Id=\"external\" "
+                        + "Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink\" "
+                        + "Target=\"externalLinks/externalLink1.xml\"/>"
+                        + "</Relationships>"
+        );
+        entries.put(
+                "xl/_rels/workbook.xml.rels",
+                relationships.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+        entries.put(
+                "xl/externalLinks/externalLink1.xml",
+                XlsxTestFixtures.bytes("<externalLink/>")
+        );
+        entries.put(
+                "xl/externalLinks/_rels/externalLink1.xml.rels",
+                XlsxTestFixtures.bytes(
+                        "<Relationships>"
+                                + "<Relationship Id=\"rId1\" TargetMode=\"External\" "
+                                + "Target=\"https://example.invalid/workbook.xlsx\"/>"
+                                + "</Relationships>"
+                )
+        );
+        Path external = fixture("external-cached.xlsx");
+        XlsxTestFixtures.writeStoredZip(external, entries);
+
+        XlsxWorkbook workbook = parser.parse(external.toFile());
+        List<String> row = workbook.getSheets().get(0).getData().getRows().get(0);
+        assertEquals("17", row.get(0));
+        assertEquals("", row.get(1));
     }
 
     @Test
@@ -351,7 +399,7 @@ public final class XlsxSpreadsheetParserTest {
         }
         Path encrypted = fixture("encrypted.xlsx");
         Files.write(encrypted, archive);
-        assertReason(encrypted, XlsxParseException.Reason.UNSUPPORTED);
+        assertReason(encrypted, XlsxParseException.Reason.ENCRYPTED);
     }
 
     private Path fixture(String name) throws Exception {

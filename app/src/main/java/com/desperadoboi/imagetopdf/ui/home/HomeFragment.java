@@ -4,8 +4,10 @@ import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +23,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.desperadoboi.imagetopdf.R;
+import com.desperadoboi.imagetopdf.document.SafeDisplayName;
 import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
 import com.desperadoboi.imagetopdf.model.ImageImportMode;
@@ -186,12 +189,35 @@ public final class HomeFragment extends Fragment {
                 .setAction(DocumentViewerActivity.ACTION_INTERNAL_VIEW)
                 .setData(uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        String displayName = readSelectedDocumentName(uri);
+        if (displayName != null) {
+            viewerIntent.putExtra(DocumentViewerActivity.EXTRA_DISPLAY_NAME, displayName);
+        }
         viewerIntent.setClipData(ClipData.newUri(
                         requireContext().getContentResolver(),
                         getString(R.string.tool_document_viewer),
                         uri
                 ));
         startActivity(viewerIntent);
+    }
+
+    @Nullable
+    private String readSelectedDocumentName(Uri uri) {
+        try (Cursor cursor = requireContext().getContentResolver().query(
+                uri,
+                new String[]{OpenableColumns.DISPLAY_NAME},
+                null,
+                null,
+                null
+        )) {
+            if (cursor == null || !cursor.moveToFirst()) return null;
+            int column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            return column < 0 || cursor.isNull(column)
+                    ? null
+                    : SafeDisplayName.sanitizeOrNull(cursor.getString(column));
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private void openImagePicker() {

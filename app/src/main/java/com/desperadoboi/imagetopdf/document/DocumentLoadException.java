@@ -9,8 +9,16 @@ public class DocumentLoadException extends IOException {
         CORRUPTED,
         ENCRYPTED,
         UNSUPPORTED,
+        SPREADSHEET_TOO_LARGE,
+        SPREADSHEET_CORRUPTED,
+        SPREADSHEET_ENCRYPTED,
+        SPREADSHEET_ACTIVE_CONTENT,
+        DOCX_TOO_LARGE,
+        DOCX_CORRUPTED,
+        DOCX_ENCRYPTED,
+        DOCX_UNSUPPORTED,
         CANCELLED,
-        UNREADABLE
+        PROVIDER_UNREADABLE
     }
 
     private final Reason reason;

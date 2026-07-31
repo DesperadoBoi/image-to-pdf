@@ -33,4 +33,70 @@ public class SafeDisplayNameTest {
         assertTrue(safe.codePointCount(0, safe.length()) <= SafeDisplayName.MAX_CODE_POINTS);
         assertTrue(safe.endsWith(".pdf"));
     }
+
+    @Test
+    public void providerDisplayNameHasPriority() {
+        assertEquals("provider.xlsx", SafeDisplayName.resolve(
+                "provider.xlsx",
+                "stored.xlsx",
+                "uri.xlsx",
+                "Документ"
+        ));
+    }
+
+    @Test
+    public void storedMetadataPrecedesUriName() {
+        assertEquals("stored.xlsx", SafeDisplayName.resolve(
+                null,
+                "stored.xlsx",
+                "uri.xlsx",
+                "Документ"
+        ));
+    }
+
+    @Test
+    public void internalProviderIdsAreNeverDisplayed() {
+        assertEquals("Документ", SafeDisplayName.resolve(
+                "msf:1000009229",
+                null,
+                "document:12345",
+                "Документ"
+        ));
+        assertFalse(SafeDisplayName.resolve(
+                null,
+                null,
+                "msf:1000009229",
+                "Документ"
+        ).contains("msf:"));
+    }
+
+    @Test
+    public void cacheFileNamesAreNeverDisplayed() {
+        assertEquals("Документ", SafeDisplayName.resolve(
+                "viewer_06f4d12d-1f97-4a9a-860a-018b8d148462.cache",
+                null,
+                null,
+                "Документ"
+        ));
+    }
+
+    @Test
+    public void uriNameIsSafelyDecodedAndSeparatorsAreRemoved() {
+        assertEquals("report one.xlsx", SafeDisplayName.resolve(
+                null,
+                null,
+                "folder%2Freport%20one.xlsx",
+                "Документ"
+        ));
+    }
+
+    @Test
+    public void usesLocalizedFallback() {
+        assertEquals("Документ", SafeDisplayName.resolve(
+                null,
+                null,
+                null,
+                "Документ"
+        ));
+    }
 }

@@ -163,7 +163,7 @@ public final class XlsxPackageInspector {
             }
             if (isForbiddenPart(name)) {
                 throw new XlsxParseException(
-                        XlsxParseException.Reason.UNSUPPORTED,
+                        XlsxParseException.Reason.ACTIVE_CONTENT,
                         "Active or embedded content is not supported"
                 );
             }
@@ -274,8 +274,7 @@ public final class XlsxPackageInspector {
 
     private static boolean isForbiddenPart(String name) {
         String lower = name.toLowerCase(Locale.ROOT);
-        if (lower.startsWith("xl/externallinks/")
-                || lower.startsWith("xl/embeddings/")
+        if (lower.startsWith("xl/embeddings/")
                 || lower.startsWith("xl/activex/")
                 || lower.startsWith("xl/macrosheets/")
                 || lower.endsWith("vbaproject.bin")) {
@@ -336,7 +335,7 @@ public final class XlsxPackageInspector {
                 int flags = littleEndianShort(header, 8);
                 if ((flags & 1) != 0) {
                     throw new XlsxParseException(
-                            XlsxParseException.Reason.UNSUPPORTED,
+                            XlsxParseException.Reason.ENCRYPTED,
                             "Encrypted XLSX packages are not supported"
                     );
                 }

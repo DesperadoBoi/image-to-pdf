@@ -18,6 +18,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public final class DocumentTypeResolverTest {
     @Rule
@@ -31,6 +32,9 @@ public final class DocumentTypeResolverTest {
         assertEquals(DocumentType.XLS, resolver.fromMimeType("application/vnd.ms-excel"));
         assertEquals(DocumentType.XLSX, resolver.fromMimeType(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ));
+        assertEquals(DocumentType.XLSM, resolver.fromMimeType(
+                "application/vnd.ms-excel.sheet.macroenabled.12"
         ));
         assertEquals(DocumentType.DOCX, resolver.fromMimeType(
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -58,6 +62,15 @@ public final class DocumentTypeResolverTest {
         assertEquals(DocumentType.HEIC, resolve(new byte[]{
                 0, 0, 0, 24, 'f', 't', 'y', 'p', 'h', 'e', 'i', 'c'
         }, "unknown.bin"));
+        assertEquals(DocumentType.XLS, resolver.resolve(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                new byte[]{
+                        (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0,
+                        (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1
+                },
+                Collections.emptySet(),
+                "msf:1000009229"
+        ));
     }
 
     @Test
@@ -73,7 +86,7 @@ public final class DocumentTypeResolverTest {
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "valid.xlsx"
         ));
-        assertEquals(DocumentType.UNKNOWN, resolveFile(
+        assertEquals(DocumentType.XLSX, resolveFile(
                 xlsx.toFile(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "macro.xlsm"
@@ -106,11 +119,12 @@ public final class DocumentTypeResolverTest {
         );
         File wrongContentTypes = fixture("wrong-content-types.xlsx");
         XlsxTestFixtures.writeStoredZip(wrongContentTypes.toPath(), invalidContentTypes);
-        assertEquals(DocumentType.UNKNOWN, resolveFile(
+        assertDetectionFailure(
                 wrongContentTypes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "wrong-content-types.xlsx"
-        ));
+                "wrong-content-types.xlsx",
+                OoxmlPackageDetector.Reason.CORRUPTED
+        );
 
         Map<String, byte[]> externalWorkbookRelationship = readEntries(xlsx.toFile());
         externalWorkbookRelationship.put(
@@ -131,6 +145,42 @@ public final class DocumentTypeResolverTest {
     }
 
     @Test
+    public void xlsxPackageContentsOverrideNameAndMimeHints() throws Exception {
+        Path xlsx = XlsxTestFixtures.minimalWorkbook(
+                fixture("content-wins.xlsx").toPath(),
+                XlsxTestFixtures.worksheet(
+                        "<sheetData><row r=\"1\"><c r=\"A1\"><v>1</v></c></row></sheetData>"
+                )
+        );
+        assertEquals(DocumentType.XLSX, resolveFile(
+                xlsx.toFile(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "content-wins.xlsx"
+        ));
+        assertEquals(DocumentType.XLSX, resolveFile(xlsx.toFile(), null, "content-wins"));
+        assertEquals(DocumentType.XLSX, resolveFile(
+                xlsx.toFile(),
+                null,
+                "msf:1000009229"
+        ));
+        assertEquals(DocumentType.XLSX, resolveFile(
+                xlsx.toFile(),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "wrong.docx"
+        ));
+        assertEquals(DocumentType.XLSX, resolveFile(
+                xlsx.toFile(),
+                "application/octet-stream",
+                "msf:1000009229"
+        ));
+        assertEquals(DocumentType.XLSX, resolveFile(
+                xlsx.toFile(),
+                "application/vnd.ms-excel.sheet.macroenabled.12",
+                "wrong.xlsm"
+        ));
+    }
+
+    @Test
     public void xlsxMimeAndExtensionNeverOverrideWrongSignature() throws Exception {
         File text = fixture("wrong.xlsx");
         Files.write(text.toPath(), bytes("plain text"));
@@ -138,6 +188,11 @@ public final class DocumentTypeResolverTest {
                 text,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "wrong.xlsx"
+        ));
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                text,
+                "application/vnd.ms-excel.sheet.macroenabled.12",
+                "wrong.xlsm"
         ));
     }
 
@@ -151,6 +206,11 @@ public final class DocumentTypeResolverTest {
                 docx.toFile(),
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 "valid.docx"
+        ));
+        assertEquals(DocumentType.DOCX, resolveFile(
+                docx.toFile(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "wrong.xlsx"
         ));
 
         Map<String, byte[]> ordinaryEntries = new LinkedHashMap<>();
@@ -168,11 +228,12 @@ public final class DocumentTypeResolverTest {
         missing.remove("word/document.xml");
         File missingDocument = fixture("missing-document.docx");
         DocxTestFixtures.writeStoredZip(missingDocument.toPath(), missing);
-        assertEquals(DocumentType.UNKNOWN, resolveFile(
+        assertDetectionFailure(
                 missingDocument,
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "missing-document.docx"
-        ));
+                "missing-document.docx",
+                OoxmlPackageDetector.Reason.CORRUPTED
+        );
     }
 
     @Test
@@ -227,11 +288,127 @@ public final class DocumentTypeResolverTest {
         ));
     }
 
+    @Test
+    public void detectsMacroEnabledWorkbookFromPackageContents() throws Exception {
+        Path xlsx = XlsxTestFixtures.minimalWorkbook(
+                fixture("macro-source.xlsx").toPath(),
+                XlsxTestFixtures.worksheet("<sheetData/>")
+        );
+        Map<String, byte[]> entries = readEntries(xlsx.toFile());
+        String contentTypes = new String(
+                entries.get("[Content_Types].xml"),
+                StandardCharsets.UTF_8
+        ).replace(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+                "application/vnd.ms-excel.sheet.macroEnabled.main+xml"
+        );
+        entries.put("[Content_Types].xml", contentTypes.getBytes(StandardCharsets.UTF_8));
+        entries.put("xl/vbaProject.bin", new byte[]{1, 2, 3});
+        File xlsm = fixture("macro-content.bin");
+        XlsxTestFixtures.writeStoredZip(xlsm.toPath(), entries);
+
+        assertEquals(DocumentType.XLSM, resolveFile(
+                xlsm,
+                "application/octet-stream",
+                "msf:1000009229"
+        ));
+    }
+
+    @Test
+    public void detectsPresentationPackageWithoutTrustingSpreadsheetMime() throws Exception {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put(
+                "[Content_Types].xml",
+                XlsxTestFixtures.bytes(
+                        "<Types><Override PartName=\"/ppt/presentation.xml\" "
+                                + "ContentType=\"application/vnd.openxmlformats-officedocument."
+                                + "presentationml.presentation.main+xml\"/></Types>"
+                )
+        );
+        entries.put(
+                "_rels/.rels",
+                XlsxTestFixtures.bytes(
+                        "<Relationships><Relationship Id=\"rId1\" "
+                                + "Type=\"http://schemas.openxmlformats.org/officeDocument/2006/"
+                                + "relationships/officeDocument\" "
+                                + "Target=\"ppt/presentation.xml\"/></Relationships>"
+                )
+        );
+        entries.put("ppt/presentation.xml", XlsxTestFixtures.bytes("<presentation/>"));
+        File pptx = fixture("presentation.bin");
+        XlsxTestFixtures.writeStoredZip(pptx.toPath(), entries);
+
+        assertEquals(DocumentType.PPTX, resolveFile(
+                pptx,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "wrong.xlsx"
+        ));
+    }
+
+    @Test
+    public void damagedZipIsReportedAsCorruptedPackage() throws Exception {
+        File damaged = fixture("damaged.xlsx");
+        Files.write(damaged.toPath(), new byte[]{'P', 'K', 3, 4, 1, 2, 3});
+        try {
+            resolveFile(
+                    damaged,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "damaged.xlsx"
+            );
+            fail("Expected damaged ZIP detection failure");
+        } catch (OoxmlPackageDetector.DetectionException exception) {
+            assertEquals(OoxmlPackageDetector.Reason.CORRUPTED, exception.getReason());
+        }
+    }
+
+    @Test
+    public void maliciousZipPathIsRejectedDuringDetection() throws Exception {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("../xl/workbook.xml", XlsxTestFixtures.bytes("<workbook/>"));
+        entries.put("[Content_Types].xml", XlsxTestFixtures.bytes("<Types/>"));
+        File malicious = fixture("malicious.xlsx");
+        XlsxTestFixtures.writeStoredZip(malicious.toPath(), entries);
+        try {
+            resolveFile(
+                    malicious,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "malicious.xlsx"
+            );
+            fail("Expected unsafe ZIP path failure");
+        } catch (OoxmlPackageDetector.DetectionException exception) {
+            assertEquals(OoxmlPackageDetector.Reason.CORRUPTED, exception.getReason());
+        }
+    }
+
+    @Test
+    public void emptyFileIsUnknown() throws Exception {
+        File empty = fixture("empty.xlsx");
+        assertEquals(DocumentType.UNKNOWN, resolveFile(
+                empty,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "empty.xlsx"
+        ));
+    }
+
     private DocumentType resolveFile(File file, String mime, String displayName) throws Exception {
         byte[] contents = Files.readAllBytes(file.toPath());
         byte[] prefix = new byte[Math.min(8 * 1024, contents.length)];
         System.arraycopy(contents, 0, prefix, 0, prefix.length);
         return resolver.resolve(mime, prefix, file, displayName);
+    }
+
+    private void assertDetectionFailure(
+            File file,
+            String mime,
+            String displayName,
+            OoxmlPackageDetector.Reason expected
+    ) throws Exception {
+        try {
+            resolveFile(file, mime, displayName);
+            fail("Expected OOXML detection failure for " + file.getName());
+        } catch (OoxmlPackageDetector.DetectionException exception) {
+            assertEquals(expected, exception.getReason());
+        }
     }
 
     private DocumentType resolve(byte[] signature, String displayName) {

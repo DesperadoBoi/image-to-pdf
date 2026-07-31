@@ -35,7 +35,7 @@ public final class TemporaryDocumentStore {
              FileOutputStream outputStream = new FileOutputStream(destination)) {
             if (inputStream == null) {
                 throw new DocumentLoadException(
-                        DocumentLoadException.Reason.UNREADABLE,
+                        DocumentLoadException.Reason.PROVIDER_UNREADABLE,
                         "Provider returned no input stream"
                 );
             }
@@ -72,7 +72,7 @@ public final class TemporaryDocumentStore {
         } catch (IOException | RuntimeException exception) {
             delete(destination);
             throw new DocumentLoadException(
-                    DocumentLoadException.Reason.UNREADABLE,
+                    DocumentLoadException.Reason.PROVIDER_UNREADABLE,
                     "Unable to cache document",
                     exception
             );
@@ -117,7 +117,7 @@ public final class TemporaryDocumentStore {
             return;
         }
         throw new DocumentLoadException(
-                DocumentLoadException.Reason.UNREADABLE,
+                DocumentLoadException.Reason.PROVIDER_UNREADABLE,
                 "Unable to create document cache"
         );
     }
