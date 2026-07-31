@@ -338,13 +338,10 @@
     <string name="viewer_notice_text_truncated">Показана безопасная часть большого текстового файла</string>
     <string name="viewer_notice_table_truncated">Показана безопасная часть большой таблицы</string>
     <string name="viewer_notice_xlsx_truncated">Показана безопасная часть большой книги XLSX</string>
-    <string name="viewer_word_page_break">Разрыв страницы</string>
     <string name="viewer_word_image_content_description">Изображение из документа Word</string>
     <string name="viewer_word_vector_placeholder">Векторное изображение нельзя безопасно показать на этом устройстве</string>
     <string name="viewer_word_image_failed">Не удалось показать изображение из документа</string>
-    <string name="viewer_word_table_generic_content_description">Таблица документа Word. Доступна прокрутка</string>
-    <string name="viewer_word_table_content_description">Таблица Word: %1$d строк, %2$d столбцов. Доступна прокрутка</string>
-    <string name="viewer_word_content_description">Документ Word в мобильном режиме чтения</string>
+    <string name="viewer_word_content_description">Документ Word в постраничном режиме</string>
     <string name="viewer_word_go_to_top">Перейти к началу документа</string>
 
     <string name="viewer_error_unsupported_title">Формат не поддерживается</string>

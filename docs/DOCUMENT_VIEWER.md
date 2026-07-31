@@ -82,31 +82,40 @@ WordprocessingML main content type. Main part может находиться н
 - Numbering поддерживает decimal, lower/upper letter, lower/upper Roman, bullets,
   многоуровневые placeholders, start values и indentation. Для неизвестного формата
   остаётся безопасный marker, текст paragraph не теряется.
-- DOCX UI — mobile reflow, а не эмуляция Word pagination. `RecyclerView` создаёт View только
-  для видимых paragraph/table/image/page-break blocks. Один paragraph использует один
-  selectable `MaterialTextView` и `Spannable`, не View на run. Headers отображаются перед
-  body, footers после body, footnotes/endnotes отдельными secondary blocks; они не
-  повторяются на вычисляемых страницах. Inserted track-change text показывается, deleted
-  text пропускается, comments не отображаются. Сохранённый result fields показывается, field
-  instructions, DDE и внешние команды не вычисляются и не выполняются.
+- DOCX UI — локальный page-style renderer. `DocxHtmlRenderer` получает только безопасную
+  immutable block-модель, экранирует весь текст/атрибуты и генерирует собственные HTML/CSS.
+  `DocxPageStyle` переводит section twips в page size/margins, а Java-paginator выполняет
+  стабильное приблизительное разбиение без заявления точного совпадения с Word. Headers
+  отображаются перед body, footers после body, footnotes/endnotes отдельными secondary
+  blocks; они не повторяются на вычисляемых страницах. Inserted track-change text
+  показывается, deleted text пропускается, comments не отображаются. Сохранённый result
+  fields показывается, field instructions, DDE и внешние команды не вычисляются и не
+  выполняются.
 - Word tables читают rows/cells, grid/widths, alignment, margins, borders, shading,
-  `gridSpan`, vertical merge/alignment и paragraph content. `WordTableView` рисует только
-  видимые rows на Canvas, использует bounded text-layout cache и собственный двумерный
-  scroll; на ячейки не создаются Android Views. Вложенная таблица безопасно сохраняется в
-  модели и показывается упрощённым marker.
-- Raster images загружаются лениво из package только для видимого image block. Decode
-  использует bounds, `inSampleSize`, EXIF orientation, max edge 2048 px, максимум 4 миллиона
-  decoded pixels и 16 MiB LRU. Размер вписывается в ширину с сохранением aspect ratio.
-  Floating/anchored image в первой версии становится inline. SVG/EMF/WMF не передаются
-  стороннему renderer и показываются placeholder.
+  `gridSpan`, vertical merge/alignment и paragraph content. HTML table использует
+  `border-collapse`, `colspan`/`rowspan`, Word padding/borders/shading и локальный
+  horizontal overflow внутри страницы. Большие таблицы paginator продолжает по строкам на
+  следующей странице. Вложенная таблица остаётся частью контролируемой модели и HTML.
+- `DocxLocalImageStore` читает только уже проверенные internal media entries, повторно
+  проверяет безопасный package path, raster signature и decode bounds, после чего создаёт
+  локальный `data:image/...;base64` URI в ограниченном бюджете. Word EMU задают размер с
+  сохранением aspect ratio и `max-width` страницы. Floating/anchored image становится
+  inline. SVG/EMF/WMF не передаются стороннему renderer и показываются placeholder.
 - External hyperlink внутри DOCX не загружается. Только сохранённая безопасная `https` URI
   визуально показывается как ссылка и передаётся внешнему browser после явного нажатия;
   отсутствие browser обрабатывается без падения. Внутренний bookmark navigation пока не
   реализован.
-- `WordViewerViewModel` удерживает выполняющийся parse и готовую модель при rotation.
-  Recycler position сохраняется как block index и pixel offset. Закрытие viewer, новый
-  document или уничтожение ViewModel устанавливают cancellation token; adapter закрывает
-  image executor/cache.
+- `DocxWebViewController` всегда держит JavaScript, file/content access, DOM/database
+  storage, geolocation, mixed content, cookies и network loads выключенными. CSP допускает
+  только inline CSS приложения и `data:` raster images; scripts, fonts, frames, objects и
+  connections запрещены. WebView не содержит `JavascriptInterface` и сам не переходит по
+  ссылкам. Только пользовательское нажатие по валидной HTTPS-ссылке передаётся внешнему
+  browser.
+- `WordViewerViewModel` удерживает выполняющийся parse, готовую модель и сформированный HTML
+  при rotation. WebView восстанавливает scroll X/Y и zoom, использует fit-width overview,
+  platform pinch/double-tap zoom и фиксированный `textZoom=100`, поэтому Android fontScale
+  не меняет геометрию Word-страницы. Закрытие viewer, новый document или уничтожение
+  ViewModel устанавливают cancellation token.
 - images декодируются с bounds/inSampleSize, EXIF orientation, максимальной стороной 4096 px,
   fit-center, pinch/double-tap zoom и pan.
 
