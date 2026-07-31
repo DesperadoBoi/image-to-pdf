@@ -754,8 +754,7 @@ public final class XlsxSpreadsheetParser implements SpreadsheetParser {
         String raw = "inlineStr".equals(cell.type) ? cell.inlineValue : cell.value;
         boolean truncated = cell.truncated;
         if (formula && raw.isEmpty()) {
-            String formulaText = limit("=" + cell.formula, DocumentLimits.MAX_CELL_CHARS);
-            return new CellDisplay(formulaText, truncated || formulaText.length() < cell.formula.length() + 1);
+            return new CellDisplay("", truncated);
         }
         if ("s".equals(cell.type)) {
             Integer index = parseInteger(raw);

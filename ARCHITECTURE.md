@@ -137,10 +137,12 @@ CameraX captures создаются в `filesDir/captured_images`. При отм
 - поддерживать изображения из галереи и `document providers`.
 - снимки камеры хранить в app-specific storage как app-owned файлы и также читать через `ContentResolver` по `content://` Uri.
 
-Для viewer `IncomingDocumentLoader` читает metadata и bytes через `ContentResolver`,
-`DocumentTypeResolver` проверяет MIME/signature/extension, а `TemporaryDocumentStore`
-создаёт bounded случайно именованную копию в app cache. Seekable PDF открывается только из
-этой копии; ZIP/OOXML parsers также не возвращаются к исходному provider после copy.
+Для viewer `IncomingDocumentLoader` читает metadata и bytes через `ContentResolver`, а
+`TemporaryDocumentStore` создаёт bounded случайно именованную копию в app cache.
+`DocumentTypeResolver` использует MIME и расширение только как hints: OOXML определяется
+нейтральным content sniffing по `[Content_Types].xml`, root relationship и main part, после
+чего запускается inspector только найденного семейства DOCX или XLSX. Seekable PDF открывается
+только из cache-копии; ZIP/OOXML parsers также не возвращаются к исходному provider после copy.
 Старые viewer files имеют age-based cleanup; Share выдаёт FileProvider URI после явного
 действия пользователя. Подробный контракт — в
 [docs/DOCUMENT_VIEWER.md](docs/DOCUMENT_VIEWER.md).

@@ -6,6 +6,8 @@ public final class XlsxParseException extends IOException {
     public enum Reason {
         CORRUPTED,
         TOO_LARGE,
+        ENCRYPTED,
+        ACTIVE_CONTENT,
         UNSUPPORTED
     }
 

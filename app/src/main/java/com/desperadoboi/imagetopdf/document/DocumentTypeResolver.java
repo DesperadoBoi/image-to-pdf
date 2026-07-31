@@ -31,6 +31,9 @@ public final class DocumentTypeResolver {
             String displayName
     ) {
         byte[] safePrefix = prefix == null ? new byte[0] : prefix;
+        if (safePrefix.length == 0) {
+            return DocumentType.UNKNOWN;
+        }
         DocumentType signatureType = fromSignature(safePrefix);
         if (signatureType != DocumentType.UNKNOWN) {
             return signatureType;
@@ -62,25 +65,28 @@ public final class DocumentTypeResolver {
             byte[] prefix,
             File cachedFile,
             String displayName
-    ) throws XlsxParseException, WordParseException {
+    ) throws XlsxParseException, WordParseException,
+            OoxmlPackageDetector.DetectionException {
         byte[] safePrefix = prefix == null ? new byte[0] : prefix;
         if (isZip(safePrefix)) {
-            String safeName = SafeDisplayName.sanitize(displayName).toLowerCase(Locale.ROOT);
-            if (safeName.endsWith(".xlsm")
-                    || safeName.endsWith(".xlsb")
-                    || safeName.endsWith(".xlam")
-                    || safeName.endsWith(".docm")
-                    || safeName.endsWith(".dotx")
-                    || safeName.endsWith(".dotm")) {
-                return DocumentType.UNKNOWN;
+            OoxmlPackageDetector.Kind kind = OoxmlPackageDetector.detect(cachedFile);
+            switch (kind) {
+                case XLSX:
+                    return XlsxPackageInspector.inspect(cachedFile).isXlsx()
+                            ? DocumentType.XLSX
+                            : DocumentType.UNKNOWN;
+                case XLSM:
+                    return DocumentType.XLSM;
+                case DOCX:
+                    return DocxPackageInspector.inspect(cachedFile).isDocx()
+                            ? DocumentType.DOCX
+                            : DocumentType.UNKNOWN;
+                case PPTX:
+                    return DocumentType.PPTX;
+                case UNKNOWN:
+                default:
+                    return DocumentType.UNKNOWN;
             }
-            if (DocxPackageInspector.inspect(cachedFile).isDocx()) {
-                return DocumentType.DOCX;
-            }
-            if (XlsxPackageInspector.inspect(cachedFile).isXlsx()) {
-                return DocumentType.XLSX;
-            }
-            return DocumentType.UNKNOWN;
         }
         if (startsWith(safePrefix, XLS)) {
             String safeName = SafeDisplayName.sanitize(displayName).toLowerCase(Locale.ROOT);
@@ -97,7 +103,8 @@ public final class DocumentTypeResolver {
                 Collections.emptySet(),
                 displayName
         );
-        if (resolved == DocumentType.XLSX || resolved == DocumentType.DOCX) {
+        if (resolved == DocumentType.XLSX || resolved == DocumentType.XLSM
+                || resolved == DocumentType.DOCX || resolved == DocumentType.PPTX) {
             return DocumentType.UNKNOWN;
         }
         return resolved;
@@ -116,8 +123,12 @@ public final class DocumentTypeResolver {
                 return DocumentType.DOC;
             case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                 return DocumentType.XLSX;
+            case "application/vnd.ms-excel.sheet.macroenabled.12":
+                return DocumentType.XLSM;
             case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
                 return DocumentType.DOCX;
+            case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+                return DocumentType.PPTX;
             case "text/csv":
             case "application/csv":
                 return DocumentType.CSV;
@@ -172,7 +183,9 @@ public final class DocumentTypeResolver {
         if (name.endsWith(".xls")) return DocumentType.XLS;
         if (name.endsWith(".doc")) return DocumentType.DOC;
         if (name.endsWith(".xlsx")) return DocumentType.XLSX;
+        if (name.endsWith(".xlsm")) return DocumentType.XLSM;
         if (name.endsWith(".docx")) return DocumentType.DOCX;
+        if (name.endsWith(".pptx")) return DocumentType.PPTX;
         if (name.endsWith(".csv")) return DocumentType.CSV;
         if (name.endsWith(".tsv")) return DocumentType.TSV;
         if (name.endsWith(".txt")) return DocumentType.TEXT;

@@ -68,9 +68,19 @@ public final class DocumentViewerCatalogPresentationTest {
     @Test
     public void oldXlsMessageIsExplicitAndActionable() throws Exception {
         assertEquals(
-                "Старый формат XLS пока не поддерживается. Сохраните файл как XLSX.",
+                "Формат XLS пока не поддерживается.\\n"
+                        + "Сохраните таблицу как XLSX или CSV.",
                 readString(
                         repositoryRoot().resolve("app/src/main/res/values/strings.xml"),
+                        "viewer_error_xls_not_supported"
+                )
+        );
+        assertEquals(
+                "XLS is not supported yet.\\nSave the spreadsheet as XLSX or CSV.",
+                readString(
+                        repositoryRoot().resolve(
+                                "app/src/main/res/values-en/viewer_strings.xml"
+                        ),
                         "viewer_error_xls_not_supported"
                 )
         );

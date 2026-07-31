@@ -36,6 +36,7 @@ import com.desperadoboi.imagetopdf.document.DocumentLoadException;
 import com.desperadoboi.imagetopdf.document.DocumentType;
 import com.desperadoboi.imagetopdf.document.IncomingDocument;
 import com.desperadoboi.imagetopdf.document.IncomingDocumentLoader;
+import com.desperadoboi.imagetopdf.document.SafeDisplayName;
 import com.desperadoboi.imagetopdf.document.TemporaryDocumentStore;
 import com.desperadoboi.imagetopdf.document.image.ViewerImageLoader;
 import com.desperadoboi.imagetopdf.document.pdf.PdfDocumentRenderer;
@@ -70,6 +71,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class DocumentViewerActivity extends AppCompatActivity {
     public static final String ACTION_INTERNAL_VIEW =
             "com.desperadoboi.imagetopdf.action.VIEW_DOCUMENT";
+    public static final String EXTRA_DISPLAY_NAME =
+            "com.desperadoboi.imagetopdf.extra.DISPLAY_NAME";
     private static final String STATE_CURRENT_PAGE = "viewer_current_page";
     private static final String STATE_CURRENT_SHEET = "viewer_current_sheet";
     private static final String STATE_WORD_SCROLL_X = "viewer_word_scroll_x";
@@ -351,8 +354,13 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             return;
         }
         spreadsheetStateStore.openDocument(uri.toString());
-        titleView.setText(com.desperadoboi.imagetopdf.document.SafeDisplayName.sanitize(
-                uri.getLastPathSegment()
+        String storedDisplayName = intent.getStringExtra(EXTRA_DISPLAY_NAME);
+        String fallbackDisplayName = getString(R.string.viewer_document_fallback_name);
+        titleView.setText(SafeDisplayName.resolve(
+                null,
+                storedDisplayName,
+                uri.getLastPathSegment(),
+                fallbackDisplayName
         ));
         showLoading(R.string.viewer_loading_opening);
         long generation = generations.incrementAndGet();
@@ -361,7 +369,12 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         IncomingDocumentLoader loader = new IncomingDocumentLoader(this, temporaryDocumentStore);
         loadExecutor.execute(() -> {
             try {
-                IncomingDocument document = loader.load(uri, cancellation);
+                IncomingDocument document = loader.load(
+                        uri,
+                        storedDisplayName,
+                        fallbackDisplayName,
+                        cancellation
+                );
                 runOnUiThread(() -> {
                     if (generation != generations.get() || isFinishing() || isDestroyed()) {
                         temporaryDocumentStore.delete(document.getCachedFile());
@@ -407,15 +420,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         DocumentType type = currentDocument.getDocumentType();
         shareButton.setEnabled(type.isViewable());
         if (!type.isViewable()) {
-            showError(
-                    R.drawable.ic_viewer_state_unsupported_48,
-                    R.string.viewer_error_unsupported_title,
-                    type == DocumentType.XLS
-                            ? R.string.viewer_error_xls_not_supported
-                            : type == DocumentType.DOC
-                                    ? R.string.viewer_error_doc_not_supported
-                                    : R.string.viewer_error_unknown_format
-            );
+            showViewerError(ViewerErrorMapper.unsupportedType(type));
             return;
         }
         if (type == DocumentType.PDF) {
@@ -682,19 +687,9 @@ public final class DocumentViewerActivity extends AppCompatActivity {
             } catch (XlsxParseException exception) {
                 runOnUiThread(() -> {
                     if (generation != generations.get()) return;
-                    if (exception.getReason() == XlsxParseException.Reason.TOO_LARGE) {
-                        showError(
-                                R.drawable.ic_viewer_state_too_large_48,
-                                R.string.viewer_error_too_large_title,
-                                R.string.viewer_error_xlsx_too_large
-                        );
-                    } else {
-                        showError(
-                                R.drawable.ic_viewer_state_corrupted_48,
-                                R.string.viewer_error_corrupted_title,
-                                R.string.viewer_error_xlsx_corrupted
-                        );
-                    }
+                    showViewerError(ViewerErrorMapper.spreadsheetFailure(
+                            exception.getReason()
+                    ));
                 });
             } catch (Exception exception) {
                 runOnUiThread(() -> {
@@ -780,37 +775,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     }
 
     private void showWordFailure(WordParseException exception) {
-        switch (exception.getReason()) {
-            case TOO_LARGE:
-                showError(
-                        R.drawable.ic_viewer_state_too_large_48,
-                        R.string.viewer_error_too_large_title,
-                        R.string.viewer_error_docx_too_large
-                );
-                break;
-            case ENCRYPTED:
-                showError(
-                        R.drawable.ic_viewer_state_encrypted_48,
-                        R.string.viewer_error_encrypted_title,
-                        R.string.viewer_error_docx_encrypted
-                );
-                break;
-            case UNSUPPORTED:
-                showError(
-                        R.drawable.ic_viewer_state_unsupported_48,
-                        R.string.viewer_error_unsupported_title,
-                        R.string.viewer_error_docx_unsupported
-                );
-                break;
-            case CORRUPTED:
-            default:
-                showError(
-                        R.drawable.ic_viewer_state_corrupted_48,
-                        R.string.viewer_error_corrupted_title,
-                        R.string.viewer_error_docx_corrupted
-                );
-                break;
-        }
+        showViewerError(ViewerErrorMapper.wordFailure(exception.getReason()));
     }
 
     private void openSafeHyperlink(String value) {
@@ -1109,51 +1074,125 @@ public final class DocumentViewerActivity extends AppCompatActivity {
     }
 
     private void showLoadFailure(DocumentLoadException exception) {
-        switch (exception.getReason()) {
-            case PERMISSION_LOST:
+        showViewerError(ViewerErrorMapper.loadFailure(exception.getReason()));
+    }
+
+    private void showViewerError(ViewerErrorType type) {
+        switch (type) {
+            case UNSUPPORTED_LEGACY_XLS:
                 showError(
-                        R.drawable.ic_viewer_state_permission_48,
-                        R.string.viewer_error_permission_title,
-                        R.string.viewer_error_permission
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_xls_not_supported
                 );
                 break;
-            case TOO_LARGE:
+            case UNSUPPORTED_LEGACY_DOC:
+                showError(
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_doc_not_supported
+                );
+                break;
+            case UNSUPPORTED_MACRO_XLSM:
+                showError(
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_xlsm_not_supported
+                );
+                break;
+            case SPREADSHEET_TOO_LARGE:
                 showError(
                         R.drawable.ic_viewer_state_too_large_48,
                         R.string.viewer_error_too_large_title,
-                        R.string.viewer_error_too_large
+                        R.string.viewer_error_xlsx_too_large
                 );
                 break;
-            case CORRUPTED:
+            case SPREADSHEET_ENCRYPTED:
+                showError(
+                        R.drawable.ic_viewer_state_encrypted_48,
+                        R.string.viewer_error_spreadsheet_encrypted_title,
+                        R.string.viewer_error_xlsx_encrypted
+                );
+                break;
+            case SPREADSHEET_ACTIVE_CONTENT:
+                showError(
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_xlsx_active_content
+                );
+                break;
+            case SPREADSHEET_CORRUPTED:
                 showError(
                         R.drawable.ic_viewer_state_corrupted_48,
                         R.string.viewer_error_corrupted_title,
-                        R.string.viewer_error_corrupted
+                        R.string.viewer_error_xlsx_corrupted
                 );
                 break;
-            case ENCRYPTED:
+            case DOCX_TOO_LARGE:
+                showError(
+                        R.drawable.ic_viewer_state_too_large_48,
+                        R.string.viewer_error_too_large_title,
+                        R.string.viewer_error_docx_too_large
+                );
+                break;
+            case DOCX_ENCRYPTED:
                 showError(
                         R.drawable.ic_viewer_state_encrypted_48,
                         R.string.viewer_error_encrypted_title,
                         R.string.viewer_error_docx_encrypted
                 );
                 break;
-            case UNSUPPORTED:
+            case DOCX_UNSUPPORTED:
                 showError(
                         R.drawable.ic_viewer_state_unsupported_48,
                         R.string.viewer_error_unsupported_title,
                         R.string.viewer_error_docx_unsupported
                 );
                 break;
-            case CANCELLED:
+            case DOCX_CORRUPTED:
+                showError(
+                        R.drawable.ic_viewer_state_corrupted_48,
+                        R.string.viewer_error_corrupted_title,
+                        R.string.viewer_error_docx_corrupted
+                );
                 break;
-            case UNREADABLE:
-            default:
+            case PROVIDER_PERMISSION:
+                showError(
+                        R.drawable.ic_viewer_state_permission_48,
+                        R.string.viewer_error_permission_title,
+                        R.string.viewer_error_permission
+                );
+                break;
+            case PROVIDER_URI_UNREADABLE:
                 showError(
                         R.drawable.ic_viewer_state_permission_48,
                         R.string.viewer_error_open_title,
                         R.string.viewer_error_open
                 );
+                break;
+            case GENERIC_TOO_LARGE:
+                showError(
+                        R.drawable.ic_viewer_state_too_large_48,
+                        R.string.viewer_error_too_large_title,
+                        R.string.viewer_error_too_large
+                );
+                break;
+            case GENERIC_CORRUPTED:
+                showError(
+                        R.drawable.ic_viewer_state_corrupted_48,
+                        R.string.viewer_error_corrupted_title,
+                        R.string.viewer_error_corrupted
+                );
+                break;
+            case UNSUPPORTED_DOCUMENT_TYPE:
+                showError(
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_unknown_format
+                );
+                break;
+            case CANCELLED:
+            default:
                 break;
         }
     }

@@ -307,6 +307,7 @@
     <string name="viewer_loading_content_description">Документ загружается</string>
     <string name="viewer_loading_title">Открываем документ</string>
     <string name="viewer_loading_opening">Проверяем и открываем файл…</string>
+    <string name="viewer_document_fallback_name">Документ</string>
     <string name="viewer_loading_pdf">Открываем PDF…</string>
     <string name="viewer_loading_page">Готовим страницу…</string>
     <string name="viewer_loading_image">Открываем изображение…</string>
@@ -346,7 +347,8 @@
 
     <string name="viewer_error_unsupported_title">Формат не поддерживается</string>
     <string name="viewer_error_invalid_request">Можно открыть только переданный PDF, DOCX, XLSX, CSV, текст или изображение</string>
-    <string name="viewer_error_xls_not_supported">Старый формат XLS пока не поддерживается. Сохраните файл как XLSX.</string>
+    <string name="viewer_error_xls_not_supported">Формат XLS пока не поддерживается.\nСохраните таблицу как XLSX или CSV.</string>
+    <string name="viewer_error_xlsm_not_supported">Книги XLSM с макросами не поддерживаются. Сохраните безопасную копию как XLSX.</string>
     <string name="viewer_error_unknown_format">Не удалось безопасно определить формат файла</string>
     <string name="viewer_error_permission_title">Нет доступа к файлу</string>
     <string name="viewer_error_permission">Разрешение на чтение потеряно. Выберите файл ещё раз</string>
@@ -369,8 +371,11 @@
     <string name="viewer_error_image_corrupted">Изображение повреждено или не декодируется на этом устройстве</string>
     <string name="viewer_error_text_corrupted">Не удалось безопасно прочитать текст</string>
     <string name="viewer_error_table_corrupted">Структура таблицы повреждена или слишком сложна</string>
-    <string name="viewer_error_xlsx_corrupted">Книга XLSX повреждена, зашифрована или содержит неподдерживаемую структуру</string>
+    <string name="viewer_error_xlsx_corrupted">Таблица повреждена или имеет неподдерживаемую структуру</string>
     <string name="viewer_error_xlsx_too_large">Книга XLSX превышает безопасные пределы локального просмотра</string>
+    <string name="viewer_error_spreadsheet_encrypted_title">Таблица защищена паролем</string>
+    <string name="viewer_error_xlsx_encrypted">Зашифрованные таблицы нельзя открыть без пароля</string>
+    <string name="viewer_error_xlsx_active_content">Таблица содержит неподдерживаемые макросы, ActiveX или встроенное исполняемое содержимое</string>
     <string name="viewer_error_docx_corrupted">Документ DOCX повреждён или не содержит основной части Word</string>
     <string name="viewer_error_docx_too_large">Документ DOCX превышает безопасные пределы локального просмотра</string>
     <string name="viewer_error_docx_encrypted">Зашифрованные документы DOCX нельзя открыть без пароля</string>

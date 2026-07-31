@@ -20,7 +20,9 @@ XLSM/XLSB, DOCM/DOTX/DOTM, RTF, ODT, archive и другие document formats.
 
 - исходный `content://` читается только через `ContentResolver`;
 - `file://` допускается как ограниченный fallback, без преобразования `content://` в путь;
-- display name очищается от separators, traversal, control characters и ограничивается по длине;
+- display name выбирается в порядке provider `OpenableColumns.DISPLAY_NAME`, сохранённое при
+  выборе metadata, безопасно декодированное URI-имя, локализованный fallback; provider IDs и
+  случайное cache-имя никогда не показываются;
 - bytes копируются вне main thread в `cacheDir/document_viewer` под случайным именем;
 - общий предел входного файла — 250 MiB, PDF — 200 MiB, image — 100 MiB, text/table — 25 MiB,
   XLSX и DOCX — по 50 MiB;
@@ -33,17 +35,22 @@ XLSM/XLSB, DOCM/DOTX/DOTM, RTF, ODT, archive и другие document formats.
 
 ## Определение типа
 
-`DocumentTypeResolver` сопоставляет provider MIME, затем проверяет bounded signature и
-использует безопасное расширение display name только как fallback. Сильная фактическая
-signature имеет приоритет при конфликте. Проверяются `%PDF`, OLE Compound File, JPEG, PNG,
-WebP и HEIF brands. XLSX распознаётся только по ZIP signature и согласованному OOXML package:
+`DocumentTypeResolver` использует provider MIME и безопасное расширение только как hints.
+Сильная фактическая signature и проверенное содержимое package имеют приоритет при конфликте.
+Проверяются `%PDF`, OLE Compound File, JPEG, PNG, WebP и HEIF brands. Для ZIP сначала нейтрально
+проверяются безопасные entry paths, `[Content_Types].xml`, root `officeDocument` relationship
+и main part; только затем запускается XLSX- либо DOCX-specific inspector. XLSX распознаётся
+только по согласованному OOXML package:
 `[Content_Types].xml`, `_rels/.rels`, `xl/workbook.xml`, workbook relationships и реальный
 worksheet part. MIME или расширение не превращают обычный ZIP в XLSX.
 DOCX также требует ZIP signature, `[Content_Types].xml`, `_rels/.rels`, единственный
 безопасный internal `officeDocument` relationship, существующий main part и точный
 WordprocessingML main content type. Main part может находиться не только в
 `word/document.xml`: используется нормализованная цель relationship. MIME или `.docx` не
-превращают обычный ZIP, DOCM/DOTX/DOTM или повреждённый package в DOCX.
+превращают обычный ZIP, DOCM/DOTX/DOTM или повреждённый package в DOCX. Macro-enabled workbook
+content type определяется как XLSM независимо от имени и не передаётся обычному XLSX parser.
+OLE Compound File не передаётся OOXML parser и показывается как неподдерживаемый XLS/DOC с
+форматным сообщением.
 
 ## Renderers
 
@@ -59,7 +66,8 @@ WordprocessingML main content type. Main part может находиться н
 - XLSX parser использует только `java.util.zip`, `XmlPullParser` и app-cache файл. Он читает
   порядок и имена листов через workbook relationships, shared/inline/rich strings, integer,
   decimal, boolean, blank, error, cached formula result, dates по style и `date1904`, а также
-  merged ranges. Формулы не вычисляются; при отсутствии cache показывается их текст.
+  merged ranges. Формулы не вычисляются; показывается только сохранённый cached result, а при
+  его отсутствии ячейка остаётся пустой.
   Dropdown листов и имя текущего листа остаются вне document canvas.
 - XLSX visual fidelity includes direct/indexed/theme cell fills, basic font attributes, borders,
   alignment, wrapText, merged ranges, hidden rows/columns, and worksheet column/row dimensions.
@@ -152,9 +160,15 @@ WordprocessingML main content type. Main part может находиться н
   10 000 merged ranges и 1 миллион разобранных cells на workbook;
 - XML ограничен 64 уровнями и 2 миллионами events на part; DTD и custom entities запрещены;
 - запрещены absolute/traversal/duplicate ZIP paths, encrypted ZIP, ZIP64, macros, ActiveX,
-  external links, OLE embeddings и executable entries;
+  OLE embeddings и executable entries;
 - relationship target нормализуется внутри package; external worksheet/style/string parts не
   читаются. Hyperlinks не открываются автоматически и код документа не выполняется.
+
+Обычные external workbook links и data connections не выполняются и не загружаются, но сами
+по себе не отклоняют книгу: parser игнорирует external parts и показывает локальные cached cell
+values. Формулы не вычисляются. Безопасная HTTPS hyperlink может быть передана внешнему browser
+только после явного действия пользователя; текущий XLSX Canvas не выполняет автоматическую
+навигацию или сетевые запросы.
 
 При превышении row/column/cell-text limits показывается partial preview с предупреждением;
 опасный archive-level или XML complexity limit переводит viewer в too-large state. Поддержка
