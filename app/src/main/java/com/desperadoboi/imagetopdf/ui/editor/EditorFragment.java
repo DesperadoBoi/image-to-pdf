@@ -230,6 +230,12 @@ public final class EditorFragment extends Fragment {
         cancelGenerationButton.setOnClickListener(v -> cancelPdfGeneration());
         rotateSelectedPageButton.setOnClickListener(v -> rotateSelectedPage());
         deleteSelectedPageButton.setOnClickListener(v -> deleteSelectedPage());
+        selectedPageImageView.setOnClickListener(v -> openPagePreview(
+                PreviewPageNavigator.findPositionById(
+                        sessionViewModel.getPages(),
+                        selectedPageId
+                )
+        ));
     }
 
     @Override public void onSaveInstanceState(@NonNull Bundle outState) { outState.putLong(STATE_SELECTED_PAGE_ID, selectedPageId); super.onSaveInstanceState(outState); }

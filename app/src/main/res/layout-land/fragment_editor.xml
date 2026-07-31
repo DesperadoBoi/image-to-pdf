@@ -135,7 +135,7 @@
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_pages"
-        android:layout_width="0dp"
+        android:layout_width="@dimen/editor_land_page_strip_width"
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:contentDescription="@string/page_edit_strip_content_description"
@@ -143,6 +143,7 @@
         android:paddingStart="@dimen/page_edit_strip_edge_padding"
         android:paddingEnd="@dimen/page_edit_strip_edge_padding"
         app:layout_constraintBottom_toTopOf="@id/layout_editor_bottom"
+        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@id/guideline_editor_columns"
         app:layout_constraintTop_toBottomOf="@id/text_selected_page_counter" />
