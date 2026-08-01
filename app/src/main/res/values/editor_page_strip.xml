@@ -1,0 +1,4 @@
+<resources>
+    <bool name="editor_page_strip_vertical">false</bool>
+    <bool name="editor_page_strip_show_add_item">true</bool>
+</resources>

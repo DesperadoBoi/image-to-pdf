@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="editor_land_page_item_width">112dp</dimen>
+    <dimen name="editor_land_page_item_height">64dp</dimen>
+    <dimen name="editor_land_page_item_thumbnail_size">48dp</dimen>
+    <dimen name="editor_land_page_item_spacing">8dp</dimen>
+    <dimen name="editor_land_page_strip_width">128dp</dimen>
+    <dimen name="page_edit_strip_item_height">64dp</dimen>
+    <dimen name="page_edit_strip_item_spacing">4dp</dimen>
+    <dimen name="page_edit_strip_item_padding">4dp</dimen>
+    <dimen name="page_edit_strip_thumbnail_size">48dp</dimen>
+    <dimen name="page_edit_strip_number_spacing">4dp</dimen>
+    <dimen name="page_edit_strip_corner_radius">6dp</dimen>
+    <dimen name="page_edit_strip_selected_stroke">1dp</dimen>
+</resources>

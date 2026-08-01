@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground">
+
+    <ImageButton
+        android:id="@+id/button_back"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:background="@drawable/bg_icon_button_round"
+        android:contentDescription="@string/action_editor_back_content_description"
+        android:padding="@dimen/editor_overlay_button_padding"
+        android:src="@drawable/ic_action_back_24"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="?attr/colorOnSurface" />
+
+    <TextView
+        android:id="@+id/text_editor_title"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:layout_marginStart="@dimen/content_spacing_small"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:text="@string/editor_title"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/button_add_images"
+        app:layout_constraintStart_toEndOf="@id/button_back"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_add_images"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/editor_toolbar_height"
+        android:contentDescription="@string/action_add_page_content_description"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minWidth="0dp"
+        android:text="@string/action_add"
+        app:icon="@drawable/ic_action_add_24"
+        app:iconTint="?attr/colorPrimary"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_editor_columns"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.58" />
+
+    <FrameLayout
+        android:id="@+id/layout_editor_preview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/editor_preview_margin"
+        android:layout_marginEnd="@dimen/editor_preview_margin"
+        android:layout_marginBottom="@dimen/editor_preview_margin"
+        android:background="@color/editor_preview_background"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/guideline_editor_columns"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/button_back">
+
+        <ImageView
+            android:id="@+id/image_selected_page"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:adjustViewBounds="true"
+            android:contentDescription="@string/page_edit_image_content_description_generic"
+            android:scaleType="fitCenter" />
+
+        <ProgressBar
+            android:id="@+id/progress_editor_preview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <ImageButton
+            android:id="@+id/button_rotate_selected_page"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="@dimen/editor_rotate_overlay_margin"
+            android:background="@drawable/bg_editor_overlay_button"
+            android:contentDescription="@string/action_rotate_page_content_description_generic"
+            android:elevation="@dimen/editor_overlay_button_elevation"
+            android:padding="@dimen/editor_overlay_button_padding"
+            android:src="@drawable/ic_action_rotate_right_24"
+            app:tint="?attr/colorPrimary" />
+
+        <ImageButton
+            android:id="@+id/button_delete_selected_page"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/editor_rotate_overlay_margin"
+            android:background="@drawable/bg_editor_overlay_button"
+            android:contentDescription="@string/action_delete_page_content_description_generic"
+            android:elevation="@dimen/editor_overlay_button_elevation"
+            android:padding="@dimen/editor_overlay_button_padding"
+            android:src="@drawable/ic_action_delete_24"
+            app:tint="?attr/colorError" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/text_selection_status"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/guideline_editor_columns"
+        app:layout_constraintTop_toBottomOf="@id/button_add_images" />
+
+    <TextView
+        android:id="@+id/text_selected_page_counter"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/page_edit_counter_min_height"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceLabelLarge"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/guideline_editor_columns"
+        app:layout_constraintTop_toBottomOf="@id/text_selection_status" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_pages"
+        android:layout_width="@dimen/editor_land_page_strip_width"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:contentDescription="@string/page_edit_strip_content_description"
+        android:overScrollMode="never"
+        android:paddingStart="@dimen/page_edit_strip_edge_padding"
+        android:paddingEnd="@dimen/page_edit_strip_edge_padding"
+        app:layout_constraintBottom_toTopOf="@id/layout_editor_bottom"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/guideline_editor_columns"
+        app:layout_constraintTop_toBottomOf="@id/text_selected_page_counter" />
+
+    <LinearLayout
+        android:id="@+id/layout_editor_bottom"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="@dimen/content_spacing_small"
+        android:paddingBottom="@dimen/content_spacing_small"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/guideline_editor_columns">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/button_create_pdf"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/primary_button_height"
+            android:background="@drawable/bg_primary_action"
+            android:contentDescription="@string/action_create_pdf"
+            android:drawableStart="@drawable/ic_action_create_pdf_24"
+            android:drawablePadding="@dimen/content_spacing_small"
+            android:drawableTint="@color/primary_action_content"
+            android:enabled="false"
+            android:gravity="center"
+            android:minHeight="@dimen/primary_button_height"
+            android:textAllCaps="false"
+            android:textColor="@color/primary_action_content"
+            android:textStyle="bold" />
+
+        <ProgressBar android:id="@+id/progress_generation" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/content_spacing_small" android:visibility="gone" />
+        <TextView android:id="@+id/text_generation_progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/pdf_generation_progress_text_spacing" android:gravity="center" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="?attr/colorOnSurface" android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/button_cancel_generation" style="?attr/materialButtonOutlinedStyle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/pdf_generation_cancel_button_spacing" android:minHeight="@dimen/pdf_generation_cancel_button_min_height" android:text="@string/action_cancel_pdf_generation" android:visibility="gone" />
+        <TextView android:id="@+id/text_operation_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/content_spacing_small" android:gravity="center" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone" />
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
