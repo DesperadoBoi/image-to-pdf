@@ -91,6 +91,9 @@
     <string name="action_delete_page_content_description_generic">Удалить страницу</string>
     <string name="action_move_page_up">Переместить выше</string>
     <string name="action_move_page_down">Переместить ниже</string>
+    <string name="action_move_page_left">Переместить влево</string>
+    <string name="action_move_page_right">Переместить вправо</string>
+    <string name="page_position_announcement">Страница %1$d из %2$d</string>
     <string name="action_previous_page_content_description">Предыдущая страница</string>
     <string name="action_next_page_content_description">Следующая страница</string>
     <string name="action_rotate_preview_page_content_description">Повернуть страницу</string>
@@ -145,6 +148,9 @@
     <string name="status_pdf_share_error">Не удалось поделиться PDF</string>
     <string name="status_page_preview_load_error">Не удалось открыть страницу</string>
     <string name="status_page_edit_load_error">Не удалось открыть страницу</string>
+    <string name="action_retry_page_preview">Повторить</string>
+    <string name="editor_empty_title">Добавьте изображения</string>
+    <string name="editor_empty_description">Выберите изображения, чтобы создать PDF</string>
     <string name="pdf_share_chooser_title">Поделиться PDF</string>
     <string name="pdf_result_unknown_name">Созданный PDF</string>
     <string name="pdf_result_summary">%1$s · %2$s</string>

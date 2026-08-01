@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_add_images">Add images</string>
+    <string name="action_add">Add</string>
+    <string name="action_add_page_content_description">Add images</string>
+    <string name="action_create_pdf">Create PDF</string>
+    <string name="editor_title">Pages</string>
+    <string name="editor_selected_page_counter">%1$d of %2$d</string>
+    <string name="page_edit_strip_content_description">Document pages</string>
+    <string name="page_edit_thumbnail_content_description">Go to page %1$d</string>
+    <string name="page_edit_image_content_description_generic">Page preview</string>
+    <string name="action_move_page_left">Move left</string>
+    <string name="action_move_page_right">Move right</string>
+    <string name="action_move_page_up">Move up</string>
+    <string name="action_move_page_down">Move down</string>
+    <string name="page_position_announcement">Page %1$d of %2$d</string>
+    <string name="editor_empty_title">Add images</string>
+    <string name="editor_empty_description">Choose images to create a PDF</string>
+    <string name="status_page_preview_load_error">Couldn’t open the page</string>
+    <string name="status_page_edit_load_error">Couldn’t open the page</string>
+    <string name="action_retry_page_preview">Retry</string>
+
+    <plurals name="editor_page_count">
+        <item quantity="one">%1$d page</item>
+        <item quantity="other">%1$d pages</item>
+    </plurals>
+    <plurals name="create_pdf_page_count">
+        <item quantity="one">Create PDF · %1$d page</item>
+        <item quantity="other">Create PDF · %1$d pages</item>
+    </plurals>
+</resources>

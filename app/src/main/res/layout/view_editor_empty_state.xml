@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/layout_editor_empty"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/editor_preview_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="@dimen/content_spacing_large"
+    android:visibility="gone">
+
+    <TextView
+        android:id="@+id/text_editor_empty_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="@string/editor_empty_title"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:textColor="@color/white"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/text_editor_empty_description"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_small"
+        android:gravity="center"
+        android:text="@string/editor_empty_description"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/white" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_editor_empty_add"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/content_spacing_large"
+        android:minHeight="@dimen/touch_target"
+        android:text="@string/action_add_images"
+        app:icon="@drawable/ic_action_add_24" />
+</LinearLayout>

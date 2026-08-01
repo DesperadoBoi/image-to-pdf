@@ -8,7 +8,7 @@
     <ImageButton
         android:id="@+id/button_back"
         android:layout_width="@dimen/touch_target"
-        android:layout_height="@dimen/editor_toolbar_height"
+        android:layout_height="@dimen/touch_target"
         android:background="@drawable/bg_icon_button_round"
         android:contentDescription="@string/action_editor_back_content_description"
         android:padding="@dimen/editor_overlay_button_padding"
@@ -20,11 +20,14 @@
     <TextView
         android:id="@+id/text_editor_title"
         android:layout_width="0dp"
-        android:layout_height="@dimen/editor_toolbar_height"
+        android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/content_spacing_small"
+        android:layout_marginEnd="@dimen/content_spacing_small"
         android:ellipsize="end"
         android:gravity="center_vertical"
-        android:maxLines="1"
+        android:includeFontPadding="true"
+        android:minHeight="@dimen/touch_target"
+        android:singleLine="true"
         android:text="@string/editor_title"
         android:textAppearance="?attr/textAppearanceTitleLarge"
         android:textColor="?attr/colorOnSurface"
@@ -37,16 +40,24 @@
         android:id="@+id/button_add_images"
         style="?attr/materialButtonOutlinedStyle"
         android:layout_width="wrap_content"
-        android:layout_height="@dimen/editor_toolbar_height"
+        android:layout_height="wrap_content"
         android:contentDescription="@string/action_add_page_content_description"
         android:insetTop="0dp"
         android:insetBottom="0dp"
-        android:minWidth="0dp"
+        android:minWidth="@dimen/touch_target"
+        android:minHeight="@dimen/touch_target"
         android:text="@string/action_add"
         app:icon="@drawable/ic_action_add_24"
         app:iconTint="?attr/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/barrier_editor_header_bottom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="button_back,text_editor_title,button_add_images" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline_editor_columns"
@@ -66,7 +77,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/guideline_editor_columns"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/button_back">
+        app:layout_constraintTop_toBottomOf="@id/barrier_editor_header_bottom">
 
         <ImageView
             android:id="@+id/image_selected_page"
@@ -82,6 +93,10 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:visibility="gone" />
+
+        <include layout="@layout/view_preview_error" />
+
+        <include layout="@layout/view_editor_empty_state" />
 
         <ImageButton
             android:id="@+id/button_rotate_selected_page"
@@ -120,7 +135,7 @@
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@id/guideline_editor_columns"
-        app:layout_constraintTop_toBottomOf="@id/button_add_images" />
+        app:layout_constraintTop_toBottomOf="@id/barrier_editor_header_bottom" />
 
     <TextView
         android:id="@+id/text_selected_page_counter"
@@ -162,7 +177,7 @@
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/button_create_pdf"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/primary_button_height"
+            android:layout_height="wrap_content"
             android:background="@drawable/bg_primary_action"
             android:contentDescription="@string/action_create_pdf"
             android:drawableStart="@drawable/ic_action_create_pdf_24"
@@ -170,7 +185,12 @@
             android:drawableTint="@color/primary_action_content"
             android:enabled="false"
             android:gravity="center"
+            android:maxLines="2"
             android:minHeight="@dimen/primary_button_height"
+            android:paddingStart="@dimen/content_spacing_medium"
+            android:paddingTop="@dimen/content_spacing_small"
+            android:paddingEnd="@dimen/content_spacing_medium"
+            android:paddingBottom="@dimen/content_spacing_small"
             android:textAllCaps="false"
             android:textColor="@color/primary_action_content"
             android:textStyle="bold" />
