@@ -162,6 +162,9 @@
     <dimen name="scan_permission_max_width">420dp</dimen>
     <dimen name="scan_permission_padding">24dp</dimen>
     <dimen name="scan_review_tools_spacing">4dp</dimen>
+    <dimen name="id_card_side_padding">14dp</dimen>
+    <dimen name="id_card_slot_spacing">12dp</dimen>
+    <dimen name="id_card_content_max_width">760dp</dimen>
     <dimen name="viewer_toolbar_height">56dp</dimen>
     <dimen name="viewer_content_margin">8dp</dimen>
     <dimen name="viewer_controls_padding">8dp</dimen>

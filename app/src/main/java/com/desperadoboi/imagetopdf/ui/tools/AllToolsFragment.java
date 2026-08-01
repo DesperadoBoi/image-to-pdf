@@ -86,6 +86,7 @@ public final class AllToolsFragment extends Fragment {
     private void handleToolSelected(ToolId toolId) {
         if ((toolId != ToolId.IMAGE_TO_PDF
                 && toolId != ToolId.SMART_SCAN
+                && toolId != ToolId.ID_SCAN
                 && toolId != ToolId.DOCUMENT_VIEWER)
                 || !ToolCatalog.get(toolId).isAvailable()) {
             return;

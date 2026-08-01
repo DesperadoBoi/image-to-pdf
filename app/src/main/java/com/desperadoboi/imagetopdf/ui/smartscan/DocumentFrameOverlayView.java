@@ -17,6 +17,7 @@ import com.google.android.material.color.MaterialColors;
 public final class DocumentFrameOverlayView extends View {
     private static final float PORTRAIT_ASPECT = 0.707f;
     private static final float LANDSCAPE_ASPECT = 1.414f;
+    private static final float ID_CARD_ASPECT = 85.60f / 53.98f;
 
     private final Paint shadePaint = new Paint();
     private final Paint contourPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -25,6 +26,7 @@ public final class DocumentFrameOverlayView extends View {
     private final RectF frame = new RectF();
     private final float safeInset;
     private final float cornerLength;
+    private boolean idCardMode;
 
     public DocumentFrameOverlayView(Context context) {
         this(context, null);
@@ -76,6 +78,15 @@ public final class DocumentFrameOverlayView extends View {
         drawCorners(canvas);
     }
 
+    public void setIdCardMode(boolean idCardMode) {
+        if (this.idCardMode == idCardMode) {
+            return;
+        }
+        this.idCardMode = idCardMode;
+        updateFrame(getWidth(), getHeight());
+        invalidate();
+    }
+
     private void updateFrame(int width, int height) {
         float availableWidth = Math.max(0f, width - (safeInset * 2f));
         float availableHeight = Math.max(0f, height - (safeInset * 2f));
@@ -83,7 +94,9 @@ public final class DocumentFrameOverlayView extends View {
             frame.setEmpty();
             return;
         }
-        float targetAspect = height >= width ? PORTRAIT_ASPECT : LANDSCAPE_ASPECT;
+        float targetAspect = idCardMode
+                ? ID_CARD_ASPECT
+                : (height >= width ? PORTRAIT_ASPECT : LANDSCAPE_ASPECT);
         float frameWidth = availableWidth * 0.9f;
         float frameHeight = frameWidth / targetAspect;
         if (frameHeight > availableHeight * 0.9f) {

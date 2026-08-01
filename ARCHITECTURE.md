@@ -231,3 +231,23 @@ CameraX captures создаются в `filesDir/captured_images`. При отм
 - Генерация PDF использует профили `COMPACT = 96`, `BALANCED = 144` и `HIGH = 216` DPI; `RasterTargetCalculator.TARGET_DPI = 144` остаётся совместимым значением сбалансированного профиля.
 - `RasterTargetCalculator` является чистой Java-логикой и рассчитывает целевой размер bitmap по ориентированным размерам источника, фактической области содержимого PDF и режиму размещения FIT/FILL.
 - `PdfGenerator` сохраняет двухэтапный `BitmapFactory` decode с чтением bounds и `inSampleSize`, затем применяет EXIF/ручной поворот и выполняет точное уменьшение через `ImageBitmapTransformer.scaleDownToFit` только если декодированный bitmap всё ещё больше рассчитанного target.
+
+## Архитектура сканирования удостоверения
+
+`IdCardScanViewModel` владеет отдельной activity-scoped сессией с явно адресуемыми `FRONT` и
+`BACK`; позиция в UI не используется как идентичность стороны. `SavedStateHandle` хранит только
+cache URI, безопасные имена файлов, rotation, perspective quad и параметры экспорта, но не
+`Bitmap`. Отсутствующий cache-файл восстанавливается как локальная ошибка стороны.
+
+Camera flow параметризует существующие `SmartScanFragment` и `ScanReviewFragment`, поэтому
+CameraX, EXIF-aware preview, `DocumentPerspectiveOverlayView` и `PageBitmapProcessor` остаются
+общими со Smart Scan. ID-режим добавляет только горизонтальный ID-1 guide и необязательное
+локальное предложение углов; ручное подтверждение обязательно. Gallery использует Android
+Photo Picker и копирует выбранный поток в cache со случайным именем.
+
+`IdCardPageLayoutCalculator` рассчитывает одну A4 portrait страницу в points. Preset просмотра
+использует одинаковые увеличенные области, а actual-size использует преобразование
+`millimeters * 72 / 25.4`. `IdCardPdfGenerator` последовательно декодирует изображения под
+destination size, переиспользует общий image-processing pipeline, рисует необязательный
+flatten watermark и сначала формирует случайный временный PDF в cache. SAF output удаляется при
+ошибке или отмене; image/PDF cache очищается после успеха, закрытия сессии и по TTL.

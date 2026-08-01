@@ -27,8 +27,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 public final class PrivacyPublicationContractTest {
     private static final String DEVELOPER = "DesperadoBoi";
     private static final String EXPECTED_EMAIL = "mihaelkruspe@gmail.com";
-    private static final String EXPECTED_RU_DATE = "22 июля 2026 года";
-    private static final String EXPECTED_EN_DATE = "July 22, 2026";
+    private static final String EXPECTED_RU_DATE = "1 августа 2026 года";
+    private static final String EXPECTED_EN_DATE = "August 1, 2026";
     private static final String EMAIL_SUBJECT = "ImageToPDF — обратная связь";
     private static final String ROOT_URL =
             "https://desperadoboi.github.io/image-to-pdf/";

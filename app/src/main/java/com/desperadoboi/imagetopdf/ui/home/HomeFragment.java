@@ -149,6 +149,9 @@ public final class HomeFragment extends Fragment {
                     } else if (ToolId.SMART_SCAN.name().equals(toolName)
                             && navigationCallback != null) {
                         navigationCallback.onSmartScanRequested();
+                    } else if (ToolId.ID_SCAN.name().equals(toolName)
+                            && navigationCallback != null) {
+                        navigationCallback.onIdCardScanRequested();
                     } else if (ToolId.DOCUMENT_VIEWER.name().equals(toolName)) {
                         openDocumentPicker();
                     }
@@ -327,5 +330,7 @@ public final class HomeFragment extends Fragment {
         void onImagePickerRequested(ImageImportMode mode);
 
         void onSmartScanRequested();
+
+        void onIdCardScanRequested();
     }
 }

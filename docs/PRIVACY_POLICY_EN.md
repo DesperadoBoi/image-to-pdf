@@ -1,6 +1,6 @@
 # ImageToPDF Privacy Policy
 
-Effective date: **July 22, 2026**
+Effective date: **August 1, 2026**
 
 Developer: **DesperadoBoi**
 
@@ -30,6 +30,16 @@ permission. When MediaStore access is granted, the app reads image information a
 locally to display the in-app gallery and process selected pages. If access is denied,
 available system file selection methods can still be used; the app does not obtain broader
 access without permission.
+
+## ID-card scanning
+
+Images of the front and back of an ID card are processed only locally and are not sent to
+the developer or third parties. This flow uses Android Photo Picker and does not request
+additional access to the entire media library. Original captures and intermediate images
+are kept only in the app's internal cache, deleted after successful export, cancellation,
+or session closure, and additionally removed by time-to-live cleanup. Source-file metadata
+is not copied into the generated PDF. The PDF is saved only after the user explicitly
+chooses a location through the system dialog.
 
 ## File storage and deletion
 

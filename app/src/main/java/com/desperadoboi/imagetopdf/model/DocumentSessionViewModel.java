@@ -256,6 +256,14 @@ public final class DocumentSessionViewModel extends ViewModel {
         this.lastPdfResult = lastPdfResult;
     }
 
+    public void publishExternalPdfResult(PdfResult result) {
+        Objects.requireNonNull(result, "result is required");
+        long operationId = nextGenerationOperationId++;
+        lastPdfResult = result;
+        pendingPdfSuccessEvent = new PdfSuccessEvent(operationId, result);
+        pdfResultNavigationCoordinator.reset();
+    }
+
     public void clearLastPdfResult() {
         lastPdfResult = null;
         pendingPdfSuccessEvent = null;
