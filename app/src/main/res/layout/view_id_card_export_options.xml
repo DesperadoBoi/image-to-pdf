@@ -70,6 +70,7 @@
                 android:id="@+id/input_id_card_watermark"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:imeOptions="flagNoExtractUi|actionDone"
                 android:inputType="textCapCharacters"
                 android:maxLength="40"
                 android:maxLines="1" />

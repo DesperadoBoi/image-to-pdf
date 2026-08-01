@@ -15,7 +15,6 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,6 +41,8 @@ public final class IdCardScanViewModel extends ViewModel {
     private final SavedStateHandle savedStateHandle;
     private final ArrayList<WeakReference<Observer>> observers = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private boolean awaitingDefaultWatermarkText;
+    private String defaultWatermarkText = "";
 
     private IdCardScanSession session;
     private IdCardExportOptions exportOptions;
@@ -52,10 +53,19 @@ public final class IdCardScanViewModel extends ViewModel {
 
     public IdCardScanViewModel(SavedStateHandle savedStateHandle) {
         this.savedStateHandle = savedStateHandle;
+        awaitingDefaultWatermarkText = !savedStateHandle.contains(KEY_WATERMARK_TEXT);
         session = restoreSession();
         exportOptions = restoreOptions();
         Long storedNextOperation = savedStateHandle.get(KEY_NEXT_OPERATION);
         nextOperationId = storedNextOperation == null ? 1L : Math.max(1L, storedNextOperation);
+    }
+
+    public void configureDefaultWatermarkText(String text) {
+        defaultWatermarkText = text == null ? "" : text;
+        if (!awaitingDefaultWatermarkText) return;
+        awaitingDefaultWatermarkText = false;
+        exportOptions = exportOptions.withWatermarkText(defaultWatermarkText);
+        persistAndNotify();
     }
 
     public IdCardScanSession getSession() {
@@ -91,7 +101,7 @@ public final class IdCardScanViewModel extends ViewModel {
     public List<String> startNewSession() {
         List<String> stale = session.collectCacheFileNames();
         session = IdCardScanSession.empty(UUID.randomUUID().toString());
-        exportOptions = IdCardExportOptions.defaults(Locale.getDefault());
+        exportOptions = IdCardExportOptions.defaults(defaultWatermarkText);
         exportState = IdCardExportState.idle();
         pendingAccessibilityFocusSide = null;
         cancelActiveExport();
@@ -102,7 +112,7 @@ public final class IdCardScanViewModel extends ViewModel {
     public List<String> clearImagesAfterSuccessfulExport() {
         List<String> files = session.collectCacheFileNames();
         session = IdCardScanSession.empty(UUID.randomUUID().toString());
-        exportOptions = IdCardExportOptions.defaults(Locale.getDefault());
+        exportOptions = IdCardExportOptions.defaults(defaultWatermarkText);
         pendingAccessibilityFocusSide = null;
         persistAndNotify();
         return files;
@@ -383,11 +393,11 @@ public final class IdCardScanViewModel extends ViewModel {
                             : IdCardExportPreset.valueOf(presetName),
                     enabled != null && enabled,
                     text == null
-                            ? IdCardExportOptions.defaultWatermarkText(Locale.getDefault())
+                            ? defaultWatermarkText
                             : text
             );
         } catch (RuntimeException exception) {
-            return IdCardExportOptions.defaults(Locale.getDefault());
+            return IdCardExportOptions.defaults(defaultWatermarkText);
         }
     }
 

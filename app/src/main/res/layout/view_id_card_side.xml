@@ -23,8 +23,7 @@
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textColor="?attr/colorOnSurface"
-            android:textStyle="bold"
-            tools:text="Лицевая сторона" />
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/text_id_card_side_state"
@@ -33,8 +32,7 @@
             android:layout_marginTop="2dp"
             android:accessibilityLiveRegion="polite"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            tools:text="Не добавлена" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <com.desperadoboi.imagetopdf.ui.idcard.IdCardPreviewLayout
             android:id="@+id/layout_id_card_preview"
@@ -79,16 +77,16 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurface"
                 android:visibility="gone"
-                tools:text="Не удалось обработать изображение"
                 tools:visibility="visible" />
 
         </com.desperadoboi.imagetopdf.ui.idcard.IdCardPreviewLayout>
 
-        <LinearLayout
+        <com.desperadoboi.imagetopdf.ui.idcard.ResponsiveActionRow
             android:id="@+id/layout_id_card_empty_actions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_spacing_small"
+            android:baselineAligned="false"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
@@ -97,6 +95,9 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none"
+                android:maxLines="2"
                 android:minHeight="@dimen/touch_target"
                 android:text="@string/id_card_action_take_photo"
                 app:icon="@drawable/ic_source_camera_24" />
@@ -108,11 +109,14 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none"
+                android:maxLines="2"
                 android:minHeight="@dimen/touch_target"
                 android:text="@string/id_card_action_choose_image"
                 app:icon="@drawable/ic_source_gallery_24" />
 
-        </LinearLayout>
+        </com.desperadoboi.imagetopdf.ui.idcard.ResponsiveActionRow>
 
         <LinearLayout
             android:id="@+id/layout_id_card_ready_actions"
@@ -122,9 +126,11 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <LinearLayout
+            <com.desperadoboi.imagetopdf.ui.idcard.ResponsiveActionRow
+                android:id="@+id/layout_id_card_ready_source_actions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:baselineAligned="false"
                 android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
@@ -133,6 +139,9 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:maxLines="2"
                     android:minHeight="@dimen/touch_target"
                     android:text="@string/id_card_action_replace" />
 
@@ -141,15 +150,21 @@
                     style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
                     android:layout_weight="1"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:maxLines="2"
                     android:minHeight="@dimen/touch_target"
                     android:text="@string/id_card_action_retake" />
 
-            </LinearLayout>
+            </com.desperadoboi.imagetopdf.ui.idcard.ResponsiveActionRow>
 
-            <LinearLayout
+            <com.desperadoboi.imagetopdf.ui.idcard.ResponsiveActionRow
+                android:id="@+id/layout_id_card_ready_edit_actions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:baselineAligned="false"
                 android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
@@ -158,6 +173,9 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:maxLines="2"
                     android:minHeight="@dimen/touch_target"
                     android:text="@string/id_card_action_rotate" />
 
@@ -166,7 +184,11 @@
                     style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
                     android:layout_weight="1.4"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:maxLines="2"
                     android:minHeight="@dimen/touch_target"
                     android:text="@string/id_card_action_correct" />
 
@@ -175,12 +197,16 @@
                     style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
                     android:layout_weight="1"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:maxLines="2"
                     android:minHeight="@dimen/touch_target"
                     android:text="@string/id_card_action_delete"
                     android:textColor="@color/destructive_icon" />
 
-            </LinearLayout>
+            </com.desperadoboi.imagetopdf.ui.idcard.ResponsiveActionRow>
 
         </LinearLayout>
 

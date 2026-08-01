@@ -13,7 +13,7 @@
     <string name="id_card_slot_state_description">%1$s. %2$s</string>
     <string name="id_card_front_preview_description">Предпросмотр лицевой стороны удостоверения</string>
     <string name="id_card_back_preview_description">Предпросмотр обратной стороны удостоверения</string>
-    <string name="id_card_action_take_photo">Сфотографировать</string>
+    <string name="id_card_action_take_photo">Камера</string>
     <string name="id_card_action_choose_image">Выбрать изображение</string>
     <string name="id_card_action_replace">Заменить</string>
     <string name="id_card_action_retake">Переснять</string>
@@ -27,6 +27,7 @@
     <string name="id_card_preset_actual">Натуральный размер</string>
     <string name="id_card_watermark_toggle">Добавить водяной знак</string>
     <string name="id_card_watermark_label">Текст водяного знака</string>
+    <string name="id_card_watermark_default">КОПИЯ</string>
     <string name="id_card_watermark_empty_error">Введите текст водяного знака</string>
     <string name="id_card_create_pdf">Создать PDF</string>
     <string name="id_card_cancel_export">Отменить создание PDF</string>

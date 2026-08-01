@@ -95,7 +95,6 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:visibility="gone"
-                tools:text="Создание PDF: 1 из 2"
                 tools:visibility="visible" />
 
             <ProgressBar

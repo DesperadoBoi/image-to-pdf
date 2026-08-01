@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="smart_scan_torch_content_description">Flashlight</string>
+    <string name="smart_scan_gallery">Gallery</string>
+    <string name="smart_scan_permission_allow">Allow</string>
+    <string name="smart_scan_open_settings">Open settings</string>
+
+    <string name="scan_review_load_error">Unable to open the photo</string>
+    <string name="scan_review_retake">Retake</string>
+    <string name="scan_review_rotate">Rotate</string>
+    <string name="scan_review_corner_overlay_content_description">Manual perspective frame with four adjustable corners</string>
+
+    <string name="pdf_result_preview_content_description">Preview of the first PDF page</string>
+    <string name="action_share_pdf_content_description">Share PDF</string>
+    <string name="action_share_pdf">Share</string>
+    <string name="action_open_pdf_content_description">Open PDF</string>
+    <string name="action_open_pdf_short">Open</string>
+    <string name="action_return_to_pdf_pages_content_description">Return to PDF pages</string>
+    <string name="action_return_to_pdf_pages">Return to pages</string>
+    <string name="action_new_pdf_document_content_description">Create a new document</string>
+    <string name="action_new_pdf_document">Create new document</string>
+    <string name="pdf_success_banner_content_description">PDF created successfully</string>
+    <string name="pdf_success_banner_title">PDF ready</string>
+    <string name="pdf_success_banner_announcement">PDF created successfully. %1$s</string>
+    <string name="pdf_page_word_one">page</string>
+    <string name="pdf_page_word_few">pages</string>
+    <string name="pdf_page_word_many">pages</string>
+    <string name="pdf_result_unavailable">Result unavailable</string>
+    <string name="pdf_result_unknown_name">Created PDF</string>
+    <string name="pdf_result_page_badge">%1$d pg</string>
+    <string name="pdf_result_size_unknown">Size unknown</string>
+    <string name="pdf_result_summary">%1$s · %2$s</string>
+    <string name="pdf_location_selected_folder">Selected folder</string>
+    <string name="pdf_result_location_unknown">Saved in the selected folder</string>
+    <string name="pdf_result_location">Saved in: %1$s</string>
+    <string name="pdf_share_chooser_title">Share PDF</string>
+    <string name="status_pdf_share_error">Unable to share the PDF</string>
+    <string name="status_pdf_open_app_not_found">No app was found to open the PDF</string>
+    <string name="status_pdf_open_error">Unable to open the PDF</string>
+    <string name="pdf_location_downloads">Downloads</string>
+    <string name="pdf_location_documents">Documents</string>
+</resources>

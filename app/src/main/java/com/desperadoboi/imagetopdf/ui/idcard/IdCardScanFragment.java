@@ -2,6 +2,7 @@ package com.desperadoboi.imagetopdf.ui.idcard;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
@@ -22,13 +23,17 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.R;
+import com.desperadoboi.imagetopdf.image.PageProcessingMode;
 import com.desperadoboi.imagetopdf.image.PreviewImageLoader;
 import com.desperadoboi.imagetopdf.model.DocumentSessionViewModel;
-import com.desperadoboi.imagetopdf.model.PageItem;
 import com.desperadoboi.imagetopdf.model.PdfResult;
 import com.desperadoboi.imagetopdf.pdf.IdCardPdfGenerator;
 import com.desperadoboi.imagetopdf.pdf.PdfGenerationCallback;
@@ -58,7 +63,8 @@ public final class IdCardScanFragment extends Fragment {
 
     private final EnumMap<IdCardSide, SideViews> sideViews = new EnumMap<>(IdCardSide.class);
     private final EnumMap<IdCardSide, Bitmap> previewBitmaps = new EnumMap<>(IdCardSide.class);
-    private final EnumMap<IdCardSide, String> previewKeys = new EnumMap<>(IdCardSide.class);
+    private final IdCardPreviewRequestTracker previewRequests =
+            new IdCardPreviewRequestTracker();
     private IdCardScanViewModel viewModel;
     private DocumentSessionViewModel documentSessionViewModel;
     private NavigationCallback navigationCallback;
@@ -83,6 +89,7 @@ public final class IdCardScanFragment extends Fragment {
     private MaterialSwitch watermarkSwitch;
     private TextInputLayout watermarkLayout;
     private TextInputEditText watermarkInput;
+    private NestedScrollView scrollView;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -97,6 +104,9 @@ public final class IdCardScanFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         viewModel = new ViewModelProvider(requireActivity()).get(IdCardScanViewModel.class);
+        viewModel.configureDefaultWatermarkText(
+                getString(R.string.id_card_watermark_default)
+        );
         documentSessionViewModel = new ViewModelProvider(requireActivity())
                 .get(DocumentSessionViewModel.class);
         cacheStorage = new IdCardCacheStorage(requireContext());
@@ -137,6 +147,7 @@ public final class IdCardScanFragment extends Fragment {
         configureSide(IdCardSide.FRONT, view.findViewById(R.id.card_id_front));
         configureSide(IdCardSide.BACK, view.findViewById(R.id.card_id_back));
         configureOptions(view);
+        configureImeInsets();
         view.findViewById(R.id.button_id_card_back).setOnClickListener(ignored -> handleBackPressed());
         swapButton.setOnClickListener(ignored -> viewModel.swap());
         exportButton.setOnClickListener(ignored -> requestExport());
@@ -185,6 +196,7 @@ public final class IdCardScanFragment extends Fragment {
         watermarkSwitch = null;
         watermarkLayout = null;
         watermarkInput = null;
+        scrollView = null;
         super.onDestroyView();
     }
 
@@ -228,6 +240,7 @@ public final class IdCardScanFragment extends Fragment {
         watermarkSwitch = view.findViewById(R.id.switch_id_card_watermark);
         watermarkLayout = view.findViewById(R.id.input_layout_id_card_watermark);
         watermarkInput = view.findViewById(R.id.input_id_card_watermark);
+        scrollView = view.findViewById(R.id.scroll_id_card);
     }
 
     private void configureSide(IdCardSide side, View root) {
@@ -265,6 +278,80 @@ public final class IdCardScanFragment extends Fragment {
                         : null);
             }
         });
+    }
+
+    private void configureImeInsets() {
+        int baseBottomPadding = scrollView.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(scrollView, (view, insets) -> {
+            Insets systemBars = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                            | WindowInsetsCompat.Type.displayCutout()
+            );
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            int bottomPadding = IdCardImeInsetPolicy.bottomPadding(
+                    baseBottomPadding,
+                    systemBars.bottom,
+                    ime.bottom
+            );
+            if (view.getPaddingBottom() != bottomPadding) {
+                view.setPadding(
+                        view.getPaddingLeft(),
+                        view.getPaddingTop(),
+                        view.getPaddingRight(),
+                        bottomPadding
+                );
+            }
+            if (insets.isVisible(WindowInsetsCompat.Type.ime())
+                    && watermarkInput != null
+                    && watermarkInput.hasFocus()) {
+                ViewCompat.postOnAnimation(view, this::scrollWatermarkIntoView);
+            }
+            return insets;
+        });
+        watermarkInput.setOnFocusChangeListener((view, hasFocus) -> {
+            if (hasFocus) ViewCompat.postOnAnimation(view, this::scrollWatermarkIntoView);
+        });
+        ViewCompat.requestApplyInsets(scrollView);
+    }
+
+    private void scrollWatermarkIntoView() {
+        if (scrollView == null
+                || watermarkLayout == null
+                || watermarkInput == null
+                || !watermarkInput.hasFocus()
+                || watermarkLayout.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        int actionClearance = getResources().getDimensionPixelSize(
+                R.dimen.primary_button_height
+        ) + getResources().getDimensionPixelSize(R.dimen.content_spacing_medium);
+        Rect visibleRequest = new Rect(
+                0,
+                0,
+                watermarkLayout.getWidth(),
+                watermarkLayout.getHeight() + actionClearance
+        );
+        watermarkLayout.requestRectangleOnScreen(visibleRequest, true);
+
+        int[] scrollLocation = new int[2];
+        int[] watermarkLocation = new int[2];
+        scrollView.getLocationInWindow(scrollLocation);
+        watermarkLayout.getLocationInWindow(watermarkLocation);
+        int targetTop = watermarkLocation[1] - scrollLocation[1] + scrollView.getScrollY();
+        int targetBottom = targetTop + watermarkLayout.getHeight();
+        int requestedBottom = targetBottom + actionClearance;
+        int delta = IdCardImeInsetPolicy.scrollDeltaToReveal(
+                targetTop,
+                targetBottom,
+                requestedBottom,
+                scrollView.getScrollY(),
+                scrollView.getHeight(),
+                scrollView.getPaddingTop(),
+                scrollView.getPaddingBottom()
+        );
+        if (delta != 0) {
+            scrollView.scrollBy(0, delta);
+        }
     }
 
     private void openCamera(IdCardSide side) {
@@ -438,33 +525,44 @@ public final class IdCardScanFragment extends Fragment {
     }
 
     private void loadPreview(IdCardSide side, IdCardImage image, SideViews views) {
-        if (views.preview.getWidth() <= 0 || views.preview.getHeight() <= 0) {
-            views.preview.post(() -> {
+        if (views.previewContainer.getWidth() <= 0
+                || views.previewContainer.getHeight() <= 0) {
+            views.previewContainer.post(() -> {
+                if (sideViews.get(side) != views) return;
                 IdCardSideRecord current = viewModel.getSession().get(side);
                 if (current.isReady()) loadPreview(side, current.getCurrentImage(), views);
             });
             return;
         }
-        PageItem page = image.toPageItem();
-        String key = PreviewImageLoader.buildKey(
-                page,
-                views.preview.getWidth() * 2,
-                views.preview.getHeight() * 2
+        IdCardPreviewRequest request = new IdCardPreviewRequest(
+                side,
+                image,
+                views.previewContainer.getWidth() * 2,
+                views.previewContainer.getHeight() * 2
         );
-        if (key.equals(previewKeys.get(side)) && previewBitmaps.get(side) != null) {
-            views.preview.setVisibility(View.VISIBLE);
+        if (!previewRequests.start(side, request.getKey())) {
+            if (previewBitmaps.get(side) != null) {
+                views.preview.setVisibility(View.VISIBLE);
+                views.progress.setVisibility(View.GONE);
+            }
             return;
         }
-        previewKeys.put(side, key);
+        recycle(previewBitmaps.remove(side));
+        views.preview.setImageDrawable(null);
+        views.preview.setVisibility(View.GONE);
         views.progress.setVisibility(View.VISIBLE);
         previewLoader.load(
-                page,
-                views.preview.getWidth() * 2,
-                views.preview.getHeight() * 2,
+                request.getImageUri(),
+                request.getRotationDegrees(),
+                request.getEditSpec(),
+                request.getTargetWidth(),
+                request.getTargetHeight(),
+                PageProcessingMode.FINAL,
+                request.getKey(),
                 new PreviewImageLoader.Callback() {
                     @Override
                     public void onLoaded(String loadedKey, Bitmap bitmap) {
-                        if (!loadedKey.equals(previewKeys.get(side))
+                        if (!previewRequests.isCurrent(side, loadedKey)
                                 || sideViews.get(side) != views) {
                             recycle(bitmap);
                             return;
@@ -477,7 +575,7 @@ public final class IdCardScanFragment extends Fragment {
 
                     @Override
                     public void onError(String loadedKey) {
-                        if (!loadedKey.equals(previewKeys.get(side))
+                        if (!previewRequests.isCurrent(side, loadedKey)
                                 || sideViews.get(side) != views) return;
                         viewModel.failSideOperation(side, IdCardError.OPEN_IMAGE);
                     }
@@ -486,7 +584,7 @@ public final class IdCardScanFragment extends Fragment {
     }
 
     private void clearPreview(IdCardSide side, SideViews views) {
-        previewKeys.remove(side);
+        previewRequests.clear(side);
         recycle(previewBitmaps.remove(side));
         views.preview.setImageDrawable(null);
         views.preview.setVisibility(View.GONE);
@@ -691,7 +789,7 @@ public final class IdCardScanFragment extends Fragment {
     private void releasePreviews() {
         for (Bitmap bitmap : previewBitmaps.values()) recycle(bitmap);
         previewBitmaps.clear();
-        previewKeys.clear();
+        previewRequests.clearAll();
     }
 
     private static void recycle(Bitmap bitmap) {
@@ -709,6 +807,7 @@ public final class IdCardScanFragment extends Fragment {
         private final View root;
         private final TextView title;
         private final TextView state;
+        private final View previewContainer;
         private final ImageView preview;
         private final ImageView placeholder;
         private final ProgressBar progress;
@@ -727,6 +826,7 @@ public final class IdCardScanFragment extends Fragment {
             this.root = root;
             title = root.findViewById(R.id.text_id_card_side_title);
             state = root.findViewById(R.id.text_id_card_side_state);
+            previewContainer = root.findViewById(R.id.layout_id_card_preview);
             preview = root.findViewById(R.id.image_id_card_preview);
             placeholder = root.findViewById(R.id.image_id_card_placeholder);
             progress = root.findViewById(R.id.progress_id_card_side);

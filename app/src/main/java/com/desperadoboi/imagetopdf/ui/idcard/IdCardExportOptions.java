@@ -1,6 +1,5 @@
 package com.desperadoboi.imagetopdf.ui.idcard;
 
-import java.util.Locale;
 import java.util.Objects;
 
 public final class IdCardExportOptions {
@@ -24,18 +23,12 @@ public final class IdCardExportOptions {
         this.watermarkText = value;
     }
 
-    public static IdCardExportOptions defaults(Locale locale) {
+    public static IdCardExportOptions defaults(String defaultWatermarkText) {
         return new IdCardExportOptions(
                 IdCardExportPreset.EASY_TO_READ,
                 false,
-                defaultWatermarkText(locale)
+                defaultWatermarkText
         );
-    }
-
-    public static String defaultWatermarkText(Locale locale) {
-        return locale != null && "ru".equalsIgnoreCase(locale.getLanguage())
-                ? "КОПИЯ"
-                : "COPY";
     }
 
     public IdCardExportPreset getPreset() {

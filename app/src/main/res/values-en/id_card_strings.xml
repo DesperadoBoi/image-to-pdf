@@ -27,6 +27,7 @@
     <string name="id_card_preset_actual">Actual size</string>
     <string name="id_card_watermark_toggle">Add watermark</string>
     <string name="id_card_watermark_label">Watermark text</string>
+    <string name="id_card_watermark_default">COPY</string>
     <string name="id_card_watermark_empty_error">Enter watermark text</string>
     <string name="id_card_create_pdf">Create PDF</string>
     <string name="id_card_cancel_export">Cancel PDF creation</string>

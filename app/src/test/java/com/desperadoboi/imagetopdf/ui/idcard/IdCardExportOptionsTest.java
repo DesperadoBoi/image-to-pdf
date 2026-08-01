@@ -2,8 +2,6 @@ package com.desperadoboi.imagetopdf.ui.idcard;
 
 import org.junit.Test;
 
-import java.util.Locale;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
@@ -11,23 +9,19 @@ import static org.junit.Assert.assertTrue;
 
 public final class IdCardExportOptionsTest {
     @Test public void watermarkIsOffByDefault() {
-        IdCardExportOptions options = IdCardExportOptions.defaults(Locale.ENGLISH);
+        IdCardExportOptions options = IdCardExportOptions.defaults("COPY");
 
         assertFalse(options.isWatermarkEnabled());
         assertEquals(IdCardExportPreset.EASY_TO_READ, options.getPreset());
         assertTrue(options.isValid());
     }
 
-    @Test public void defaultEnglishWatermarkIsCopy() {
-        assertEquals("COPY", IdCardExportOptions.defaultWatermarkText(Locale.ENGLISH));
-    }
-
-    @Test public void defaultRussianWatermarkIsLocalized() {
-        assertEquals("КОПИЯ", IdCardExportOptions.defaultWatermarkText(new Locale("ru")));
+    @Test public void defaultWatermarkComesFromLocalizedResourceValue() {
+        assertEquals("КОПИЯ", IdCardExportOptions.defaults("КОПИЯ").getWatermarkText());
     }
 
     @Test public void customCyrillicWatermarkIsPreserved() {
-        IdCardExportOptions options = IdCardExportOptions.defaults(Locale.ENGLISH)
+        IdCardExportOptions options = IdCardExportOptions.defaults("COPY")
                 .withWatermarkEnabled(true)
                 .withWatermarkText("АРХИВНАЯ КОПИЯ");
 
@@ -36,7 +30,7 @@ public final class IdCardExportOptionsTest {
     }
 
     @Test public void trailingSpaceIsPreservedWhileTypingMultipleWords() {
-        IdCardExportOptions options = IdCardExportOptions.defaults(Locale.ENGLISH)
+        IdCardExportOptions options = IdCardExportOptions.defaults("COPY")
                 .withWatermarkText("ARCHIVE ");
 
         assertEquals("ARCHIVE ", options.getWatermarkText());

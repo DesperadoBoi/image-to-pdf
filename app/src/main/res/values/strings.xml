@@ -116,6 +116,15 @@
     <string name="page_edit_thumbnail_content_description">Перейти к странице %1$d</string>
     <string name="crop_overlay_content_description">Область прямоугольной обрезки с восемью управляющими точками</string>
     <string name="document_overlay_content_description">Контур документа с четырьмя углами и четырьмя точками рёбер</string>
+    <string name="document_corner_top_left">Верхний левый угол</string>
+    <string name="document_corner_top_right">Верхний правый угол</string>
+    <string name="document_corner_bottom_left">Нижний левый угол</string>
+    <string name="document_corner_bottom_right">Нижний правый угол</string>
+    <string name="document_corner_position_description">%1$s. Положение: по горизонтали %2$d%%, по вертикали %3$d%%.</string>
+    <string name="document_corner_move_left">Переместить влево</string>
+    <string name="document_corner_move_right">Переместить вправо</string>
+    <string name="document_corner_move_up">Переместить вверх</string>
+    <string name="document_corner_move_down">Переместить вниз</string>
     <string name="add_page_source_title">Добавить страницу</string>
     <string name="add_page_source_gallery">Из галереи</string>
     <string name="add_page_source_camera">Сфотографировать</string>
