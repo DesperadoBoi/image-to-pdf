@@ -6,10 +6,11 @@
     android:layout_marginEnd="@dimen/page_edit_strip_item_spacing"
     android:background="@drawable/bg_page_edit_strip_item"
     android:clickable="true"
+    android:contentDescription="@string/action_add_page_content_description"
     android:focusable="true"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="@dimen/page_edit_strip_item_padding">
-    <ImageView android:layout_width="@dimen/page_edit_strip_thumbnail_size" android:layout_height="@dimen/page_edit_strip_thumbnail_size" android:background="?attr/colorSurfaceVariant" android:contentDescription="@string/action_add_page_content_description" android:padding="@dimen/editor_overlay_button_padding" android:src="@drawable/ic_action_add_24" app:tint="?attr/colorPrimary" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/page_edit_strip_number_spacing" android:gravity="center" android:text="@string/action_add" android:textAppearance="?attr/textAppearanceLabelSmall" android:textColor="?attr/colorOnSurface" />
+    <ImageView android:layout_width="@dimen/page_edit_strip_thumbnail_size" android:layout_height="@dimen/page_edit_strip_thumbnail_size" android:background="?attr/colorSurfaceVariant" android:importantForAccessibility="no" android:padding="@dimen/editor_overlay_button_padding" android:src="@drawable/ic_action_add_24" app:tint="?attr/colorPrimary" />
+    <TextView android:id="@+id/text_editor_add_page_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/page_edit_strip_number_spacing" android:gravity="center" android:importantForAccessibility="no" android:text="@string/action_add" android:textAppearance="?attr/textAppearanceLabelSmall" android:textColor="?attr/colorOnSurface" />
 </LinearLayout>

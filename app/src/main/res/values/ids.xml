@@ -1,4 +1,6 @@
 <resources>
+    <item name="accessibility_action_move_page_left" type="id" />
+    <item name="accessibility_action_move_page_right" type="id" />
     <item name="accessibility_action_move_page_up" type="id" />
     <item name="accessibility_action_move_page_down" type="id" />
 </resources>

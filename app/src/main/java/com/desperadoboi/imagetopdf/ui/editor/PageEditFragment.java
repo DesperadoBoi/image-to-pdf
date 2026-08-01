@@ -48,7 +48,8 @@ public final class PageEditFragment extends Fragment {
     private RectCropOverlayView rectCropOverlay;
     private TextView titleView;
     private TextView counterView;
-    private TextView errorView;
+    private View previewErrorView;
+    private TextView previewErrorTextView;
     private ProgressBar progressBar;
     private ImageButton backButton;
     private MaterialButton resetButton;
@@ -58,6 +59,7 @@ public final class PageEditFragment extends Fragment {
     private MaterialButton doneButton;
     private MaterialButton cancelButton;
     private MaterialButton applyButton;
+    private MaterialButton previewRetryButton;
     private View normalTools;
     private View editActions;
     private RecyclerView pageStrip;
@@ -65,7 +67,7 @@ public final class PageEditFragment extends Fragment {
 
     private long currentPageId;
     private EditMode editMode = EditMode.NORMAL;
-    private String activeLoadKey;
+    private final PreviewLoadState previewLoadState = new PreviewLoadState();
     private Bitmap currentBitmap;
 
     public static PageEditFragment newInstance(long pageId) {
@@ -127,13 +129,14 @@ public final class PageEditFragment extends Fragment {
             sessionViewModel.removePdfGenerationStateObserver(generationStateObserver);
             generationStateObserver = null;
         }
-        activeLoadKey = null;
+        previewLoadState.showEmpty();
         releaseCurrentBitmap();
         imageView = null;
         rectCropOverlay = null;
         titleView = null;
         counterView = null;
-        errorView = null;
+        previewErrorView = null;
+        previewErrorTextView = null;
         progressBar = null;
         backButton = null;
         resetButton = null;
@@ -143,6 +146,7 @@ public final class PageEditFragment extends Fragment {
         doneButton = null;
         cancelButton = null;
         applyButton = null;
+        previewRetryButton = null;
         normalTools = null;
         editActions = null;
         pageStrip = null;
@@ -170,7 +174,8 @@ public final class PageEditFragment extends Fragment {
         rectCropOverlay = view.findViewById(R.id.overlay_rect_crop);
         titleView = view.findViewById(R.id.text_page_edit_title);
         counterView = view.findViewById(R.id.text_page_edit_counter);
-        errorView = view.findViewById(R.id.text_page_edit_error);
+        previewErrorView = view.findViewById(R.id.layout_preview_error);
+        previewErrorTextView = view.findViewById(R.id.text_preview_error);
         progressBar = view.findViewById(R.id.progress_page_edit);
         backButton = view.findViewById(R.id.button_page_edit_back);
         resetButton = view.findViewById(R.id.button_page_edit_reset);
@@ -180,6 +185,7 @@ public final class PageEditFragment extends Fragment {
         doneButton = view.findViewById(R.id.button_page_edit_done);
         cancelButton = view.findViewById(R.id.button_page_edit_cancel);
         applyButton = view.findViewById(R.id.button_page_edit_apply);
+        previewRetryButton = view.findViewById(R.id.button_preview_retry);
         normalTools = view.findViewById(R.id.layout_page_edit_normal_tools);
         editActions = view.findViewById(R.id.layout_page_edit_actions);
         pageStrip = view.findViewById(R.id.recycler_page_edit_strip);
@@ -209,6 +215,7 @@ public final class PageEditFragment extends Fragment {
         doneButton.setOnClickListener(view -> closeEditor());
         cancelButton.setOnClickListener(view -> setEditMode(EditMode.NORMAL));
         applyButton.setOnClickListener(view -> applyCurrentMode());
+        previewRetryButton.setOnClickListener(view -> retryPreview());
     }
 
     private void renderCurrentPage() {
@@ -227,7 +234,6 @@ public final class PageEditFragment extends Fragment {
         );
         pageStripAdapter.setSelectedPageId(currentPageId);
         pageStrip.scrollToPosition(position);
-        errorView.setVisibility(View.GONE);
         loadPreviewWhenMeasured(page);
         updateActionAvailability();
     }
@@ -255,18 +261,21 @@ public final class PageEditFragment extends Fragment {
         if (imageView == null || imageView.getWidth() <= 0 || imageView.getHeight() <= 0) {
             return;
         }
-        releaseCurrentBitmap();
-        rectCropOverlay.clearImageContentRect();
-        progressBar.setVisibility(View.VISIBLE);
         int targetWidth = imageView.getWidth() * PREVIEW_ZOOM_RESERVE;
         int targetHeight = imageView.getHeight() * PREVIEW_ZOOM_RESERVE;
         PageProcessingMode processingMode = resolveProcessingMode();
-        activeLoadKey = PreviewImageLoader.buildKey(
+        String loadKey = PreviewImageLoader.buildKey(
                 page,
                 targetWidth,
                 targetHeight,
                 processingMode
         );
+        if (!previewLoadState.start(loadKey)) {
+            return;
+        }
+        releaseCurrentBitmap();
+        rectCropOverlay.clearImageContentRect();
+        renderPreviewState();
         previewImageLoader.load(
                 page,
                 targetWidth,
@@ -286,26 +295,47 @@ public final class PageEditFragment extends Fragment {
     }
 
     private void handlePreviewLoaded(String key, Bitmap bitmap) {
-        if (imageView == null || !key.equals(activeLoadKey)) {
+        if (imageView == null || !previewLoadState.loaded(key)) {
             recycle(bitmap);
             return;
         }
-        progressBar.setVisibility(View.GONE);
-        errorView.setVisibility(View.GONE);
         Bitmap oldBitmap = currentBitmap;
         currentBitmap = bitmap;
         imageView.setImageBitmap(bitmap);
+        renderPreviewState();
         updateOverlayContentRect();
         recycle(oldBitmap);
     }
 
     private void handlePreviewError(String key) {
-        if (imageView == null || !key.equals(activeLoadKey)) {
+        if (imageView == null || !previewLoadState.failed(key)) {
             return;
         }
-        progressBar.setVisibility(View.GONE);
-        errorView.setVisibility(View.VISIBLE);
         releaseCurrentBitmap();
+        renderPreviewState();
+        previewErrorTextView.announceForAccessibility(
+                getString(R.string.status_page_preview_load_error)
+        );
+    }
+
+    private void retryPreview() {
+        PageItem page = findCurrentPage();
+        if (page != null) {
+            loadPreviewWhenMeasured(page);
+        }
+    }
+
+    private void renderPreviewState() {
+        PreviewLoadState.Status status = previewLoadState.getStatus();
+        boolean loading = status == PreviewLoadState.Status.LOADING;
+        boolean error = status == PreviewLoadState.Status.ERROR;
+        boolean loaded = status == PreviewLoadState.Status.LOADED;
+        progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+        previewErrorView.setVisibility(error ? View.VISIBLE : View.GONE);
+        imageView.setVisibility(loaded ? View.VISIBLE : View.INVISIBLE);
+        rectCropOverlay.setVisibility(
+                loaded && editMode == EditMode.RECT_CROP ? View.VISIBLE : View.GONE
+        );
     }
 
     private void selectPage(long pageId) {
