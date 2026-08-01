@@ -22,19 +22,33 @@ import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
 import com.desperadoboi.imagetopdf.image.PageProcessingMode;
 import com.desperadoboi.imagetopdf.image.PreviewImageLoader;
 import com.desperadoboi.imagetopdf.model.PageItem;
+import com.desperadoboi.imagetopdf.model.PerspectiveQuad;
 import com.desperadoboi.imagetopdf.ui.editor.DocumentPerspectiveOverlayView;
 import com.desperadoboi.imagetopdf.ui.editor.ZoomableImageView;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardCacheStorage;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardEdgeDetector;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardError;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardScanViewModel;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardSide;
 import com.google.android.material.button.MaterialButton;
 
 public final class ScanReviewFragment extends Fragment {
     public static final String TAG = "ScanReviewFragment";
+    public static final String TAG_ID_CARD = "IdCardPerspectiveReviewFragment";
+
+    private static final String ARG_ID_CARD_SIDE = "id_card_side";
+    private static final String STATE_EDGE_SUGGESTED = "id_card_edge_suggested";
 
     private static final int PREVIEW_ZOOM_RESERVE = 2;
 
     private ScanSessionViewModel sessionViewModel;
+    private IdCardScanViewModel idCardViewModel;
+    private IdCardSide idCardSide;
+    private boolean idCardMode;
     private NavigationCallback navigationCallback;
     private PreviewImageLoader previewImageLoader;
     private CapturedImageStorage capturedImageStorage;
+    private IdCardCacheStorage idCardCacheStorage;
 
     private ZoomableImageView imageView;
     private DocumentPerspectiveOverlayView overlayView;
@@ -44,10 +58,20 @@ public final class ScanReviewFragment extends Fragment {
     private MaterialButton addButton;
     private MaterialButton autoButton;
     private MaterialButton originalButton;
+    private TextView hintView;
 
     private Bitmap currentBitmap;
     private String activeLoadKey;
     private boolean previewReady;
+    private boolean edgeSuggestionAttempted;
+
+    public static ScanReviewFragment newIdCardInstance(IdCardSide side) {
+        Bundle arguments = new Bundle();
+        arguments.putString(ARG_ID_CARD_SIDE, side.name());
+        ScanReviewFragment fragment = new ScanReviewFragment();
+        fragment.setArguments(arguments);
+        return fragment;
+    }
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -61,6 +85,20 @@ public final class ScanReviewFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Bundle arguments = getArguments();
+        String sideName = arguments == null ? null : arguments.getString(ARG_ID_CARD_SIDE);
+        if (sideName != null) {
+            idCardSide = IdCardSide.valueOf(sideName);
+            idCardMode = true;
+            idCardViewModel = new ViewModelProvider(requireActivity())
+                    .get(IdCardScanViewModel.class);
+        }
+        if (savedInstanceState != null) {
+            edgeSuggestionAttempted = savedInstanceState.getBoolean(
+                    STATE_EDGE_SUGGESTED,
+                    false
+            );
+        }
         sessionViewModel = new ViewModelProvider(requireActivity())
                 .get(ScanSessionViewModel.class);
         previewImageLoader = new PreviewImageLoader(
@@ -68,6 +106,7 @@ public final class ScanReviewFragment extends Fragment {
                 ContextCompat.getMainExecutor(requireContext())
         );
         capturedImageStorage = new CapturedImageStorage(requireContext());
+        idCardCacheStorage = new IdCardCacheStorage(requireContext());
     }
 
     @Nullable
@@ -85,9 +124,12 @@ public final class ScanReviewFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
         configureActions(view);
+        if (idCardMode) {
+            configureIdCardPresentation(view);
+        }
         ScanPage page = currentPage();
         if (page == null) {
-            closeReview();
+            closeReview(false);
             return;
         }
         renderPage(page);
@@ -96,6 +138,7 @@ public final class ScanReviewFragment extends Fragment {
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         saveOverlayState();
+        if (idCardMode) outState.putBoolean(STATE_EDGE_SUGGESTED, edgeSuggestionAttempted);
         super.onSaveInstanceState(outState);
     }
 
@@ -111,6 +154,7 @@ public final class ScanReviewFragment extends Fragment {
         addButton = null;
         autoButton = null;
         originalButton = null;
+        hintView = null;
         super.onDestroyView();
     }
 
@@ -139,8 +183,27 @@ public final class ScanReviewFragment extends Fragment {
         addButton = view.findViewById(R.id.button_scan_review_add);
         autoButton = view.findViewById(R.id.button_scan_review_auto);
         originalButton = view.findViewById(R.id.button_scan_review_original);
+        hintView = view.findViewById(R.id.text_scan_review_hint);
         imageView.setGesturesEnabled(false);
         overlayView.setEdgeHandlesEnabled(false);
+    }
+
+    private void configureIdCardPresentation(View view) {
+        titleView.setText(idCardSide == IdCardSide.FRONT
+                ? R.string.id_card_correct_front_title
+                : R.string.id_card_correct_back_title);
+        autoButton.setText(R.string.id_card_find_edges);
+        originalButton.setVisibility(View.GONE);
+        addButton.setText(R.string.id_card_apply_correction);
+        view.findViewById(R.id.button_scan_review_retake).setContentDescription(
+                getString(R.string.id_card_action_retry)
+        );
+        view.findViewById(R.id.button_scan_review_back).setContentDescription(
+                getString(R.string.id_card_review_back_description)
+        );
+        view.findViewById(R.id.button_scan_review_delete).setContentDescription(
+                getString(R.string.id_card_review_delete_description)
+        );
     }
 
     private void configureActions(View view) {
@@ -161,10 +224,19 @@ public final class ScanReviewFragment extends Fragment {
 
     private void renderPage(ScanPage page) {
         int pageNumber = sessionViewModel.getState().getPageCount() + 1;
-        titleView.setText(getString(R.string.scan_review_title, pageNumber));
-        imageView.setContentDescription(
-                getString(R.string.scan_review_image_content_description, pageNumber)
-        );
+        if (idCardMode) {
+            titleView.setText(idCardSide == IdCardSide.FRONT
+                    ? R.string.id_card_correct_front_title
+                    : R.string.id_card_correct_back_title);
+            imageView.setContentDescription(idCardSide == IdCardSide.FRONT
+                    ? getString(R.string.id_card_front_preview_description)
+                    : getString(R.string.id_card_back_preview_description));
+        } else {
+            titleView.setText(getString(R.string.scan_review_title, pageNumber));
+            imageView.setContentDescription(
+                    getString(R.string.scan_review_image_content_description, pageNumber)
+            );
+        }
         overlayView.setPerspectiveQuad(page.getPerspectiveQuad());
         overlayView.setVisibility(page.isOriginal() ? View.GONE : View.VISIBLE);
         autoButton.setSelected(!page.isOriginal());
@@ -191,6 +263,7 @@ public final class ScanReviewFragment extends Fragment {
         previewReady = false;
         addButton.setEnabled(false);
         errorView.setVisibility(View.GONE);
+        hintView.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
         overlayView.clearImageContentRect();
         releaseCurrentBitmap();
@@ -224,6 +297,13 @@ public final class ScanReviewFragment extends Fragment {
                     public void onError(String key) {
                         if (key.equals(activeLoadKey)) {
                             showLoadError();
+                            if (idCardMode) {
+                                deleteIdCardFiles(idCardViewModel.failSideOperation(
+                                        idCardSide,
+                                        IdCardError.OPEN_IMAGE
+                                ));
+                                imageView.post(() -> closeReview(false));
+                            }
                         }
                     }
                 }
@@ -244,6 +324,10 @@ public final class ScanReviewFragment extends Fragment {
         previewReady = true;
         addButton.setEnabled(true);
         updateOverlayContentRect();
+        if (idCardMode && !edgeSuggestionAttempted) {
+            edgeSuggestionAttempted = true;
+            suggestCardEdges();
+        }
     }
 
     private void updateOverlayContentRect() {
@@ -266,8 +350,9 @@ public final class ScanReviewFragment extends Fragment {
             return;
         }
         ScanPage rotated = page.rotateClockwise();
-        if (sessionViewModel.updatePendingPage(rotated)) {
+        if (updatePendingPage(rotated)) {
             imageView.resetZoom();
+            edgeSuggestionAttempted = false;
             renderPage(rotated);
         }
     }
@@ -277,8 +362,12 @@ public final class ScanReviewFragment extends Fragment {
         if (page == null) {
             return;
         }
+        if (idCardMode) {
+            suggestCardEdges();
+            return;
+        }
         page = page.withDefaultCrop();
-        if (sessionViewModel.updatePendingPage(page)) {
+        if (updatePendingPage(page)) {
             overlayView.setPerspectiveQuad(page.getPerspectiveQuad());
             overlayView.setVisibility(View.VISIBLE);
             updateOverlayContentRect();
@@ -288,12 +377,15 @@ public final class ScanReviewFragment extends Fragment {
     }
 
     private void useOriginal() {
+        if (idCardMode) {
+            return;
+        }
         ScanPage page = currentPage();
         if (page == null) {
             return;
         }
         page = page.withOriginal();
-        if (sessionViewModel.updatePendingPage(page)) {
+        if (updatePendingPage(page)) {
             overlayView.setPerspectiveQuad(page.getPerspectiveQuad());
             overlayView.setVisibility(View.GONE);
             autoButton.setSelected(false);
@@ -305,10 +397,18 @@ public final class ScanReviewFragment extends Fragment {
         if (!previewReady) {
             return;
         }
-        if (saveOverlayState() == null || !sessionViewModel.addPendingPage()) {
+        if (saveOverlayState() == null) {
             return;
         }
-        closeReview();
+        if (idCardMode) {
+            deleteIdCardFiles(idCardViewModel.acceptReview(idCardSide));
+            closeReview(true);
+            return;
+        }
+        if (!sessionViewModel.addPendingPage()) {
+            return;
+        }
+        closeReview(true);
     }
 
     private ScanPage saveOverlayState() {
@@ -317,24 +417,63 @@ public final class ScanReviewFragment extends Fragment {
             return page;
         }
         ScanPage updated = page.withPerspectiveQuad(overlayView.getPerspectiveQuad());
-        sessionViewModel.updatePendingPage(updated);
+        updatePendingPage(updated);
         return updated;
     }
 
     private void discardPendingAndClose() {
+        if (idCardMode) {
+            deleteIdCardFiles(idCardViewModel.cancelSideOperation(idCardSide));
+            closeReview(false);
+            return;
+        }
         ScanPage page = sessionViewModel.retakePendingPage();
         if (page != null && page.isAppOwned()) {
             capturedImageStorage.delete(page.getCapturedFileName());
         }
-        closeReview();
+        closeReview(false);
     }
 
     private ScanPage currentPage() {
-        return sessionViewModel.getState().getCurrentReviewPage();
+        return idCardMode
+                ? idCardViewModel.getReviewPage(idCardSide)
+                : sessionViewModel.getState().getCurrentReviewPage();
     }
 
-    private void closeReview() {
-        if (navigationCallback != null) {
+    private void suggestCardEdges() {
+        if (!idCardMode || currentBitmap == null || currentBitmap.isRecycled()) {
+            return;
+        }
+        PerspectiveQuad detected = IdCardEdgeDetector.detect(currentBitmap);
+        ScanPage page = currentPage();
+        if (page == null) return;
+        if (detected == null) {
+            PerspectiveQuad fallback = IdCardEdgeDetector.defaultQuadFor(
+                    currentBitmap.getWidth(),
+                    currentBitmap.getHeight()
+            );
+            hintView.setText(R.string.id_card_edges_manual_hint);
+            hintView.setVisibility(View.VISIBLE);
+            overlayView.setPerspectiveQuad(fallback);
+            updatePendingPage(page.withPerspectiveQuad(fallback));
+            return;
+        }
+        hintView.setVisibility(View.GONE);
+        overlayView.setPerspectiveQuad(detected);
+        updatePendingPage(page.withPerspectiveQuad(detected));
+    }
+
+    private boolean updatePendingPage(ScanPage page) {
+        return idCardMode
+                ? idCardViewModel.updateReviewPage(idCardSide, page)
+                : sessionViewModel.updatePendingPage(page);
+    }
+
+    private void closeReview(boolean accepted) {
+        if (navigationCallback == null) return;
+        if (idCardMode) {
+            navigationCallback.onIdCardReviewClosed(idCardSide, accepted);
+        } else {
             navigationCallback.onScanReviewClosed();
         }
     }
@@ -358,6 +497,12 @@ public final class ScanReviewFragment extends Fragment {
         currentBitmap = null;
     }
 
+    private void deleteIdCardFiles(java.util.List<String> fileNames) {
+        for (String fileName : fileNames) {
+            idCardCacheStorage.delete(fileName);
+        }
+    }
+
     private static void recycle(Bitmap bitmap) {
         if (bitmap != null && !bitmap.isRecycled()) {
             bitmap.recycle();
@@ -366,5 +511,7 @@ public final class ScanReviewFragment extends Fragment {
 
     public interface NavigationCallback {
         void onScanReviewClosed();
+
+        void onIdCardReviewClosed(IdCardSide side, boolean accepted);
     }
 }

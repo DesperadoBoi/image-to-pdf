@@ -112,6 +112,9 @@ public final class AllToolsAdapter
         if (toolId == ToolId.SMART_SCAN) {
             return R.string.tool_smart_scan_description;
         }
+        if (toolId == ToolId.ID_SCAN) {
+            return R.string.tool_id_scan_description;
+        }
         return 0;
     }
 

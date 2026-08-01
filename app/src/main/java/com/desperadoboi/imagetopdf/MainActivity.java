@@ -24,10 +24,15 @@ import com.desperadoboi.imagetopdf.ui.editor.EditorFragment;
 import com.desperadoboi.imagetopdf.ui.editor.PageEditFragment;
 import com.desperadoboi.imagetopdf.ui.gallery.ImagePickerFragment;
 import com.desperadoboi.imagetopdf.ui.home.HomeFragment;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardCacheStorage;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardScanFragment;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardScanViewModel;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardSide;
 import com.desperadoboi.imagetopdf.ui.result.PdfResultFragment;
 import com.desperadoboi.imagetopdf.ui.smartscan.ScanReviewFragment;
 import com.desperadoboi.imagetopdf.ui.smartscan.ScanSessionViewModel;
 import com.desperadoboi.imagetopdf.ui.smartscan.SmartScanFragment;
+import com.desperadoboi.imagetopdf.pdf.IdCardPdfGenerator;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
 
 import java.util.concurrent.ExecutorService;
@@ -40,11 +45,15 @@ public class MainActivity extends AppCompatActivity
         ImagePickerFragment.NavigationCallback,
         PdfResultFragment.NavigationCallback,
         SmartScanFragment.NavigationCallback,
-        ScanReviewFragment.NavigationCallback {
+        ScanReviewFragment.NavigationCallback,
+        IdCardScanFragment.NavigationCallback {
     private DocumentSessionViewModel sessionViewModel;
     private ScanSessionViewModel scanSessionViewModel;
+    private IdCardScanViewModel idCardScanViewModel;
     private CapturedImageStorage capturedImageStorage;
+    private IdCardCacheStorage idCardCacheStorage;
     private boolean scanReviewNavigationPending;
+    private boolean idCardReviewNavigationPending;
     private boolean aboutNavigationPending;
     private boolean privacyNavigationPending;
 
@@ -57,7 +66,9 @@ public class MainActivity extends AppCompatActivity
 
         sessionViewModel = new ViewModelProvider(this).get(DocumentSessionViewModel.class);
         scanSessionViewModel = new ViewModelProvider(this).get(ScanSessionViewModel.class);
+        idCardScanViewModel = new ViewModelProvider(this).get(IdCardScanViewModel.class);
         capturedImageStorage = new CapturedImageStorage(this);
+        idCardCacheStorage = new IdCardCacheStorage(this);
         cleanupViewerCache();
         configureWindowInsets();
         configureBackNavigation();
@@ -77,6 +88,15 @@ public class MainActivity extends AppCompatActivity
         cleanupExecutor.execute(() -> {
             try {
                 store.cleanupOldFiles();
+                idCardCacheStorage.cleanupExpired(
+                        System.currentTimeMillis(),
+                        IdCardCacheStorage.DEFAULT_TTL_MS
+                );
+                IdCardPdfGenerator.cleanupExpiredTemporaryFiles(
+                        getApplicationContext(),
+                        System.currentTimeMillis(),
+                        IdCardCacheStorage.DEFAULT_TTL_MS
+                );
             } finally {
                 cleanupExecutor.shutdown();
             }
@@ -126,6 +146,107 @@ public class MainActivity extends AppCompatActivity
     public void onSmartScanRequested() {
         deleteCapturedFiles(scanSessionViewModel.startNewSession());
         showSmartScan();
+    }
+
+    @Override
+    public void onIdCardScanRequested() {
+        deleteIdCardFiles(idCardScanViewModel.startNewSession());
+        showIdCardScan();
+    }
+
+    @Override
+    public void onIdCardCameraRequested(IdCardSide side) {
+        if (getSupportFragmentManager().findFragmentByTag(SmartScanFragment.TAG_ID_CARD) != null) {
+            return;
+        }
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(
+                        R.id.fragment_container,
+                        SmartScanFragment.newIdCardInstance(side),
+                        SmartScanFragment.TAG_ID_CARD
+                )
+                .addToBackStack(SmartScanFragment.TAG_ID_CARD)
+                .commit();
+    }
+
+    @Override
+    public void onIdCardPerspectiveRequested(IdCardSide side) {
+        showIdCardReview(side);
+    }
+
+    @Override
+    public void onIdCardReviewRequested(IdCardSide side) {
+        showIdCardReview(side);
+    }
+
+    private void showIdCardReview(IdCardSide side) {
+        if (idCardScanViewModel.getReviewPage(side) == null
+                || getSupportFragmentManager().findFragmentByTag(
+                        ScanReviewFragment.TAG_ID_CARD
+                ) != null
+                || idCardReviewNavigationPending
+                || getSupportFragmentManager().isStateSaved()) {
+            return;
+        }
+        idCardReviewNavigationPending = true;
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(
+                        R.id.fragment_container,
+                        ScanReviewFragment.newIdCardInstance(side),
+                        ScanReviewFragment.TAG_ID_CARD
+                )
+                .addToBackStack(ScanReviewFragment.TAG_ID_CARD)
+                .commit();
+    }
+
+    @Override
+    public void onIdCardReviewClosed(IdCardSide side, boolean accepted) {
+        idCardReviewNavigationPending = false;
+        getSupportFragmentManager().popBackStackImmediate(
+                ScanReviewFragment.TAG_ID_CARD,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
+        if (getSupportFragmentManager().findFragmentByTag(SmartScanFragment.TAG_ID_CARD) != null) {
+            getSupportFragmentManager().popBackStackImmediate(
+                    SmartScanFragment.TAG_ID_CARD,
+                    FragmentManager.POP_BACK_STACK_INCLUSIVE
+            );
+        }
+    }
+
+    @Override
+    public void onIdCardCameraCancelled() {
+        closeIdCardCamera();
+    }
+
+    @Override
+    public void onIdCardCameraFailed() {
+        closeIdCardCamera();
+    }
+
+    private void closeIdCardCamera() {
+        getSupportFragmentManager().popBackStackImmediate(
+                SmartScanFragment.TAG_ID_CARD,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
+    }
+
+    @Override
+    public void onIdCardScanCancelled() {
+        boolean popped = getSupportFragmentManager().popBackStackImmediate(
+                IdCardScanFragment.TAG,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
+        if (!popped) showHome();
+    }
+
+    @Override
+    public void onIdCardPdfResultRequested() {
+        showPdfResult();
     }
 
     @Override
@@ -277,6 +398,27 @@ public class MainActivity extends AppCompatActivity
                     return;
                 }
                 ScanReviewFragment scanReviewFragment = findVisibleFragment(
+                        ScanReviewFragment.TAG_ID_CARD
+                );
+                if (scanReviewFragment != null) {
+                    scanReviewFragment.handleBackPressed();
+                    return;
+                }
+                SmartScanFragment idCardCameraFragment = findVisibleFragment(
+                        SmartScanFragment.TAG_ID_CARD
+                );
+                if (idCardCameraFragment != null) {
+                    idCardCameraFragment.handleBackPressed();
+                    return;
+                }
+                IdCardScanFragment idCardScanFragment = findVisibleFragment(
+                        IdCardScanFragment.TAG
+                );
+                if (idCardScanFragment != null) {
+                    idCardScanFragment.handleBackPressed();
+                    return;
+                }
+                scanReviewFragment = findVisibleFragment(
                         ScanReviewFragment.TAG
                 );
                 if (scanReviewFragment != null) {
@@ -436,9 +578,28 @@ public class MainActivity extends AppCompatActivity
                 .commit();
     }
 
+    private void showIdCardScan() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(
+                        R.id.fragment_container,
+                        new IdCardScanFragment(),
+                        IdCardScanFragment.TAG
+                )
+                .addToBackStack(IdCardScanFragment.TAG)
+                .commit();
+    }
+
     private void deleteCapturedFiles(java.util.List<String> fileNames) {
         for (String fileName : fileNames) {
             capturedImageStorage.delete(fileName);
+        }
+    }
+
+    private void deleteIdCardFiles(java.util.List<String> fileNames) {
+        for (String fileName : fileNames) {
+            idCardCacheStorage.delete(fileName);
         }
     }
 

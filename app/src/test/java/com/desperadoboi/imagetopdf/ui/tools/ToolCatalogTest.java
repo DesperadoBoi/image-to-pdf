@@ -133,6 +133,7 @@ public class ToolCatalogTest {
         Set<ToolId> available = EnumSet.of(
                 ToolId.IMAGE_TO_PDF,
                 ToolId.SMART_SCAN,
+                ToolId.ID_SCAN,
                 ToolId.DOCUMENT_VIEWER
         );
         for (ToolDefinition definition : ToolCatalog.getTools()) {

@@ -6,4 +6,7 @@
     <cache-path
         name="viewer_documents"
         path="document_viewer/" />
+    <cache-path
+        name="id_card_images"
+        path="id_card/" />
 </paths>

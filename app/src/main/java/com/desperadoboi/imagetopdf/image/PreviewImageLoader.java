@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 
+import com.desperadoboi.imagetopdf.model.PageEditSpec;
 import com.desperadoboi.imagetopdf.model.PageItem;
 
 import java.io.IOException;
@@ -44,10 +45,67 @@ public final class PreviewImageLoader {
             Callback callback
     ) {
         String key = buildKey(pageItem, targetWidth, targetHeight, mode);
+        enqueue(
+                pageItem.getImageUri(),
+                pageItem.getManualRotationDegrees(),
+                pageItem.getEditSpec(),
+                targetWidth,
+                targetHeight,
+                mode,
+                key,
+                callback
+        );
+    }
+
+    public void load(
+            Uri imageUri,
+            int manualRotationDegrees,
+            PageEditSpec editSpec,
+            int targetWidth,
+            int targetHeight,
+            PageProcessingMode mode,
+            String requestKey,
+            Callback callback
+    ) {
+        if (imageUri == null || editSpec == null || mode == null || callback == null) {
+            throw new NullPointerException("Preview request values are required");
+        }
+        if (requestKey == null || requestKey.isEmpty()) {
+            throw new IllegalArgumentException("Preview request key is required");
+        }
+        enqueue(
+                imageUri,
+                manualRotationDegrees,
+                editSpec,
+                targetWidth,
+                targetHeight,
+                mode,
+                requestKey,
+                callback
+        );
+    }
+
+    private void enqueue(
+            Uri imageUri,
+            int manualRotationDegrees,
+            PageEditSpec editSpec,
+            int targetWidth,
+            int targetHeight,
+            PageProcessingMode mode,
+            String key,
+            Callback callback
+    ) {
         previewExecutor.execute(() -> {
             Bitmap bitmap = null;
             try {
-                bitmap = loadInternal(pageItem, targetWidth, targetHeight, mode);
+                bitmap = loadInternal(
+                        imageUri,
+                        manualRotationDegrees,
+                        editSpec,
+                        targetWidth,
+                        targetHeight,
+                        mode
+                );
                 Bitmap loadedBitmap = bitmap;
                 mainExecutor.execute(() -> callback.onLoaded(key, loadedBitmap));
             } catch (IOException | RuntimeException exception) {
@@ -84,29 +142,34 @@ public final class PreviewImageLoader {
     }
 
     private Bitmap loadInternal(
-            PageItem pageItem,
+            Uri imageUri,
+            int manualRotationDegrees,
+            PageEditSpec editSpec,
             int targetWidth,
             int targetHeight,
             PageProcessingMode mode
     ) throws IOException {
         int boundedTargetWidth = clampTargetDimension(targetWidth);
         int boundedTargetHeight = clampTargetDimension(targetHeight);
-        ImageTransform exifTransform = imageOrientationReader.read(pageItem.getImageUri());
-        boolean swapsDimensions = exifTransform.swapsDimensions() ^ pageItem.swapsDimensions();
-        ImageBounds rawBounds = readImageBounds(pageItem.getImageUri());
+        ImageTransform exifTransform = imageOrientationReader.read(imageUri);
+        boolean manualRotationSwapsDimensions = manualRotationDegrees == 90
+                || manualRotationDegrees == 270;
+        boolean swapsDimensions = exifTransform.swapsDimensions()
+                ^ manualRotationSwapsDimensions;
+        ImageBounds rawBounds = readImageBounds(imageUri);
         int orientedWidth = swapsDimensions ? rawBounds.height : rawBounds.width;
         int orientedHeight = swapsDimensions ? rawBounds.width : rawBounds.height;
         EditedImageGeometryCalculator.Dimensions sourceTarget =
                 SourceResolutionCalculator.calculateForFitTarget(
                         orientedWidth,
                         orientedHeight,
-                        pageItem.getEditSpec(),
+                        editSpec,
                         mode,
                         boundedTargetWidth,
                         boundedTargetHeight
                 );
         Bitmap bitmap = decodeBitmap(
-                pageItem.getImageUri(),
+                imageUri,
                 rawBounds,
                 swapsDimensions ? sourceTarget.getHeight() : sourceTarget.getWidth(),
                 swapsDimensions ? sourceTarget.getWidth() : sourceTarget.getHeight()
@@ -114,8 +177,8 @@ public final class PreviewImageLoader {
         bitmap = PageBitmapProcessor.process(
                 bitmap,
                 exifTransform,
-                pageItem.getManualRotationDegrees(),
-                pageItem.getEditSpec(),
+                manualRotationDegrees,
+                editSpec,
                 mode
         );
         return ImageBitmapTransformer.scaleDownToFit(bitmap, boundedTargetWidth, boundedTargetHeight);

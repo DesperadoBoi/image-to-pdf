@@ -111,8 +111,10 @@
             tools:visibility="visible" />
 
         <com.desperadoboi.imagetopdf.ui.smartscan.DocumentFrameOverlayView
+            android:id="@+id/view_scan_frame"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no" />
 
         <TextView
             android:id="@+id/text_scan_camera_status"

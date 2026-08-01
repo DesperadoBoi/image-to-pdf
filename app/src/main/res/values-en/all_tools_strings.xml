@@ -15,7 +15,7 @@
     <string name="tool_ppt_to_pdf">PPT to PDF</string>
     <string name="tool_pdf_to_word">PDF to Word</string>
     <string name="tool_pdf_to_ppt">PDF to PPT</string>
-    <string name="tool_id_scan">ID scan</string>
+    <string name="tool_id_scan">ID card scan</string>
     <string name="tool_print_pdf">Print PDF</string>
     <string name="tool_draw_on_pdf">Draw on PDF</string>
     <string name="tool_add_text">Add text</string>

@@ -41,6 +41,11 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.desperadoboi.imagetopdf.R;
 import com.desperadoboi.imagetopdf.image.CapturedImageStorage;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardCacheStorage;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardError;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardScanViewModel;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardSide;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardSideRecord;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -50,13 +55,21 @@ import java.util.concurrent.ExecutionException;
 
 public final class SmartScanFragment extends Fragment implements SensorEventListener {
     public static final String TAG = "SmartScanFragment";
+    public static final String TAG_ID_CARD = "IdCardCameraFragment";
+
+    private static final String ARG_ID_CARD_SIDE = "id_card_side";
+    private static final String STATE_ID_CAPTURE_IN_FLIGHT = "id_card_capture_in_flight";
 
     private static final int MENU_LOCAL_PROCESSING = 1;
     private static final int MENU_SETTINGS = 2;
 
     private ScanSessionViewModel sessionViewModel;
+    private IdCardScanViewModel idCardViewModel;
+    private IdCardSide idCardSide;
+    private boolean idCardMode;
     private NavigationCallback navigationCallback;
     private CapturedImageStorage capturedImageStorage;
+    private IdCardCacheStorage idCardCacheStorage;
     private ActivityResultLauncher<String> permissionLauncher;
     private ActivityResultLauncher<PickVisualMediaRequest> galleryLauncher;
 
@@ -76,6 +89,7 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     private MaterialButton settingsButton;
     private ProgressBar captureProgress;
     private LevelIndicatorView levelIndicator;
+    private DocumentFrameOverlayView frameOverlay;
 
     private ProcessCameraProvider cameraProvider;
     private boolean cameraProviderRequestPending;
@@ -87,6 +101,16 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     private Sensor accelerometer;
     private boolean sensorRegistered;
     private LevelState levelState = LevelState.UNAVAILABLE;
+    private boolean idCaptureRequestInFlight;
+    private boolean idCaptureRestored;
+
+    public static SmartScanFragment newIdCardInstance(IdCardSide side) {
+        Bundle arguments = new Bundle();
+        arguments.putString(ARG_ID_CARD_SIDE, side.name());
+        SmartScanFragment fragment = new SmartScanFragment();
+        fragment.setArguments(arguments);
+        return fragment;
+    }
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -100,9 +124,25 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Bundle arguments = getArguments();
+        String sideName = arguments == null ? null : arguments.getString(ARG_ID_CARD_SIDE);
+        if (sideName != null) {
+            idCardSide = IdCardSide.valueOf(sideName);
+            idCardMode = true;
+            idCardViewModel = new ViewModelProvider(requireActivity())
+                    .get(IdCardScanViewModel.class);
+        }
+        if (savedInstanceState != null && idCardMode) {
+            idCaptureRequestInFlight = savedInstanceState.getBoolean(
+                    STATE_ID_CAPTURE_IN_FLIGHT,
+                    false
+            );
+            idCaptureRestored = idCaptureRequestInFlight;
+        }
         sessionViewModel = new ViewModelProvider(requireActivity())
                 .get(ScanSessionViewModel.class);
         capturedImageStorage = new CapturedImageStorage(requireContext());
+        idCardCacheStorage = new IdCardCacheStorage(requireContext());
         permissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 granted -> {
@@ -141,13 +181,17 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
         configureActions(view);
-        ScanPage interrupted = sessionViewModel.recoverInterruptedCapture();
-        deleteIfAppOwned(interrupted);
-        int missingCount = sessionViewModel.removeMissingAppOwnedPages(
-                capturedImageStorage::existsAndHasContent
-        );
-        if (missingCount > 0) {
-            showToast(R.string.smart_scan_removed_page);
+        if (idCardMode) {
+            configureIdCardPresentation(view);
+        } else {
+            ScanPage interrupted = sessionViewModel.recoverInterruptedCapture();
+            deleteIfAppOwned(interrupted);
+            int missingCount = sessionViewModel.removeMissingAppOwnedPages(
+                    capturedImageStorage::existsAndHasContent
+            );
+            if (missingCount > 0) {
+                showToast(R.string.smart_scan_removed_page);
+            }
         }
         sessionObserver = this::renderSessionState;
         sessionViewModel.addObserver(sessionObserver);
@@ -165,7 +209,19 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
             startCamera();
             registerLevelSensor();
         }
-        openReviewIfReady();
+        if (idCardMode && idCaptureRestored && frameOverlay != null) {
+            frameOverlay.postDelayed(this::recoverIdCardCaptureAfterRecreation, 3000L);
+        } else {
+            openReviewIfReady();
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        if (idCardMode) {
+            outState.putBoolean(STATE_ID_CAPTURE_IN_FLIGHT, idCaptureRequestInFlight);
+        }
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -206,6 +262,7 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         settingsButton = null;
         captureProgress = null;
         levelIndicator = null;
+        frameOverlay = null;
         super.onDestroyView();
     }
 
@@ -216,6 +273,10 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     }
 
     public void handleBackPressed() {
+        if (idCardMode) {
+            cancelIdCardCamera();
+            return;
+        }
         if (sessionViewModel.getState().hasPages()) {
             new MaterialAlertDialogBuilder(requireContext())
                     .setTitle(R.string.smart_scan_exit_title)
@@ -282,6 +343,32 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         settingsButton = view.findViewById(R.id.button_scan_settings);
         captureProgress = view.findViewById(R.id.progress_scan_capture);
         levelIndicator = view.findViewById(R.id.view_scan_level);
+        frameOverlay = view.findViewById(R.id.view_scan_frame);
+    }
+
+    private void configureIdCardPresentation(View view) {
+        ((TextView) view.findViewById(R.id.text_scan_title)).setText(
+                idCardSide == IdCardSide.FRONT
+                        ? R.string.id_card_camera_front_title
+                        : R.string.id_card_camera_back_title
+        );
+        ((TextView) view.findViewById(R.id.text_scan_frame_hint)).setText(
+                R.string.id_card_camera_guide_hint
+        );
+        ((TextView) view.findViewById(R.id.text_scan_permission)).setText(
+                R.string.id_card_camera_permission_message
+        );
+        view.findViewById(R.id.button_scan_back).setContentDescription(
+                getString(R.string.id_card_camera_back_description)
+        );
+        shutterButton.setContentDescription(
+                getString(R.string.id_card_camera_capture_description)
+        );
+        frameOverlay.setIdCardMode(true);
+        gridButton.setVisibility(View.GONE);
+        view.findViewById(R.id.button_scan_more).setVisibility(View.GONE);
+        pageCountText.setVisibility(View.GONE);
+        doneButton.setVisibility(View.GONE);
     }
 
     private void configureActions(View view) {
@@ -307,10 +394,20 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
             return;
         }
         int pageCount = state.getPageCount();
-        boolean capturing = state.isCaptureInProgress();
+        boolean capturing = idCardMode ? idCaptureRequestInFlight : state.isCaptureInProgress();
         boolean cameraReady = imageCapture != null && hasCameraPermission();
         shutterButton.setEnabled(cameraReady && !capturing);
         captureProgress.setVisibility(capturing ? View.VISIBLE : View.GONE);
+        if (idCardMode) {
+            pageCountText.setVisibility(View.GONE);
+            doneButton.setVisibility(View.GONE);
+            gridOverlay.setVisibility(View.GONE);
+            gridButton.setVisibility(View.GONE);
+            torchButton.setEnabled(cameraState.isFlashAvailable() && cameraReady);
+            torchButton.setSelected(cameraState.isTorchEnabled());
+            openReviewIfReady();
+            return;
+        }
         pageCountText.setVisibility(pageCount > 0 ? View.VISIBLE : View.GONE);
         doneButton.setVisibility(pageCount > 0 ? View.VISIBLE : View.GONE);
         if (pageCount > 0) {
@@ -339,9 +436,15 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         settingsButton.setVisibility(
                 state == PermissionState.PERMANENTLY_DENIED ? View.VISIBLE : View.GONE
         );
-        permissionText.setText(state == PermissionState.RATIONALE
-                ? R.string.smart_scan_permission_rationale
-                : R.string.smart_scan_permission_message);
+        if (idCardMode) {
+            permissionText.setText(state == PermissionState.RATIONALE
+                    ? R.string.id_card_camera_permission_rationale
+                    : R.string.id_card_camera_permission_message);
+        } else {
+            permissionText.setText(state == PermissionState.RATIONALE
+                    ? R.string.smart_scan_permission_rationale
+                    : R.string.smart_scan_permission_message);
+        }
     }
 
     private PermissionState resolvePermissionState() {
@@ -437,6 +540,10 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     }
 
     private void capturePage() {
+        if (idCardMode) {
+            captureIdCardSide();
+            return;
+        }
         if (imageCapture == null || sessionViewModel.getState().isCaptureInProgress()) {
             return;
         }
@@ -481,6 +588,96 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         );
     }
 
+    private void captureIdCardSide() {
+        if (imageCapture == null || idCaptureRequestInFlight) {
+            return;
+        }
+        IdCardCacheStorage.CacheImage cacheImage;
+        try {
+            cacheImage = idCardCacheStorage.createCameraImage();
+        } catch (IOException | RuntimeException exception) {
+            showToast(R.string.id_card_error_temp_file);
+            return;
+        }
+        if (!idCardViewModel.setPendingImage(
+                idCardSide,
+                cacheImage.getUri(),
+                cacheImage.getFileName()
+        )) {
+            idCardCacheStorage.delete(cacheImage.getFileName());
+            return;
+        }
+        idCaptureRequestInFlight = true;
+        renderSessionState(sessionViewModel.getState(), sessionViewModel.getCameraState());
+        if (previewView.getDisplay() != null) {
+            imageCapture.setTargetRotation(previewView.getDisplay().getRotation());
+        }
+        ImageCapture.OutputFileOptions options = new ImageCapture.OutputFileOptions.Builder(
+                cacheImage.getFile()
+        ).build();
+        try {
+            imageCapture.takePicture(
+                    options,
+                    ContextCompat.getMainExecutor(requireContext()),
+                    new ImageCapture.OnImageSavedCallback() {
+                        @Override
+                        public void onImageSaved(
+                                @NonNull ImageCapture.OutputFileResults outputFileResults
+                        ) {
+                            idCaptureRequestInFlight = false;
+                            if (!idCardViewModel.isPendingImage(
+                                    idCardSide,
+                                    cacheImage.getFileName()
+                            )) {
+                                idCardCacheStorage.delete(cacheImage.getFileName());
+                                return;
+                            }
+                            if (!idCardCacheStorage.existsAndHasContent(cacheImage.getFileName())) {
+                                failIdCardCapture(
+                                        cacheImage.getFileName(),
+                                        IdCardError.PROCESS_IMAGE
+                                );
+                                return;
+                            }
+                            if (isAdded()) {
+                                renderSessionState(
+                                        sessionViewModel.getState(),
+                                        sessionViewModel.getCameraState()
+                                );
+                                openReviewIfReady();
+                            }
+                        }
+
+                        @Override
+                        public void onError(@NonNull ImageCaptureException exception) {
+                            idCaptureRequestInFlight = false;
+                            failIdCardCapture(
+                                    cacheImage.getFileName(),
+                                    IdCardError.PROCESS_IMAGE
+                            );
+                        }
+                    }
+            );
+        } catch (RuntimeException exception) {
+            idCaptureRequestInFlight = false;
+            failIdCardCapture(cacheImage.getFileName(), IdCardError.PROCESS_IMAGE);
+        }
+    }
+
+    private void failIdCardCapture(String expectedFileName, IdCardError error) {
+        if (!idCardViewModel.isPendingImage(idCardSide, expectedFileName)) {
+            idCardCacheStorage.delete(expectedFileName);
+            return;
+        }
+        deleteIdCardFiles(idCardViewModel.failSideOperation(idCardSide, error));
+        if (!isAdded()) return;
+        renderSessionState(sessionViewModel.getState(), sessionViewModel.getCameraState());
+        showToast(R.string.id_card_error_process_image);
+        if (navigationCallback != null) {
+            navigationCallback.onIdCardCameraFailed();
+        }
+    }
+
     private void handleCaptureSaved(ScanPage pending) {
         if (!capturedImageStorage.existsAndHasContent(pending.getCapturedFileName())) {
             handleCaptureError(pending);
@@ -517,6 +714,10 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     }
 
     private void handleGalleryResult(Uri uri) {
+        if (idCardMode) {
+            handleIdCardGalleryResult(uri);
+            return;
+        }
         if (uri == null) {
             return;
         }
@@ -526,7 +727,94 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         }
     }
 
+    private void handleIdCardGalleryResult(Uri uri) {
+        if (uri == null || idCaptureRequestInFlight) {
+            return;
+        }
+        idCaptureRequestInFlight = true;
+        renderSessionState(sessionViewModel.getState(), sessionViewModel.getCameraState());
+        IdCardSideRecord operationRecord = idCardViewModel.getSession().get(idCardSide);
+        java.util.concurrent.Executor callbackExecutor =
+                ContextCompat.getMainExecutor(requireContext());
+        idCardViewModel.getExecutor().execute(() -> {
+            IdCardCacheStorage.CacheImage copied = null;
+            IdCardError error = IdCardError.NONE;
+            try {
+                copied = idCardCacheStorage.copyFrom(uri);
+            } catch (IOException | RuntimeException exception) {
+                error = IdCardError.OPEN_IMAGE;
+            } catch (OutOfMemoryError outOfMemoryError) {
+                error = IdCardError.OUT_OF_MEMORY;
+            }
+            IdCardCacheStorage.CacheImage result = copied;
+            IdCardError resultError = error;
+            callbackExecutor.execute(() -> {
+                if (!idCaptureRequestInFlight
+                        || idCardViewModel.getSession().get(idCardSide) != operationRecord) {
+                    if (result != null) idCardCacheStorage.delete(result.getFileName());
+                    return;
+                }
+                idCaptureRequestInFlight = false;
+                if (result == null || resultError != IdCardError.NONE) {
+                    deleteIdCardFiles(idCardViewModel.failSideOperation(idCardSide, resultError));
+                    if (isAdded()) showToast(R.string.id_card_error_open_image);
+                    if (isAdded() && navigationCallback != null) {
+                        navigationCallback.onIdCardCameraFailed();
+                    }
+                } else if (!idCardViewModel.setPendingImage(
+                        idCardSide,
+                        result.getUri(),
+                        result.getFileName()
+                )) {
+                    idCardCacheStorage.delete(result.getFileName());
+                }
+                if (isAdded()) {
+                    renderSessionState(
+                            sessionViewModel.getState(),
+                            sessionViewModel.getCameraState()
+                    );
+                    openReviewIfReady();
+                }
+            });
+        });
+    }
+
+    private void recoverIdCardCaptureAfterRecreation() {
+        if (!idCardMode || !idCaptureRestored || !isAdded()) {
+            return;
+        }
+        idCaptureRestored = false;
+        ScanPage pending = idCardViewModel.getReviewPage(idCardSide);
+        if (pending != null
+                && idCardCacheStorage.existsAndHasContent(pending.getCapturedFileName())) {
+            idCaptureRequestInFlight = false;
+            renderSessionState(sessionViewModel.getState(), sessionViewModel.getCameraState());
+            openReviewIfReady();
+            return;
+        }
+        idCaptureRequestInFlight = false;
+        deleteIdCardFiles(idCardViewModel.failSideOperation(
+                idCardSide,
+                IdCardError.OPERATION_CANCELLED
+        ));
+        if (navigationCallback != null) {
+            navigationCallback.onIdCardCameraFailed();
+        }
+    }
+
     private void openReviewIfReady() {
+        if (idCardMode) {
+            if (!isAdded()
+                    || !isResumed()
+                    || getParentFragmentManager().isStateSaved()
+                    || idCardViewModel.getReviewPage(idCardSide) == null
+                    || idCaptureRequestInFlight
+                    || navigationCallback == null) {
+                return;
+            }
+            navigationCallback.onIdCardReviewRequested(idCardSide);
+            return;
+        }
         if (!isAdded()
                 || !isResumed()
                 || getParentFragmentManager().isStateSaved()
@@ -631,8 +919,26 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     }
 
     private void cancelScan() {
+        if (idCardMode) {
+            cancelIdCardCamera();
+            return;
+        }
         if (navigationCallback != null) {
             navigationCallback.onScanCancelled();
+        }
+    }
+
+    private void cancelIdCardCamera() {
+        idCaptureRequestInFlight = false;
+        deleteIdCardFiles(idCardViewModel.cancelSideOperation(idCardSide));
+        if (navigationCallback != null) {
+            navigationCallback.onIdCardCameraCancelled();
+        }
+    }
+
+    private void deleteIdCardFiles(java.util.List<String> fileNames) {
+        for (String fileName : fileNames) {
+            idCardCacheStorage.delete(fileName);
         }
     }
 
@@ -674,5 +980,11 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         void onScanFinished();
 
         void onScanCancelled();
+
+        void onIdCardReviewRequested(IdCardSide side);
+
+        void onIdCardCameraCancelled();
+
+        void onIdCardCameraFailed();
     }
 }

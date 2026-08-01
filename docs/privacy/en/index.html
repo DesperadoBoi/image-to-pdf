@@ -113,7 +113,7 @@
       <h1>ImageToPDF Privacy Policy</h1>
       <dl>
         <dt>Effective date</dt>
-        <dd>July 22, 2026</dd>
+        <dd>August 1, 2026</dd>
         <dt>Developer</dt>
         <dd>DesperadoBoi</dd>
         <dt>Contact email</dt>
@@ -136,6 +136,9 @@
 
       <h2>Camera and image access</h2>
       <p><code>CAMERA</code> is used only to capture pages in the document scanning flow. The app accesses images only after the user selects them through a system interface or grants the relevant permission. When MediaStore access is granted, the app reads image information and content locally to display the in-app gallery and process selected pages. If access is denied, available system file selection methods can still be used; the app does not obtain broader access without permission.</p>
+
+      <h2>ID-card scanning</h2>
+      <p>Images of the front and back of an ID card are processed only locally and are not sent to the developer or third parties. This flow uses Android Photo Picker and does not request additional access to the entire media library. Original captures and intermediate images are kept only in the app's internal cache, deleted after successful export, cancellation, or session closure, and additionally removed by time-to-live cleanup. Source-file metadata is not copied into the generated PDF. The PDF is saved only after the user explicitly chooses a location through the system dialog.</p>
 
       <h2>File storage and deletion</h2>
       <p>Generated PDF files are saved to a location selected by the user through the Android system dialog. After saving, the user controls the file through the selected storage provider or a file manager.</p>
