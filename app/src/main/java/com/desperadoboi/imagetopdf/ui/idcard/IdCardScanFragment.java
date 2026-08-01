@@ -157,7 +157,10 @@ public final class IdCardScanFragment extends Fragment {
             exportStatus.setText(R.string.id_card_error_file_unavailable);
             exportStatus.setVisibility(View.VISIBLE);
         }
-        observer = this::render;
+        observer = (session, options, state) -> {
+            render(session, options, state);
+            openCompletedResultIfNeeded();
+        };
         viewModel.addObserver(observer);
         if (savedInstanceState != null) {
             view.postDelayed(this::recoverOrphanedMainOperation, 5000L);
@@ -168,7 +171,9 @@ public final class IdCardScanFragment extends Fragment {
     public void onResume() {
         super.onResume();
         perspectiveNavigationPending = false;
-        openPendingReviewIfNeeded();
+        if (!openCompletedResultIfNeeded()) {
+            openPendingReviewIfNeeded();
+        }
     }
 
     @Override
@@ -375,6 +380,7 @@ public final class IdCardScanFragment extends Fragment {
             deleteFiles(viewModel.cancelSideOperation(side));
             return;
         }
+        IdCardSideRecord operationRecord = viewModel.getSession().get(side);
         viewModel.getExecutor().execute(() -> {
             IdCardCacheStorage.CacheImage copied = null;
             IdCardError error = IdCardError.NONE;
@@ -388,6 +394,10 @@ public final class IdCardScanFragment extends Fragment {
             IdCardCacheStorage.CacheImage result = copied;
             IdCardError resultError = error;
             mainExecutor.execute(() -> {
+                if (viewModel.getSession().get(side) != operationRecord) {
+                    if (result != null) cacheStorage.delete(result.getFileName());
+                    return;
+                }
                 if (result == null) {
                     deleteFiles(viewModel.failSideOperation(side, resultError));
                     return;
@@ -414,6 +424,19 @@ public final class IdCardScanFragment extends Fragment {
                 return;
             }
         }
+    }
+
+    private boolean openCompletedResultIfNeeded() {
+        if (!isAdded()
+                || !isResumed()
+                || navigationCallback == null
+                || documentSessionViewModel.getLastPdfResult() == null
+                || getParentFragmentManager().isStateSaved()
+                || !viewModel.consumePendingResultNavigation()) {
+            return false;
+        }
+        navigationCallback.onIdCardPdfResultRequested();
+        return true;
     }
 
     private void navigateToPerspective(IdCardSide side) {
@@ -698,56 +721,17 @@ public final class IdCardScanFragment extends Fragment {
                 operation.getCancellationToken(),
                 viewModel.getExecutor(),
                 mainExecutor,
-                new PdfGenerationCallback() {
-                    @Override
-                    public void onProgress(int completedPages, int totalPages) {
-                        viewModel.updateExportProgress(operationId, completedPages, totalPages);
-                    }
-
-                    @Override
-                    public void onSuccess(Uri savedUri, long sizeBytes) {
-                        PdfResult initial = new PdfResult(
-                                savedUri,
-                                fallbackName,
-                                sizeBytes,
-                                1,
-                                System.currentTimeMillis(),
-                                PdfLocationLabelResolver.resolveLabel(
-                                        applicationContext,
-                                        savedUri
-                                )
-                        );
-                        viewModel.getExecutor().execute(() -> {
-                            PdfResult result = metadataReader.read(initial);
-                            mainExecutor.execute(() -> completeSuccess(operationId, result));
-                        });
-                    }
-
-                    @Override
-                    public void onCancelled() {
-                        viewModel.completeExportCancelled(operationId);
-                    }
-
-                    @Override
-                    public void onError(Exception exception) {
-                        viewModel.completeExportError(
-                                operationId,
-                                exception.getCause() instanceof OutOfMemoryError
-                                        ? IdCardError.OUT_OF_MEMORY
-                                        : exception instanceof IdCardPdfGenerator.PdfOutputException
-                                        ? IdCardError.SAVE_PDF
-                                        : IdCardError.CREATE_PDF
-                        );
-                    }
-                }
+                new ViewModelIdCardExportCallback(
+                        viewModel,
+                        documentSessionViewModel,
+                        cacheStorage,
+                        metadataReader,
+                        mainExecutor,
+                        applicationContext,
+                        operationId,
+                        fallbackName
+                )
         );
-    }
-
-    private void completeSuccess(long operationId, PdfResult result) {
-        viewModel.completeExportSuccess(operationId);
-        deleteFiles(viewModel.clearImagesAfterSuccessfulExport());
-        documentSessionViewModel.publishExternalPdfResult(result);
-        if (navigationCallback != null) navigationCallback.onIdCardPdfResultRequested();
     }
 
     private void closeSession() {
@@ -794,6 +778,86 @@ public final class IdCardScanFragment extends Fragment {
 
     private static void recycle(Bitmap bitmap) {
         if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+    }
+
+    private static final class ViewModelIdCardExportCallback
+            implements PdfGenerationCallback {
+        private final IdCardScanViewModel viewModel;
+        private final DocumentSessionViewModel documentSessionViewModel;
+        private final IdCardCacheStorage cacheStorage;
+        private final PdfResultMetadataReader metadataReader;
+        private final Executor mainExecutor;
+        private final Context applicationContext;
+        private final long operationId;
+        private final String fallbackName;
+
+        private ViewModelIdCardExportCallback(
+                IdCardScanViewModel viewModel,
+                DocumentSessionViewModel documentSessionViewModel,
+                IdCardCacheStorage cacheStorage,
+                PdfResultMetadataReader metadataReader,
+                Executor mainExecutor,
+                Context applicationContext,
+                long operationId,
+                String fallbackName
+        ) {
+            this.viewModel = viewModel;
+            this.documentSessionViewModel = documentSessionViewModel;
+            this.cacheStorage = cacheStorage;
+            this.metadataReader = metadataReader;
+            this.mainExecutor = mainExecutor;
+            this.applicationContext = applicationContext;
+            this.operationId = operationId;
+            this.fallbackName = fallbackName;
+        }
+
+        @Override
+        public void onProgress(int completedPages, int totalPages) {
+            viewModel.updateExportProgress(operationId, completedPages, totalPages);
+        }
+
+        @Override
+        public void onSuccess(Uri savedUri, long sizeBytes) {
+            PdfResult initial = new PdfResult(
+                    savedUri,
+                    fallbackName,
+                    sizeBytes,
+                    1,
+                    System.currentTimeMillis(),
+                    PdfLocationLabelResolver.resolveLabel(applicationContext, savedUri)
+            );
+            viewModel.getExecutor().execute(() -> {
+                PdfResult result = metadataReader.read(initial);
+                mainExecutor.execute(() -> completeSuccess(result));
+            });
+        }
+
+        @Override
+        public void onCancelled() {
+            viewModel.completeExportCancelled(operationId);
+        }
+
+        @Override
+        public void onError(Exception exception) {
+            viewModel.completeExportError(operationId, mapError(exception));
+        }
+
+        private void completeSuccess(PdfResult result) {
+            if (!viewModel.isCurrentExportOperation(operationId)) return;
+            List<String> files = viewModel.clearImagesAfterSuccessfulExport();
+            for (String fileName : files) cacheStorage.delete(fileName);
+            documentSessionViewModel.publishExternalPdfResult(result);
+            viewModel.completeExportSuccess(operationId);
+        }
+
+        private static IdCardError mapError(Exception exception) {
+            if (exception.getCause() instanceof OutOfMemoryError) {
+                return IdCardError.OUT_OF_MEMORY;
+            }
+            return exception instanceof IdCardPdfGenerator.PdfOutputException
+                    ? IdCardError.SAVE_PDF
+                    : IdCardError.CREATE_PDF;
+        }
     }
 
     public interface NavigationCallback {

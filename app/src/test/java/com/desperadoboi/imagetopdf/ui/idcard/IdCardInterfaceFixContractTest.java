@@ -137,6 +137,31 @@ public final class IdCardInterfaceFixContractTest {
         assertTrue(loader.contains("String requestKey"));
     }
 
+    @Test public void asynchronousNavigationAndCallbacksAreLifecycleAndIdentityGuarded()
+            throws Exception {
+        String activity = read(
+                "app/src/main/java/com/desperadoboi/imagetopdf/MainActivity.java"
+        );
+        String fragment = read(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/idcard/"
+                        + "IdCardScanFragment.java"
+        );
+        String camera = read(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/smartscan/"
+                        + "SmartScanFragment.java"
+        );
+
+        assertTrue(activity.contains("idCardReviewNavigationPending"));
+        assertTrue(activity.contains("getSupportFragmentManager().isStateSaved()"));
+        assertTrue(fragment.contains("private static final class ViewModelIdCardExportCallback"));
+        assertTrue(fragment.contains("isCurrentExportOperation(operationId)"));
+        assertTrue(fragment.contains("consumePendingResultNavigation()"));
+        assertTrue(fragment.contains("getParentFragmentManager().isStateSaved()"));
+        assertFalse(fragment.contains("new PdfGenerationCallback()"));
+        assertTrue(camera.contains("isPendingImage("));
+        assertTrue(camera.contains("operationRecord"));
+    }
+
     @Test public void everySharedStringOnIdCardEndToEndPathHasEnglishValue()
             throws Exception {
         Map<String, String> english = loadStrings("values-en");

@@ -45,6 +45,7 @@ import com.desperadoboi.imagetopdf.ui.idcard.IdCardCacheStorage;
 import com.desperadoboi.imagetopdf.ui.idcard.IdCardError;
 import com.desperadoboi.imagetopdf.ui.idcard.IdCardScanViewModel;
 import com.desperadoboi.imagetopdf.ui.idcard.IdCardSide;
+import com.desperadoboi.imagetopdf.ui.idcard.IdCardSideRecord;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -624,8 +625,18 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
                                 @NonNull ImageCapture.OutputFileResults outputFileResults
                         ) {
                             idCaptureRequestInFlight = false;
+                            if (!idCardViewModel.isPendingImage(
+                                    idCardSide,
+                                    cacheImage.getFileName()
+                            )) {
+                                idCardCacheStorage.delete(cacheImage.getFileName());
+                                return;
+                            }
                             if (!idCardCacheStorage.existsAndHasContent(cacheImage.getFileName())) {
-                                failIdCardCapture(IdCardError.PROCESS_IMAGE);
+                                failIdCardCapture(
+                                        cacheImage.getFileName(),
+                                        IdCardError.PROCESS_IMAGE
+                                );
                                 return;
                             }
                             if (isAdded()) {
@@ -640,17 +651,24 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
                         @Override
                         public void onError(@NonNull ImageCaptureException exception) {
                             idCaptureRequestInFlight = false;
-                            failIdCardCapture(IdCardError.PROCESS_IMAGE);
+                            failIdCardCapture(
+                                    cacheImage.getFileName(),
+                                    IdCardError.PROCESS_IMAGE
+                            );
                         }
                     }
             );
         } catch (RuntimeException exception) {
             idCaptureRequestInFlight = false;
-            failIdCardCapture(IdCardError.PROCESS_IMAGE);
+            failIdCardCapture(cacheImage.getFileName(), IdCardError.PROCESS_IMAGE);
         }
     }
 
-    private void failIdCardCapture(IdCardError error) {
+    private void failIdCardCapture(String expectedFileName, IdCardError error) {
+        if (!idCardViewModel.isPendingImage(idCardSide, expectedFileName)) {
+            idCardCacheStorage.delete(expectedFileName);
+            return;
+        }
         deleteIdCardFiles(idCardViewModel.failSideOperation(idCardSide, error));
         if (!isAdded()) return;
         renderSessionState(sessionViewModel.getState(), sessionViewModel.getCameraState());
@@ -715,6 +733,7 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         }
         idCaptureRequestInFlight = true;
         renderSessionState(sessionViewModel.getState(), sessionViewModel.getCameraState());
+        IdCardSideRecord operationRecord = idCardViewModel.getSession().get(idCardSide);
         java.util.concurrent.Executor callbackExecutor =
                 ContextCompat.getMainExecutor(requireContext());
         idCardViewModel.getExecutor().execute(() -> {
@@ -730,6 +749,11 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
             IdCardCacheStorage.CacheImage result = copied;
             IdCardError resultError = error;
             callbackExecutor.execute(() -> {
+                if (!idCaptureRequestInFlight
+                        || idCardViewModel.getSession().get(idCardSide) != operationRecord) {
+                    if (result != null) idCardCacheStorage.delete(result.getFileName());
+                    return;
+                }
                 idCaptureRequestInFlight = false;
                 if (result == null || resultError != IdCardError.NONE) {
                     deleteIdCardFiles(idCardViewModel.failSideOperation(idCardSide, resultError));

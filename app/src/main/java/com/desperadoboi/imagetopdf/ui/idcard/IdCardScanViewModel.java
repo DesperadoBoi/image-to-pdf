@@ -41,6 +41,8 @@ public final class IdCardScanViewModel extends ViewModel {
     private final SavedStateHandle savedStateHandle;
     private final ArrayList<WeakReference<Observer>> observers = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final IdCardResultNavigationCoordinator resultNavigationCoordinator =
+            new IdCardResultNavigationCoordinator();
     private boolean awaitingDefaultWatermarkText;
     private String defaultWatermarkText = "";
 
@@ -105,6 +107,7 @@ public final class IdCardScanViewModel extends ViewModel {
         exportState = IdCardExportState.idle();
         pendingAccessibilityFocusSide = null;
         cancelActiveExport();
+        resultNavigationCoordinator.reset();
         persistAndNotify();
         return stale;
     }
@@ -227,6 +230,13 @@ public final class IdCardScanViewModel extends ViewModel {
                 : java.util.Collections.singletonList(disposable);
     }
 
+    public boolean isPendingImage(IdCardSide side, String cacheFileName) {
+        IdCardImage pending = session.get(side).getPendingImage();
+        return pending != null
+                && cacheFileName != null
+                && cacheFileName.equals(pending.getCacheFileName());
+    }
+
     public List<String> deleteSide(IdCardSide side) {
         IdCardSideRecord record = session.get(side);
         ArrayList<String> names = new ArrayList<>(2);
@@ -323,8 +333,13 @@ public final class IdCardScanViewModel extends ViewModel {
         long operationId = nextOperationId++;
         cancellationToken = new CancellationToken();
         exportState = IdCardExportState.running(operationId, session.getReadyCount());
+        resultNavigationCoordinator.onOperationStarted(operationId);
         persistAndNotify();
         return new ExportOperation(operationId, cancellationToken);
+    }
+
+    public boolean isCurrentExportOperation(long operationId) {
+        return exportState.isRunning() && exportState.getOperationId() == operationId;
     }
 
     public void updateExportProgress(long operationId, int completed, int total) {
@@ -339,14 +354,22 @@ public final class IdCardScanViewModel extends ViewModel {
         notifyObservers();
     }
 
-    public void completeExportSuccess(long operationId) {
-        exportState = exportState.finish(
+    public boolean completeExportSuccess(long operationId) {
+        IdCardExportState completed = exportState.finish(
                 operationId,
                 IdCardExportState.Phase.SUCCEEDED,
                 IdCardError.NONE
         );
+        if (completed == exportState) return false;
+        exportState = completed;
+        resultNavigationCoordinator.onOperationSucceeded(operationId);
         clearCancellation(operationId);
         notifyObservers();
+        return true;
+    }
+
+    public boolean consumePendingResultNavigation() {
+        return resultNavigationCoordinator.consumePendingNavigation();
     }
 
     public void completeExportCancelled(long operationId) {

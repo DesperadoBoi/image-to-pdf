@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity
     private CapturedImageStorage capturedImageStorage;
     private IdCardCacheStorage idCardCacheStorage;
     private boolean scanReviewNavigationPending;
+    private boolean idCardReviewNavigationPending;
     private boolean aboutNavigationPending;
     private boolean privacyNavigationPending;
 
@@ -184,9 +185,12 @@ public class MainActivity extends AppCompatActivity
         if (idCardScanViewModel.getReviewPage(side) == null
                 || getSupportFragmentManager().findFragmentByTag(
                         ScanReviewFragment.TAG_ID_CARD
-                ) != null) {
+                ) != null
+                || idCardReviewNavigationPending
+                || getSupportFragmentManager().isStateSaved()) {
             return;
         }
+        idCardReviewNavigationPending = true;
         getSupportFragmentManager()
                 .beginTransaction()
                 .setReorderingAllowed(true)
@@ -201,6 +205,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onIdCardReviewClosed(IdCardSide side, boolean accepted) {
+        idCardReviewNavigationPending = false;
         getSupportFragmentManager().popBackStackImmediate(
                 ScanReviewFragment.TAG_ID_CARD,
                 FragmentManager.POP_BACK_STACK_INCLUSIVE
