@@ -86,8 +86,8 @@ unsigned `assembleRelease` остаются доступны; production `bundle
 - [ ] Viewer: XLSX sheets, dates, cached formulas, merged cells и partial preview limits
 - [ ] Viewer: DOCX paragraphs/styles/lists, большие и merged tables, lazy images и page breaks
 - [ ] Viewer: DOCX rotation без повторного parsing, возврат позиции, Share и File information
-- [ ] Viewer: damaged/encrypted/oversized DOCX, fake ZIP, macro/embedded/external-resource reject
-- [ ] Viewer: `https` hyperlink открывается только по нажатию; external image/template не загружается
+- [ ] Viewer: damaged/encrypted/oversized DOCX, fake ZIP, macro/embedded/external-template reject
+- [ ] Viewer: `https` hyperlink открывается только по нажатию; external image/resource не загружается и безопасно деградирует
 - [ ] Viewer не предлагается для XLS, XLSM/XLSB, DOC, DOCM/DOTX/DOTM/RTF/ODT, archives, octet-stream и wildcard
 - [ ] Последовательное создание нескольких PDF
 - [ ] Process recreation на gallery/editor/scan/result flow

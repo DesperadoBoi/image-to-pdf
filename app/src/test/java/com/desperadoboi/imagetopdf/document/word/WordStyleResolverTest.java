@@ -8,7 +8,6 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public final class WordStyleResolverTest {
     @Test
@@ -107,7 +106,7 @@ public final class WordStyleResolverTest {
     }
 
     @Test
-    public void protectsParagraphAndCharacterInheritanceFromCycles() throws Exception {
+    public void cyclicInheritanceFallsBackWithoutHidingDocumentText() throws Exception {
         Map<String, WordStyleResolver.Definition> definitions = new HashMap<>();
         definitions.put("A", definition("A", "paragraph", "B", null, null, null));
         definitions.put("B", definition("B", "paragraph", "A", null, null, null));
@@ -120,10 +119,10 @@ public final class WordStyleResolverTest {
                 false
         );
 
-        assertCycle(() -> resolver.resolveParagraph("A"));
-        WordStyleResolver.ResolvedParagraph paragraph =
-                resolver.resolveParagraph(null);
-        assertCycle(() -> resolver.resolveRun(paragraph, "C", null, null));
+        WordStyleResolver.ResolvedParagraph paragraph = resolver.resolveParagraph("A");
+        assertEquals(11f, paragraph.getRunStyle().getFontSizePoints(), 0.001f);
+        WordRunStyle run = resolver.resolveRun(paragraph, "C", null, null);
+        assertEquals(11f, run.getFontSizePoints(), 0.001f);
     }
 
     private static WordStyleResolver.Definition definition(
@@ -145,19 +144,4 @@ public final class WordStyleResolverTest {
         );
     }
 
-    private static void assertCycle(ThrowingRunnable runnable) throws Exception {
-        try {
-            runnable.run();
-            fail("Expected style cycle");
-        } catch (WordParseException exception) {
-            assertEquals(
-                    WordParseException.Reason.CORRUPTED,
-                    exception.getReason()
-            );
-        }
-    }
-
-    private interface ThrowingRunnable {
-        void run() throws Exception;
-    }
 }

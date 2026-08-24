@@ -175,7 +175,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             int event;
             while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
                 if (event != XmlPullParser.START_TAG
-                        || !"Relationship".equals(parser.getName())) {
+                        || !WordXml.isPackageRelationshipElement(parser)) {
                     continue;
                 }
                 String id = WordXml.attribute(parser, "Id");
@@ -185,7 +185,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 );
                 String rawTarget = WordXml.attribute(parser, "Target");
                 String target = external
-                        ? rawTarget
+                        ? safeExternalTarget(rawTarget)
                         : DocxPackageInspector.normalizeRelationshipTarget(
                                 sourcePart,
                                 rawTarget
@@ -286,7 +286,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             int event;
             while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
                 if (event != XmlPullParser.START_TAG) continue;
-                if ("docDefaults".equals(parser.getName())) {
+                if (WordXml.isWordElement(parser, "docDefaults")) {
                     DocumentDefaults defaults =
                             readDocumentDefaults(parser, budget, theme);
                     documentRun = WordRunStyle.merge(documentRun, defaults.runStyle);
@@ -294,13 +294,14 @@ public final class DocxDocumentParser implements WordDocumentParser {
                             documentParagraph,
                             defaults.paragraphStyle
                     );
-                } else if ("style".equals(parser.getName())) {
+                } else if (WordXml.isWordElement(parser, "style")) {
                     WordStyleResolver.Definition definition =
                             readStyle(parser, budget, theme);
                     if (definition.getId() != null) {
-                        if (definitions.put(definition.getId(), definition) != null) {
-                            throw corrupted("Duplicate Word style identifier", null);
-                        }
+                        // Word-compatible producers occasionally emit a later corrective
+                        // definition for the same styleId. The last definition is authoritative;
+                        // duplicate style metadata must not make document text unreadable.
+                        definitions.put(definition.getId(), definition);
                     }
                 }
             }
@@ -327,16 +328,17 @@ public final class DocxDocumentParser implements WordDocumentParser {
         WordParagraphStyle paragraph = null;
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
-            if (event == XmlPullParser.START_TAG && "rPr".equals(parser.getName())) {
+            if (event == XmlPullParser.START_TAG && WordXml.isWordElement(parser, "rPr")) {
                 run = readRunProperties(parser, budget, theme).style;
-            } else if (event == XmlPullParser.START_TAG && "pPr".equals(parser.getName())) {
+            } else if (event == XmlPullParser.START_TAG
+                    && WordXml.isWordElement(parser, "pPr")) {
                 ParagraphProperties properties =
                         readParagraphProperties(parser, budget, theme);
                 paragraph = properties.style;
                 run = WordRunStyle.merge(run, properties.runStyle);
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "docDefaults".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "docDefaults")) {
                 break;
             }
         }
@@ -360,7 +362,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 if ("basedOn".equals(element)) {
                     basedOn = WordXml.attribute(parser, "val");
                 } else if ("link".equals(element)) {
@@ -377,7 +383,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "style".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "style")) {
                 break;
             }
         }
@@ -411,11 +417,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
             int event;
             while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
                 if (event != XmlPullParser.START_TAG) continue;
-                if ("abstractNum".equals(parser.getName())) {
+                if (WordXml.isWordElement(parser, "abstractNum")) {
                     AbstractNumbering abstractNumber =
                             readAbstractNumbering(parser, budget);
                     abstractNumbers.put(abstractNumber.id, abstractNumber);
-                } else if ("num".equals(parser.getName())) {
+                } else if (WordXml.isWordElement(parser, "num")) {
                     ConcreteNumbering concrete = readConcreteNumbering(parser, budget);
                     concreteNumbers.put(concrete.id, concrete);
                 }
@@ -434,12 +440,12 @@ public final class DocxDocumentParser implements WordDocumentParser {
         Map<Integer, NumberingLevel> levels = new HashMap<>();
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
-            if (event == XmlPullParser.START_TAG && "lvl".equals(parser.getName())) {
+            if (event == XmlPullParser.START_TAG && WordXml.isWordElement(parser, "lvl")) {
                 NumberingLevel level = readNumberingLevel(parser, budget);
                 levels.put(level.level, level);
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "abstractNum".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "abstractNum")) {
                 break;
             }
         }
@@ -459,7 +465,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 if ("start".equals(element)) {
                     start = Math.max(1, integer(WordXml.attribute(parser, "val"), 1));
                 } else if ("numFmt".equals(element)) {
@@ -472,7 +482,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "lvl".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "lvl")) {
                 break;
             }
         }
@@ -493,31 +503,31 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                if ("abstractNumId".equals(parser.getName())) {
+                if (WordXml.isWordElement(parser, "abstractNumId")) {
                     abstractId = integer(WordXml.attribute(parser, "val"), -1);
-                } else if ("lvlOverride".equals(parser.getName())) {
+                } else if (WordXml.isWordElement(parser, "lvlOverride")) {
                     overrideLevel = clamp(
                             integer(WordXml.attribute(parser, "ilvl"), 0),
                             0,
                             8
                     );
                     overrideDepth = parser.getDepth();
-                } else if ("startOverride".equals(parser.getName())
+                } else if (WordXml.isWordElement(parser, "startOverride")
                         && overrideLevel >= 0) {
                     startOverrides.put(
                             overrideLevel,
                             Math.max(1, integer(WordXml.attribute(parser, "val"), 1))
                     );
-                } else if ("lvl".equals(parser.getName()) && overrideLevel >= 0) {
+                } else if (WordXml.isWordElement(parser, "lvl") && overrideLevel >= 0) {
                     NumberingLevel override = readNumberingLevel(parser, budget);
                     startOverrides.put(overrideLevel, override.start);
                 }
             } else if (event == XmlPullParser.END_TAG) {
                 if (overrideLevel >= 0 && parser.getDepth() == overrideDepth
-                        && "lvlOverride".equals(parser.getName())) {
+                        && WordXml.isWordElement(parser, "lvlOverride")) {
                     overrideLevel = -1;
                 }
-                if (parser.getDepth() == depth && "num".equals(parser.getName())) break;
+                if (parser.getDepth() == depth && WordXml.isWordElement(parser, "num")) break;
             }
         }
         if (abstractId < 0) {
@@ -544,12 +554,13 @@ public final class DocxDocumentParser implements WordDocumentParser {
             int bodyDepth = -1;
             int event;
             while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
-                if (event == XmlPullParser.START_TAG && "body".equals(parser.getName())) {
+                if (event == XmlPullParser.START_TAG
+                        && WordXml.isWordElement(parser, "body")) {
                     foundBody = true;
                     bodyDepth = parser.getDepth();
                 } else if (event == XmlPullParser.START_TAG && bodyDepth >= 0
                         && parser.getDepth() == bodyDepth + 1) {
-                    if ("p".equals(parser.getName())) {
+                    if (WordXml.isWordElement(parser, "p")) {
                         appendParagraph(
                                 blocks,
                                 readParagraph(
@@ -563,7 +574,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                                 ),
                                 counters
                         );
-                    } else if ("tbl".equals(parser.getName())) {
+                    } else if (WordXml.isWordElement(parser, "tbl")) {
                         blocks.add(readTable(
                                 parser,
                                 budget,
@@ -574,19 +585,104 @@ public final class DocxDocumentParser implements WordDocumentParser {
                                 counters,
                                 0
                         ));
-                    } else if ("sectPr".equals(parser.getName())) {
+                    } else if (WordXml.isWordElement(parser, "sectPr")) {
                         sections.add(readSectionProperties(parser, budget));
+                    } else if (isTransparentBlockContainer(
+                            WordXml.wordElementName(parser)
+                    )) {
+                        readBlockContainer(
+                                parser,
+                                budget,
+                                relationships,
+                                styles,
+                                numbering,
+                                WordParagraph.Role.BODY,
+                                counters,
+                                blocks,
+                                sections
+                        );
+                    } else {
+                        WordXml.skipElement(parser, budget);
                     }
                 } else if (event == XmlPullParser.END_TAG
                         && bodyDepth >= 0
                         && parser.getDepth() == bodyDepth
-                        && "body".equals(parser.getName())) {
+                        && WordXml.isWordElement(parser, "body")) {
                     bodyDepth = -1;
                 }
             }
         }
         if (!foundBody) throw corrupted("DOCX body is missing", null);
         return new PartResult(blocks, sections);
+    }
+
+    private void readBlockContainer(
+            XmlPullParser parser,
+            WordXml.Budget budget,
+            Relationships relationships,
+            ParsedStyles styles,
+            Numbering numbering,
+            WordParagraph.Role role,
+            ParseCounters counters,
+            List<WordBlock> blocks,
+            List<WordSectionProperties> sections
+    ) throws IOException, XmlPullParserException, WordParseException {
+        int depth = parser.getDepth();
+        String endElement = parser.getName();
+        int event;
+        while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG) {
+                String element = WordXml.wordElementName(parser);
+                if ("p".equals(element)) {
+                    appendParagraph(
+                            blocks,
+                            readParagraph(
+                                    parser,
+                                    budget,
+                                    relationships,
+                                    styles,
+                                    numbering,
+                                    role,
+                                    counters
+                            ),
+                            counters
+                    );
+                } else if ("tbl".equals(element)) {
+                    blocks.add(readTable(
+                            parser,
+                            budget,
+                            relationships,
+                            styles,
+                            numbering,
+                            role,
+                            counters,
+                            0
+                    ));
+                } else if ("sectPr".equals(element)) {
+                    sections.add(readSectionProperties(parser, budget));
+                } else if (isTransparentBlockContainer(element)) {
+                    // Keep walking only through the small set of wrappers whose contents are
+                    // part of the readable final document.
+                } else if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                } else {
+                    WordXml.skipElement(parser, budget);
+                }
+            } else if (event == XmlPullParser.END_TAG
+                    && parser.getDepth() == depth
+                    && WordXml.isWordElement(parser, endElement)) {
+                return;
+            }
+        }
+        throw corrupted("Word block container is incomplete", null);
+    }
+
+    private boolean isTransparentBlockContainer(String element) {
+        return "sdt".equals(element)
+                || "sdtContent".equals(element)
+                || "customXml".equals(element)
+                || "ins".equals(element)
+                || "moveTo".equals(element);
     }
 
     private void appendRelatedStories(
@@ -609,7 +705,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 continue;
             }
             ZipEntry storyEntry = entries.get(relationship.target);
-            if (storyEntry == null) throw corrupted("Word story part is missing", null);
+            if (storyEntry == null) continue;
             Relationships storyRelationships = readRelationships(
                     zipFile,
                     entries.get(DocxPackageInspector.relationshipPartName(
@@ -652,7 +748,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                     rootDepth = parser.getDepth();
                 } else if (event == XmlPullParser.START_TAG
                         && parser.getDepth() == rootDepth + 1) {
-                    if ("p".equals(parser.getName())) {
+                    if (WordXml.isWordElement(parser, "p")) {
                         appendParagraph(
                                 blocks,
                                 readParagraph(
@@ -666,7 +762,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                                 ),
                                 counters
                         );
-                    } else if ("tbl".equals(parser.getName())) {
+                    } else if (WordXml.isWordElement(parser, "tbl")) {
                         blocks.add(readTable(
                                 parser,
                                 budget,
@@ -717,7 +813,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
             int event;
             while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
                 if (event == XmlPullParser.START_TAG
-                        && noteElement.equals(parser.getName())) {
+                        && WordXml.isWordElement(parser, noteElement)) {
                     noteDepth = parser.getDepth();
                     noteId = integer(WordXml.attribute(parser, "id"), -1);
                     firstParagraph = noteId >= 0;
@@ -728,7 +824,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 } else if (event == XmlPullParser.START_TAG
                         && noteDepth >= 0
                         && parser.getDepth() == noteDepth + 1) {
-                    if ("p".equals(parser.getName())) {
+                    if (WordXml.isWordElement(parser, "p")) {
                         ParagraphResult parsed = readParagraph(
                                 parser,
                                 budget,
@@ -743,7 +839,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                             firstParagraph = false;
                         }
                         appendParagraph(destination, parsed, counters);
-                    } else if ("tbl".equals(parser.getName())) {
+                    } else if (WordXml.isWordElement(parser, "tbl")) {
                         destination.add(readTable(
                                 parser,
                                 budget,
@@ -758,7 +854,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 } else if (event == XmlPullParser.END_TAG
                         && noteDepth >= 0
                         && parser.getDepth() == noteDepth
-                        && noteElement.equals(parser.getName())) {
+                        && WordXml.isWordElement(parser, noteElement)) {
                     noteDepth = -1;
                 }
             }
@@ -785,7 +881,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
                 if ("pPr".equals(element)) {
                     direct = readParagraphProperties(parser, budget, styles.theme);
                 } else if ("hyperlink".equals(element)) {
@@ -808,14 +904,32 @@ public final class DocxDocumentParser implements WordDocumentParser {
                     rawRuns.add(run);
                     images.addAll(run.images);
                     pageBreakAfter |= run.pageBreak;
+                } else if (WordXml.isMarkupCompatibilityElement(
+                        parser,
+                        "AlternateContent"
+                )) {
+                    AlternateRuns alternate = readParagraphAlternateContent(
+                            parser,
+                            budget,
+                            relationships,
+                            hyperlink,
+                            styles.theme,
+                            counters
+                    );
+                    rawRuns.addAll(alternate.runs);
+                    images.addAll(alternate.images);
+                    pageBreakAfter |= alternate.pageBreak;
+                } else if (!isTransparentParagraphContainer(element)) {
+                    WordXml.skipElement(parser, budget);
                 }
             } else if (event == XmlPullParser.END_TAG) {
                 if (hyperlinkDepth >= 0 && parser.getDepth() == hyperlinkDepth
-                        && "hyperlink".equals(parser.getName())) {
+                        && WordXml.isWordElement(parser, "hyperlink")) {
                     hyperlink = null;
                     hyperlinkDepth = -1;
                 }
-                if (parser.getDepth() == depth && "p".equals(parser.getName())) break;
+                if (parser.getDepth() == depth
+                        && WordXml.isWordElement(parser, "p")) break;
             }
         }
 
@@ -890,7 +1004,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
                 if ("rPr".equals(element)) {
                     properties = readRunProperties(parser, budget, theme);
                 } else if ("t".equals(element)) {
@@ -936,10 +1050,29 @@ public final class DocxDocumentParser implements WordDocumentParser {
                     if (image != null) images.add(image);
                 } else if ("instrText".equals(element) || "delText".equals(element)) {
                     WordXml.skipElement(parser, budget);
+                } else if (WordXml.isMarkupCompatibilityElement(
+                        parser,
+                        "AlternateContent"
+                )) {
+                    AlternateRuns alternate = readRunAlternateContent(
+                            parser,
+                            budget,
+                            relationships,
+                            hyperlink,
+                            theme,
+                            counters
+                    );
+                    for (RawRun run : alternate.runs) {
+                        appendAlreadyCountedText(text, run.text);
+                    }
+                    images.addAll(alternate.images);
+                    pageBreak |= alternate.pageBreak;
+                } else if (element == null || !isTransparentRunContainer(element)) {
+                    WordXml.skipElement(parser, budget);
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "r".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "r")) {
                 break;
             }
         }
@@ -951,6 +1084,190 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 images,
                 pageBreak
         );
+    }
+
+    private AlternateRuns readParagraphAlternateContent(
+            XmlPullParser parser,
+            WordXml.Budget budget,
+            Relationships relationships,
+            String hyperlink,
+            Theme theme,
+            ParseCounters counters
+    ) throws IOException, XmlPullParserException, WordParseException {
+        return readAlternateContent(
+                parser,
+                budget,
+                relationships,
+                hyperlink,
+                theme,
+                counters,
+                false
+        );
+    }
+
+    private AlternateRuns readRunAlternateContent(
+            XmlPullParser parser,
+            WordXml.Budget budget,
+            Relationships relationships,
+            String hyperlink,
+            Theme theme,
+            ParseCounters counters
+    ) throws IOException, XmlPullParserException, WordParseException {
+        return readAlternateContent(
+                parser,
+                budget,
+                relationships,
+                hyperlink,
+                theme,
+                counters,
+                true
+        );
+    }
+
+    private AlternateRuns readAlternateContent(
+            XmlPullParser parser,
+            WordXml.Budget budget,
+            Relationships relationships,
+            String hyperlink,
+            Theme theme,
+            ParseCounters counters,
+            boolean allowDirectRunContent
+    ) throws IOException, XmlPullParserException, WordParseException {
+        int depth = parser.getDepth();
+        AlternateRuns result = new AlternateRuns();
+        boolean selected = false;
+        int event;
+        while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG && parser.getDepth() == depth + 1) {
+                boolean choice = WordXml.isMarkupCompatibilityElement(parser, "Choice");
+                boolean fallback = WordXml.isMarkupCompatibilityElement(parser, "Fallback");
+                boolean useBranch = !selected && ((choice
+                        && WordXml.supportsAlternateChoice(parser)) || fallback);
+                if (useBranch) {
+                    readAlternateBranch(
+                            parser,
+                            budget,
+                            relationships,
+                            hyperlink,
+                            theme,
+                            counters,
+                            allowDirectRunContent,
+                            result
+                    );
+                    selected = true;
+                } else {
+                    WordXml.skipElement(parser, budget);
+                }
+            } else if (event == XmlPullParser.END_TAG
+                    && parser.getDepth() == depth
+                    && WordXml.isMarkupCompatibilityElement(parser, "AlternateContent")) {
+                return result;
+            }
+        }
+        throw corrupted("Word AlternateContent is incomplete", null);
+    }
+
+    private void readAlternateBranch(
+            XmlPullParser parser,
+            WordXml.Budget budget,
+            Relationships relationships,
+            String hyperlink,
+            Theme theme,
+            ParseCounters counters,
+            boolean allowDirectRunContent,
+            AlternateRuns result
+    ) throws IOException, XmlPullParserException, WordParseException {
+        int depth = parser.getDepth();
+        StringBuilder directText = new StringBuilder();
+        int event;
+        while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG) {
+                String element = WordXml.wordElementName(parser);
+                if ("r".equals(element)) {
+                    RawRun run = readRun(
+                            parser,
+                            budget,
+                            relationships,
+                            hyperlink,
+                            theme,
+                            counters
+                    );
+                    result.add(run);
+                } else if (allowDirectRunContent && "t".equals(element)) {
+                    appendRunText(
+                            directText,
+                            readTextElement(parser, budget, "t"),
+                            counters
+                    );
+                } else if (allowDirectRunContent && "tab".equals(element)) {
+                    appendRunText(directText, "\t", counters);
+                } else if (allowDirectRunContent && ("br".equals(element)
+                        || "cr".equals(element))) {
+                    if ("page".equals(WordXml.attribute(parser, "type"))) {
+                        result.pageBreak = true;
+                    } else {
+                        appendRunText(directText, "\n", counters);
+                    }
+                } else if (allowDirectRunContent && ("drawing".equals(element)
+                        || "pict".equals(element))) {
+                    WordImage image = readImage(parser, budget, relationships, counters);
+                    if (image != null) result.images.add(image);
+                } else if ("del".equals(element) || "moveFrom".equals(element)) {
+                    WordXml.skipElement(parser, budget);
+                } else if (WordXml.isMarkupCompatibilityElement(
+                        parser,
+                        "AlternateContent"
+                )) {
+                    AlternateRuns nested = readAlternateContent(
+                            parser,
+                            budget,
+                            relationships,
+                            hyperlink,
+                            theme,
+                            counters,
+                            allowDirectRunContent
+                    );
+                    result.addAll(nested);
+                } else if (!isTransparentParagraphContainer(element)
+                        && !isTransparentRunContainer(element)) {
+                    WordXml.skipElement(parser, budget);
+                }
+            } else if (event == XmlPullParser.END_TAG
+                    && parser.getDepth() == depth
+                    && (WordXml.isMarkupCompatibilityElement(parser, "Choice")
+                    || WordXml.isMarkupCompatibilityElement(parser, "Fallback"))) {
+                if (directText.length() > 0) {
+                    result.add(new RawRun(
+                            directText.toString(),
+                            null,
+                            null,
+                            hyperlink,
+                            Collections.emptyList(),
+                            false
+                    ));
+                }
+                return;
+            }
+        }
+        throw corrupted("Word AlternateContent branch is incomplete", null);
+    }
+
+    private boolean isTransparentParagraphContainer(String element) {
+        return "ins".equals(element)
+                || "moveTo".equals(element)
+                || "sdt".equals(element)
+                || "sdtContent".equals(element)
+                || "smartTag".equals(element)
+                || "customXml".equals(element)
+                || "fldSimple".equals(element);
+    }
+
+    private boolean isTransparentRunContainer(String element) {
+        return "smartTag".equals(element)
+                || "sdt".equals(element)
+                || "sdtContent".equals(element)
+                || "fldSimple".equals(element)
+                || "ruby".equals(element);
     }
 
     private WordImage readImage(
@@ -968,18 +1285,17 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
-                if ("blip".equals(element)) {
+                if (WordXml.isImageMetadataElement(parser, "blip")) {
                     relationshipId = WordXml.attribute(parser, "embed");
                     if (relationshipId == null) {
                         relationshipId = WordXml.attribute(parser, "id");
                     }
-                } else if ("imagedata".equals(element)) {
+                } else if (WordXml.isImageMetadataElement(parser, "imagedata")) {
                     relationshipId = WordXml.attribute(parser, "id");
-                } else if ("extent".equals(element)) {
+                } else if (WordXml.isImageMetadataElement(parser, "extent")) {
                     widthEmu = longValue(WordXml.attribute(parser, "cx"), widthEmu);
                     heightEmu = longValue(WordXml.attribute(parser, "cy"), heightEmu);
-                } else if ("docPr".equals(element)) {
+                } else if (WordXml.isImageMetadataElement(parser, "docPr")) {
                     altText = safeValue(
                             WordXml.attribute(parser, "descr"),
                             WordXml.attribute(parser, "title")
@@ -987,7 +1303,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && endElement.equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, endElement)) {
                 break;
             }
         }
@@ -995,7 +1311,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
         Relationship relationship = relationships.byId.get(relationshipId);
         if (relationship == null || relationship.external
                 || !relationship.type.endsWith("/image")) {
-            throw corrupted("DOCX image relationship is invalid", null);
+            return null;
         }
         counters.addImage();
         String lower = relationship.target.toLowerCase(Locale.ROOT);
@@ -1033,7 +1349,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 if ("tblPr".equals(element) && parser.getDepth() == depth + 1) {
                     properties = readTableProperties(parser, budget);
                 } else if ("gridCol".equals(element)) {
@@ -1055,7 +1375,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "tbl".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "tbl")) {
                 break;
             }
         }
@@ -1094,12 +1414,12 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                if ("trHeight".equals(parser.getName())) {
+                if (WordXml.isWordElement(parser, "trHeight")) {
                     heightTwips = Math.max(
                             heightTwips,
                             integer(WordXml.attribute(parser, "val"), 0)
                     );
-                } else if ("tc".equals(parser.getName())
+                } else if (WordXml.isWordElement(parser, "tc")
                         && parser.getDepth() == depth + 1) {
                     cells.add(readTableCell(
                             parser,
@@ -1114,7 +1434,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "tr".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "tr")) {
                 break;
             }
         }
@@ -1139,9 +1459,9 @@ public final class DocxDocumentParser implements WordDocumentParser {
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG
                     && parser.getDepth() == depth + 1) {
-                if ("tcPr".equals(parser.getName())) {
+                if (WordXml.isWordElement(parser, "tcPr")) {
                     properties = readCellProperties(parser, budget);
-                } else if ("p".equals(parser.getName())) {
+                } else if (WordXml.isWordElement(parser, "p")) {
                     appendParagraph(
                             blocks,
                             readParagraph(
@@ -1155,7 +1475,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                             ),
                             counters
                     );
-                } else if ("tbl".equals(parser.getName())) {
+                } else if (WordXml.isWordElement(parser, "tbl")) {
                     blocks.add(readTable(
                             parser,
                             budget,
@@ -1169,7 +1489,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "tc".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "tc")) {
                 break;
             }
         }
@@ -1211,7 +1531,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 if ("pStyle".equals(element)) {
                     styleId = WordXml.attribute(parser, "val");
                 } else if ("jc".equals(element)) {
@@ -1271,7 +1595,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "pPr".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "pPr")) {
                 break;
             }
         }
@@ -1300,7 +1624,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 if ("rStyle".equals(element)) {
                     styleId = WordXml.attribute(parser, "val");
                 } else if ("rFonts".equals(element)) {
@@ -1362,7 +1690,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "rPr".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "rPr")) {
                 break;
             }
         }
@@ -1382,7 +1710,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 if ("jc".equals(element)) {
                     String value = WordXml.attribute(parser, "val");
                     result.alignment = "center".equals(value)
@@ -1399,7 +1731,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "tblPr".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "tblPr")) {
                 break;
             }
         }
@@ -1415,7 +1747,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 WordTableWidth width = tableWidth(parser);
                 if (width.getType() != WordTableWidth.Type.DXA
                         && width.getType() != WordTableWidth.Type.NIL) {
@@ -1435,7 +1771,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "tblCellMar".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "tblCellMar")) {
                 break;
             }
         }
@@ -1450,8 +1786,13 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 WordBorder border = border(parser);
-                switch (parser.getName()) {
+                switch (element) {
                     case "left":
                     case "start":
                         result.left = border;
@@ -1477,7 +1818,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "tblBorders".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "tblBorders")) {
                 break;
             }
         }
@@ -1493,7 +1834,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                String element = parser.getName();
+                String element = WordXml.wordElementName(parser);
+                if (element == null) {
+                    WordXml.skipElement(parser, budget);
+                    continue;
+                }
                 if ("tcW".equals(element)) {
                     result.width = tableWidth(parser);
                 } else if ("gridSpan".equals(element)) {
@@ -1535,10 +1880,11 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 }
             } else if (event == XmlPullParser.END_TAG) {
                 if (borderDepth >= 0 && parser.getDepth() == borderDepth
-                        && "tcBorders".equals(parser.getName())) {
+                        && WordXml.isWordElement(parser, "tcBorders")) {
                     borderDepth = -1;
                 }
-                if (parser.getDepth() == depth && "tcPr".equals(parser.getName())) break;
+                if (parser.getDepth() == depth
+                        && WordXml.isWordElement(parser, "tcPr")) break;
             }
         }
         return result;
@@ -1560,22 +1906,22 @@ public final class DocxDocumentParser implements WordDocumentParser {
         int event;
         while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG) {
-                if ("pgSz".equals(parser.getName())) {
+                if (WordXml.isWordElement(parser, "pgSz")) {
                     pageWidth = integer(WordXml.attribute(parser, "w"), 0);
                     pageHeight = integer(WordXml.attribute(parser, "h"), 0);
-                } else if ("pgMar".equals(parser.getName())) {
+                } else if (WordXml.isWordElement(parser, "pgMar")) {
                     top = integer(WordXml.attribute(parser, "top"), 0);
                     right = integer(WordXml.attribute(parser, "right"), 0);
                     bottom = integer(WordXml.attribute(parser, "bottom"), 0);
                     left = integer(WordXml.attribute(parser, "left"), 0);
-                } else if ("headerReference".equals(parser.getName())) {
+                } else if (WordXml.isWordElement(parser, "headerReference")) {
                     addNonEmpty(headers, WordXml.attribute(parser, "id"));
-                } else if ("footerReference".equals(parser.getName())) {
+                } else if (WordXml.isWordElement(parser, "footerReference")) {
                     addNonEmpty(footers, WordXml.attribute(parser, "id"));
                 }
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && "sectPr".equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, "sectPr")) {
                 break;
             }
         }
@@ -1633,10 +1979,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 || !relationship.type.endsWith("/hyperlink")) {
             return null;
         }
-        return relationship.target != null
-                && relationship.target.toLowerCase(Locale.ROOT).startsWith("https://")
-                ? relationship.target
-                : null;
+        return DocxPackageInspector.safeExternalHyperlink(relationship.target);
     }
 
     private ZipEntry relatedEntry(
@@ -1647,10 +1990,9 @@ public final class DocxDocumentParser implements WordDocumentParser {
         Relationship relationship = firstRelationship(relationships, typeSuffix);
         if (relationship == null) return null;
         if (relationship.external) {
-            throw unsupported("External DOCX part is not supported");
+            return null;
         }
         ZipEntry entry = entries.get(relationship.target);
-        if (entry == null) throw corrupted("Related DOCX part is missing", null);
         return entry;
     }
 
@@ -1659,6 +2001,14 @@ public final class DocxDocumentParser implements WordDocumentParser {
             if (relationship.type.endsWith(typeSuffix)) return relationship;
         }
         return null;
+    }
+
+    private String safeExternalTarget(String target) {
+        if (target == null || target.length() > 2_048) return "";
+        for (int index = 0; index < target.length(); index++) {
+            if (Character.isISOControl(target.charAt(index))) return "";
+        }
+        return target;
     }
 
     private ZipEntry requiredEntry(Map<String, ZipEntry> entries, String name)
@@ -1682,7 +2032,7 @@ public final class DocxDocumentParser implements WordDocumentParser {
                 if (parser.getText() != null) result.append(parser.getText());
             } else if (event == XmlPullParser.END_TAG
                     && parser.getDepth() == depth
-                    && endElement.equals(parser.getName())) {
+                    && WordXml.isWordElement(parser, endElement)) {
                 return result.toString();
             }
         }
@@ -1699,6 +2049,15 @@ public final class DocxDocumentParser implements WordDocumentParser {
             throw tooLarge("Word text run length limit exceeded", null);
         }
         counters.addText(value.length());
+        builder.append(value);
+    }
+
+    private void appendAlreadyCountedText(StringBuilder builder, String value)
+            throws WordParseException {
+        if (value == null || value.isEmpty()) return;
+        if (builder.length() + value.length() > DocumentLimits.MAX_WORD_RUN_CHARS) {
+            throw tooLarge("Word text run length limit exceeded", null);
+        }
         builder.append(value);
     }
 
@@ -2069,6 +2428,24 @@ public final class DocxDocumentParser implements WordDocumentParser {
             this.hyperlink = hyperlink;
             this.images = images;
             this.pageBreak = pageBreak;
+        }
+    }
+
+    private static final class AlternateRuns {
+        private final List<RawRun> runs = new ArrayList<>();
+        private final List<WordImage> images = new ArrayList<>();
+        private boolean pageBreak;
+
+        private void add(RawRun run) {
+            runs.add(run);
+            images.addAll(run.images);
+            pageBreak |= run.pageBreak;
+        }
+
+        private void addAll(AlternateRuns other) {
+            runs.addAll(other.runs);
+            images.addAll(other.images);
+            pageBreak |= other.pageBreak;
         }
     }
 

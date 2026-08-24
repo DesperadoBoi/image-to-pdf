@@ -373,6 +373,9 @@
     <string name="viewer_word_image_failed">Не удалось показать изображение из документа</string>
     <string name="viewer_word_content_description">Документ Word в постраничном режиме</string>
     <string name="viewer_word_go_to_top">Перейти к началу документа</string>
+    <string name="viewer_word_fit_page_width">По ширине страницы</string>
+    <string name="viewer_word_fit_width_applied">Страница подогнана по ширине экрана</string>
+    <string name="viewer_word_loaded_announcement">Документ открыт. Страниц: %1$d</string>
 
     <string name="viewer_error_unsupported_title">Формат не поддерживается</string>
     <string name="viewer_error_invalid_request">Можно открыть только переданный PDF, DOCX, XLSX, CSV, текст или изображение</string>
@@ -405,10 +408,14 @@
     <string name="viewer_error_spreadsheet_encrypted_title">Таблица защищена паролем</string>
     <string name="viewer_error_xlsx_encrypted">Зашифрованные таблицы нельзя открыть без пароля</string>
     <string name="viewer_error_xlsx_active_content">Таблица содержит неподдерживаемые макросы, ActiveX или встроенное исполняемое содержимое</string>
-    <string name="viewer_error_docx_corrupted">Документ DOCX повреждён или не содержит основной части Word</string>
+    <string name="viewer_error_docx_open_title">Не удалось открыть документ</string>
+    <string name="viewer_error_docx_corrupted">Файл DOCX повреждён или не содержит основной части Word.</string>
     <string name="viewer_error_docx_too_large">Документ DOCX превышает безопасные пределы локального просмотра</string>
     <string name="viewer_error_docx_encrypted">Зашифрованные документы DOCX нельзя открыть без пароля</string>
-    <string name="viewer_error_docx_unsupported">Документ содержит неподдерживаемые активные или внешние элементы Word</string>
+    <string name="viewer_error_docx_unsupported">Этот вариант пакета Word пока не поддерживается.</string>
+    <string name="viewer_error_docx_macro_enabled">Документы DOCM с макросами не открываются. Сохраните безопасную копию как DOCX.</string>
+    <string name="viewer_error_docx_unsafe_content">Документ содержит ActiveX, OLE или другое небезопасное активное содержимое.</string>
+    <string name="viewer_error_docx_internal">Файл может быть повреждён или содержать пока не поддерживаемое форматирование.</string>
     <string name="viewer_error_doc_not_supported">Старый формат DOC пока не поддерживается. Сохраните файл как DOCX.</string>
 
     <string name="viewer_share_chooser">Поделиться документом</string>

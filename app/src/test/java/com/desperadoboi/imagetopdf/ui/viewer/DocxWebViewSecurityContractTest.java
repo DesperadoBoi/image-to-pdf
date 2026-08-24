@@ -37,11 +37,24 @@ public final class DocxWebViewSecurityContractTest {
         assertTrue(source.contains("settings.setBuiltInZoomControls(true);"));
         assertTrue(source.contains("settings.setLoadWithOverviewMode(true);"));
         assertTrue(source.contains("settings.setTextZoom(100);"));
+        assertFalse(source.contains("setOnLongClickListener(ignored -> true)"));
         assertTrue(source.contains("shouldInterceptRequest("));
         assertTrue(source.contains("return blockedResponse();"));
         assertTrue(source.contains("shouldOverrideUrlLoading("));
         assertTrue(source.contains("return true;"));
         assertTrue(source.contains("request.hasGesture()"));
+    }
+
+    @Test
+    public void rendererCompletionAndFailureAreReportedWithoutWeakeningIsolation()
+            throws Exception {
+        String source = controllerSource();
+
+        assertTrue(source.contains("renderHandler.onRendered();"));
+        assertTrue(source.contains("public void onReceivedError("));
+        assertTrue(source.contains("request.isForMainFrame()"));
+        assertTrue(source.contains("public boolean onRenderProcessGone("));
+        assertTrue(source.contains("renderHandler.onFailure();"));
     }
 
     @Test

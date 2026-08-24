@@ -257,7 +257,7 @@ public final class DocxDocumentParserTest {
     }
 
     @Test
-    public void rejectsCyclicStyleInheritance() throws Exception {
+    public void cyclicStyleInheritanceDegradesToReadableDefaults() throws Exception {
         Map<String, byte[]> parts = new LinkedHashMap<>();
         parts.put("word/styles.xml", DocxTestFixtures.bytes(
                 "<w:styles xmlns:w=\"" + DocxTestFixtures.WORD_NAMESPACE + "\">"
@@ -274,7 +274,11 @@ public final class DocxDocumentParserTest {
                 parts,
                 ""
         );
-        assertReason(file, WordParseException.Reason.CORRUPTED);
+        WordParagraph paragraph = (WordParagraph) parser.parse(file.toFile(), null)
+                .getBlocks().get(0);
+        assertEquals("x", paragraph.getPlainText());
+        assertEquals(11f, paragraph.getRuns().get(0).getStyle()
+                .getFontSizePoints(), 0.001f);
     }
 
     @Test
@@ -419,6 +423,27 @@ public final class DocxDocumentParserTest {
     }
 
     @Test
+    public void nonHttpsExternalHyperlinkKeepsTextWithoutExecutableLink()
+            throws Exception {
+        String relationships = DocxTestFixtures.externalRelationship(
+                "link",
+                "hyperlink",
+                "http://example.invalid/read"
+        );
+        WordParagraph paragraph = (WordParagraph) parse(
+                "http-link.docx",
+                "<w:p><w:hyperlink r:id=\"link\"><w:r><w:t>Readable</w:t>"
+                        + "</w:r></w:hyperlink></w:p>",
+                relationships,
+                new LinkedHashMap<>(),
+                ""
+        ).getBlocks().get(0);
+
+        assertEquals("Readable", paragraph.getPlainText());
+        assertNull(paragraph.getRuns().get(0).getHyperlink());
+    }
+
+    @Test
     public void parsesHeadersFootersFootnotesAndTrackChanges() throws Exception {
         Map<String, byte[]> parts = new LinkedHashMap<>();
         parts.put("word/header1.xml", DocxTestFixtures.bytes(
@@ -472,6 +497,19 @@ public final class DocxDocumentParserTest {
                 "<w:p><w:r><w:t>broken"
         );
         assertReason(corrupted, WordParseException.Reason.CORRUPTED);
+
+        LinkedHashMap<String, byte[]> docDeclEntries = DocxTestFixtures.baseEntries(
+                "",
+                "",
+                ""
+        );
+        docDeclEntries.put("word/document.xml", DocxTestFixtures.bytes(
+                "<!DOCTYPE document [<!ENTITY x \"unsafe\">]>"
+                        + DocxTestFixtures.wordDocument(DocxTestFixtures.paragraph("&x;"))
+        ));
+        Path docDecl = fixture("docdecl.docx");
+        DocxTestFixtures.writeStoredZip(docDecl, docDeclEntries);
+        assertReason(docDecl, WordParseException.Reason.UNSUPPORTED);
 
         StringBuilder excessive = new StringBuilder();
         for (int index = 0; index <= 20_000; index++) {

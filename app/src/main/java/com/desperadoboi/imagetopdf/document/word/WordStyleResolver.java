@@ -100,7 +100,9 @@ public final class WordStyleResolver {
             int depth
     ) throws WordParseException {
         String visitKey = "p:" + id;
-        ensureAcyclic(visiting, visitKey, depth, "paragraph");
+        if (!enterStyle(visiting, visitKey, depth)) {
+            return new ResolvedParagraph(documentParagraph, documentRun);
+        }
         Definition definition = definitions.get(id);
         if (definition == null || "character".equals(definition.type)) {
             visiting.remove(visitKey);
@@ -156,7 +158,7 @@ public final class WordStyleResolver {
             int depth
     ) throws WordParseException {
         String visitKey = "c:" + id;
-        ensureAcyclic(visiting, visitKey, depth, "character");
+        if (!enterStyle(visiting, visitKey, depth)) return null;
         Definition definition = definitions.get(id);
         if (definition == null) {
             visiting.remove(visitKey);
@@ -179,18 +181,12 @@ public final class WordStyleResolver {
         return result;
     }
 
-    private void ensureAcyclic(
+    private boolean enterStyle(
             Set<String> visiting,
             String key,
-            int depth,
-            String type
-    ) throws WordParseException {
-        if (depth > DocumentLimits.MAX_WORD_STYLE_DEPTH || !visiting.add(key)) {
-            throw new WordParseException(
-                    WordParseException.Reason.CORRUPTED,
-                    "Cyclic Word " + type + " style inheritance"
-            );
-        }
+            int depth
+    ) {
+        return depth <= DocumentLimits.MAX_WORD_STYLE_DEPTH && visiting.add(key);
     }
 
     private static int headingLevel(String styleId, String styleName) {

@@ -65,9 +65,13 @@ XLSX обрабатывается из app-cache копии через изол�
 
 DOCX обрабатывается отдельным `DocxPackageInspector` и `DocxDocumentParser` из app-cache
 копии. Inspector проверяет ZIP central/local headers, `[Content_Types].xml`, package
-relationships и выбранный relationship основной WordprocessingML part. Потоковый
-`XmlPullParser` строит контролируемую read-only `WordDocumentModel` из paragraph, table,
-image и page-break blocks; DOM не используется. Presentation layer через
+relationships и выбранный relationship основной WordprocessingML part, включая безопасно
+нормализованные относительные targets. Transitional и Strict namespaces поддерживаются явно.
+Опасное активное содержимое блокируется, а неизвестные metadata/extension parts и неисполняемые
+external relationships не загружаются и не делают документ нечитаемым. Потоковый
+`XmlPullParser` безопасно пропускает неизвестные элементы, обрабатывает `mc:AlternateContent`
+и строит контролируемую read-only `WordDocumentModel` из paragraph, table, image и page-break
+blocks; DOM не используется. Presentation layer через
 `DocxHtmlRenderer` преобразует только эту доверенную модель в полностью экранированные
 локальные HTML/CSS и приблизительно разбивает поток на белые page boxes с размерами и полями
 section. `DocxLocalImageStore` допускает только проверенные raster data URI.

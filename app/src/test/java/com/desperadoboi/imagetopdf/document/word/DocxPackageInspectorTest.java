@@ -91,7 +91,7 @@ public final class DocxPackageInspectorTest {
         macro.put("word/vbaProject.bin", new byte[]{1, 2, 3});
         assertReason(
                 stored("macro.docm", macro),
-                WordParseException.Reason.UNSUPPORTED
+                WordParseException.Reason.MACRO_ENABLED
         );
 
         LinkedHashMap<String, byte[]> template = DocxTestFixtures.baseEntries(
@@ -105,7 +105,7 @@ public final class DocxPackageInspectorTest {
         );
         assertReason(
                 stored("template.docx", template),
-                WordParseException.Reason.UNSUPPORTED
+                WordParseException.Reason.UNSAFE_ACTIVE_CONTENT
         );
 
         LinkedHashMap<String, byte[]> relationshipTraversal =
@@ -115,14 +115,23 @@ public final class DocxPackageInspectorTest {
                         + "<Relationship Id=\"root\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" "
                         + "Target=\"word/../word/document.xml\"/></Relationships>"
         ));
+        assertTrue(DocxPackageInspector.inspect(
+                stored("relationship-normalized.docx", relationshipTraversal).toFile()
+        ).isDocx());
+
+        relationshipTraversal.put("_rels/.rels", DocxTestFixtures.bytes(
+                "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                        + "<Relationship Id=\"root\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" "
+                        + "Target=\"../../word/document.xml\"/></Relationships>"
+        ));
         assertReason(
-                stored("relationship-traversal.docx", relationshipTraversal),
+                stored("relationship-escape.docx", relationshipTraversal),
                 WordParseException.Reason.CORRUPTED
         );
     }
 
     @Test
-    public void rejectsPreambleExternalImageAndMediaLimits() throws Exception {
+    public void rejectsPreambleAndMediaLimitsButAcceptsExternalImage() throws Exception {
         Path base = DocxTestFixtures.minimalDocument(
                 fixture("signature-base.docx"),
                 DocxTestFixtures.paragraph("x")
@@ -144,10 +153,9 @@ public final class DocxPackageInspectorTest {
                 ),
                 ""
         );
-        assertReason(
-                stored("external-image.docx", externalImage),
-                WordParseException.Reason.UNSUPPORTED
-        );
+        assertTrue(DocxPackageInspector.inspect(
+                stored("external-image.docx", externalImage).toFile()
+        ).isDocx());
 
         LinkedHashMap<String, byte[]> tooManyImages =
                 DocxTestFixtures.baseEntries(DocxTestFixtures.paragraph("x"), "", "");
@@ -192,6 +200,20 @@ public final class DocxPackageInspectorTest {
         Path encrypted = fixture("encrypted.docx");
         Files.write(encrypted, archive);
         assertReason(encrypted, WordParseException.Reason.ENCRYPTED);
+    }
+
+    @Test
+    public void rejectsDuplicateCaseFoldedPackagePaths() throws Exception {
+        LinkedHashMap<String, byte[]> entries = DocxTestFixtures.baseEntries(
+                DocxTestFixtures.paragraph("x"),
+                "",
+                ""
+        );
+        entries.put("Word/Document.xml", DocxTestFixtures.bytes("<duplicate/>"));
+        assertReason(
+                stored("duplicate-normalized.docx", entries),
+                WordParseException.Reason.CORRUPTED
+        );
     }
 
     private Path fixture(String name) throws Exception {

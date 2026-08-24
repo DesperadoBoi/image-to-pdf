@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.util.ArrayDeque;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,9 +85,19 @@ public final class OoxmlPackageDetector {
                 }
                 if (rootTarget.startsWith("word/") && mainContentType != null) {
                     String lower = mainContentType.toLowerCase(Locale.ROOT);
-                    if (lower.contains("wordprocessingml")
-                            && lower.contains("macroenabled")) {
-                        return Kind.DOCX;
+                    if (lower.contains("macroenabled")) {
+                        throw new DetectionException(
+                                Reason.MACRO_ENABLED,
+                                Family.WORD,
+                                "Macro-enabled Word package"
+                        );
+                    }
+                    if (lower.contains("wordprocessingml")) {
+                        throw new DetectionException(
+                                Reason.UNSUPPORTED_PACKAGE,
+                                Family.WORD,
+                                "Unsupported Word package variant"
+                        );
                     }
                 }
                 if ("ppt/presentation.xml".equals(rootTarget)
@@ -286,16 +297,18 @@ public final class OoxmlPackageDetector {
                 || target.indexOf('\\') >= 0) return null;
         String value = target.startsWith("/") ? target.substring(1) : target;
         if (value.isEmpty() || value.contains("://")) return null;
-        StringBuilder normalized = new StringBuilder();
+        ArrayDeque<String> segments = new ArrayDeque<>();
         for (String segment : value.split("/", -1)) {
-            if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)
-                    || segment.indexOf(':') >= 0 || containsControlCharacter(segment)) {
-                return null;
+            if (segment.isEmpty() || ".".equals(segment)) continue;
+            if ("..".equals(segment)) {
+                if (segments.isEmpty()) return null;
+                segments.removeLast();
+            } else {
+                if (segment.indexOf(':') >= 0 || containsControlCharacter(segment)) return null;
+                segments.addLast(segment);
             }
-            if (normalized.length() > 0) normalized.append('/');
-            normalized.append(segment);
         }
-        return normalized.toString();
+        return segments.isEmpty() ? null : String.join("/", segments);
     }
 
     private static String normalizeEntryName(String name, boolean directory) {
@@ -468,7 +481,10 @@ public final class OoxmlPackageDetector {
     public enum Reason {
         CORRUPTED,
         TOO_LARGE,
-        ENCRYPTED
+        ENCRYPTED,
+        MACRO_ENABLED,
+        UNSAFE_ACTIVE_CONTENT,
+        UNSUPPORTED_PACKAGE
     }
 
     public static final class DetectionException extends IOException {

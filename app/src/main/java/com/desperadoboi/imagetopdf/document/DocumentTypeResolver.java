@@ -15,6 +15,8 @@ import com.desperadoboi.imagetopdf.document.word.DocxPackageInspector;
 import com.desperadoboi.imagetopdf.document.word.WordParseException;
 
 public final class DocumentTypeResolver {
+    private static final String DOCX_MIME =
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     private static final byte[] PDF = {'%', 'P', 'D', 'F'};
     private static final byte[] XLS = {
             (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0,
@@ -93,6 +95,13 @@ public final class DocumentTypeResolver {
             String normalizedMime = mimeType == null
                     ? ""
                     : mimeType.trim().toLowerCase(Locale.ROOT);
+            if (safeName.endsWith(".docx")
+                    || DOCX_MIME.equals(normalizedMime)) {
+                throw new WordParseException(
+                        WordParseException.Reason.ENCRYPTED,
+                        "DOCX is stored in an encrypted OOXML container"
+                );
+            }
             if (safeName.endsWith(".doc") || "application/msword".equals(normalizedMime)) {
                 return DocumentType.DOC;
             }
@@ -125,7 +134,7 @@ public final class DocumentTypeResolver {
                 return DocumentType.XLSX;
             case "application/vnd.ms-excel.sheet.macroenabled.12":
                 return DocumentType.XLSM;
-            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            case DOCX_MIME:
                 return DocumentType.DOCX;
             case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
                 return DocumentType.PPTX;

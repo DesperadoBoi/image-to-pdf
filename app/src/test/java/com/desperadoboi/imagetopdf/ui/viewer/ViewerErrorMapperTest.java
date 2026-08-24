@@ -44,6 +44,16 @@ public final class ViewerErrorMapperTest {
                 ViewerErrorMapper.wordFailure(WordParseException.Reason.UNSUPPORTED)
         );
         assertEquals(
+                ViewerErrorType.DOCX_MACRO_ENABLED,
+                ViewerErrorMapper.wordFailure(WordParseException.Reason.MACRO_ENABLED)
+        );
+        assertEquals(
+                ViewerErrorType.DOCX_UNSAFE_ACTIVE_CONTENT,
+                ViewerErrorMapper.wordFailure(
+                        WordParseException.Reason.UNSAFE_ACTIVE_CONTENT
+                )
+        );
+        assertEquals(
                 ViewerErrorType.DOCX_CORRUPTED,
                 ViewerErrorMapper.wordFailure(WordParseException.Reason.CORRUPTED)
         );
@@ -67,6 +77,22 @@ public final class ViewerErrorMapperTest {
                 ViewerErrorType.SPREADSHEET_ACTIVE_CONTENT,
                 ViewerErrorMapper.loadFailure(
                         DocumentLoadException.Reason.SPREADSHEET_ACTIVE_CONTENT
+                )
+        );
+    }
+
+    @Test
+    public void loaderWordActiveContentReasonsRemainSpecific() {
+        assertEquals(
+                ViewerErrorType.DOCX_MACRO_ENABLED,
+                ViewerErrorMapper.loadFailure(
+                        DocumentLoadException.Reason.DOCX_MACRO_ENABLED
+                )
+        );
+        assertEquals(
+                ViewerErrorType.DOCX_UNSAFE_ACTIVE_CONTENT,
+                ViewerErrorMapper.loadFailure(
+                        DocumentLoadException.Reason.DOCX_UNSAFE_ACTIVE_CONTENT
                 )
         );
     }

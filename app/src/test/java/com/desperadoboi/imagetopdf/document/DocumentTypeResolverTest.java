@@ -2,6 +2,7 @@ package com.desperadoboi.imagetopdf.document;
 
 import com.desperadoboi.imagetopdf.document.spreadsheet.XlsxTestFixtures;
 import com.desperadoboi.imagetopdf.document.word.DocxTestFixtures;
+import com.desperadoboi.imagetopdf.document.word.WordParseException;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -212,6 +213,31 @@ public final class DocumentTypeResolverTest {
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "wrong.xlsx"
         ));
+        assertEquals(DocumentType.DOCX, resolveFile(docx.toFile(), null, "document"));
+        assertEquals(DocumentType.DOCX, resolveFile(
+                docx.toFile(),
+                "application/octet-stream",
+                "msf:1000000001"
+        ));
+
+        LinkedHashMap<String, byte[]> normalizedRoot = DocxTestFixtures.baseEntries(
+                DocxTestFixtures.paragraph("Normalized"),
+                "",
+                ""
+        );
+        normalizedRoot.put("_rels/.rels", DocxTestFixtures.bytes(
+                "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                        + "<Relationship Id=\"root\" Type=\"http://schemas.openxmlformats.org/"
+                        + "officeDocument/2006/relationships/officeDocument\" "
+                        + "Target=\"word/../word/document.xml\"/></Relationships>"
+        ));
+        File normalized = fixture("normalized-root.docx");
+        DocxTestFixtures.writeStoredZip(normalized.toPath(), normalizedRoot);
+        assertEquals(DocumentType.DOCX, resolveFile(
+                normalized,
+                "application/octet-stream",
+                "provider-name"
+        ));
 
         Map<String, byte[]> ordinaryEntries = new LinkedHashMap<>();
         ordinaryEntries.put("note.txt", DocxTestFixtures.bytes("ordinary zip"));
@@ -311,6 +337,86 @@ public final class DocumentTypeResolverTest {
                 xlsm,
                 "application/octet-stream",
                 "msf:1000009229"
+        ));
+    }
+
+    @Test
+    public void macroEnabledWordPackageUsesDedicatedDetectionReason() throws Exception {
+        LinkedHashMap<String, byte[]> entries = DocxTestFixtures.baseEntries(
+                DocxTestFixtures.paragraph("Safe cached text"),
+                "",
+                ""
+        );
+        String contentTypes = new String(
+                entries.get("[Content_Types].xml"),
+                StandardCharsets.UTF_8
+        ).replace(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+                "application/vnd.ms-word.document.macroEnabled.main+xml"
+        );
+        entries.put("[Content_Types].xml", contentTypes.getBytes(StandardCharsets.UTF_8));
+        File docm = fixture("macro-word.bin");
+        DocxTestFixtures.writeStoredZip(docm.toPath(), entries);
+
+        assertDetectionFailure(
+                docm,
+                "application/octet-stream",
+                "msf:1000000002",
+                OoxmlPackageDetector.Reason.MACRO_ENABLED
+        );
+    }
+
+    @Test
+    public void wordTemplatePackageUsesUnsupportedVariantReason() throws Exception {
+        LinkedHashMap<String, byte[]> entries = DocxTestFixtures.baseEntries(
+                DocxTestFixtures.paragraph("Template"),
+                "",
+                ""
+        );
+        String contentTypes = new String(
+                entries.get("[Content_Types].xml"),
+                StandardCharsets.UTF_8
+        ).replace(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml"
+        );
+        entries.put("[Content_Types].xml", contentTypes.getBytes(StandardCharsets.UTF_8));
+        File template = fixture("word-template.bin");
+        DocxTestFixtures.writeStoredZip(template.toPath(), entries);
+
+        assertDetectionFailure(
+                template,
+                "application/octet-stream",
+                "provider-name",
+                OoxmlPackageDetector.Reason.UNSUPPORTED_PACKAGE
+        );
+    }
+
+    @Test
+    public void encryptedOoxmlContainerWithWordHintUsesWordError() throws Exception {
+        File encrypted = fixture("encrypted.docx");
+        Files.write(encrypted.toPath(), new byte[]{
+                (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0,
+                (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1,
+                0, 0, 0, 0
+        });
+        try {
+            resolveFile(
+                    encrypted,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "encrypted.docx"
+            );
+            fail("Expected encrypted DOCX failure");
+        } catch (WordParseException exception) {
+            assertEquals(
+                    WordParseException.Reason.ENCRYPTED,
+                    exception.getReason()
+            );
+        }
+        assertEquals(DocumentType.DOC, resolveFile(
+                encrypted,
+                "application/msword",
+                "legacy.doc"
         ));
     }
 

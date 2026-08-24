@@ -7,6 +7,9 @@
         android:id="@+id/action_viewer_word_top"
         android:title="@string/viewer_word_go_to_top" />
     <item
+        android:id="@+id/action_viewer_word_fit_page_width"
+        android:title="@string/viewer_word_fit_page_width" />
+    <item
         android:id="@+id/action_viewer_file_info"
         android:title="@string/viewer_file_info_action" />
 </menu>

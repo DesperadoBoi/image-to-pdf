@@ -4,8 +4,14 @@ import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.webkit.CookieManager;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.SslErrorHandler;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -22,20 +28,49 @@ final class DocxWebViewController {
         void openHttps(String value);
     }
 
+    interface RenderHandler {
+        void onRendered();
+
+        void onFailure();
+    }
+
     private final WebView webView;
     private final LinkHandler linkHandler;
+    private final RenderHandler renderHandler;
+    private final GestureDetector doubleTapDetector;
     @Nullable private final Runnable scrollChanged;
     private boolean restoreApplied;
+    private boolean documentLoadPending;
+    private boolean renderFailureReported;
+    private boolean destroyed;
     private float fitWidthScale = 1f;
 
     DocxWebViewController(
             WebView webView,
             LinkHandler linkHandler,
+            RenderHandler renderHandler,
             @Nullable Runnable scrollChanged
     ) {
         this.webView = webView;
         this.linkHandler = linkHandler;
+        this.renderHandler = renderHandler;
         this.scrollChanged = scrollChanged;
+        this.doubleTapDetector = new GestureDetector(
+                webView.getContext(),
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDown(MotionEvent event) {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onDoubleTap(MotionEvent event) {
+                        toggleDoubleTapZoom();
+                        return true;
+                    }
+                }
+        );
+        doubleTapDetector.setIsLongpressEnabled(false);
         configure();
     }
 
@@ -79,7 +114,10 @@ final class DocxWebViewController {
         webView.removeJavascriptInterface("accessibility");
         webView.removeJavascriptInterface("accessibilityTraversal");
         webView.setWebViewClient(new LocalOnlyClient());
-        webView.setOnLongClickListener(ignored -> true);
+        webView.setOnTouchListener((view, event) -> {
+            doubleTapDetector.onTouchEvent(event);
+            return false;
+        });
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             webView.setOnScrollChangeListener(
                     (view, scrollX, scrollY, oldScrollX, oldScrollY) -> {
@@ -90,7 +128,13 @@ final class DocxWebViewController {
     }
 
     void load(String html, @Nullable State restoredState) {
+        if (destroyed) {
+            reportRenderFailure();
+            return;
+        }
         restoreApplied = false;
+        documentLoadPending = true;
+        renderFailureReported = false;
         webView.stopLoading();
         webView.loadDataWithBaseURL(
                 null,
@@ -115,6 +159,7 @@ final class DocxWebViewController {
     }
 
     void goToTop() {
+        if (destroyed) return;
         webView.scrollTo(0, 0);
     }
 
@@ -122,12 +167,28 @@ final class DocxWebViewController {
         return webView.getScrollY() <= 0;
     }
 
-    float getFitWidthScale() {
-        return fitWidthScale;
+    void fitPageWidth() {
+        if (destroyed) return;
+        float currentScale = safeScale(webView.getScale());
+        float factor = Math.max(0.01f, Math.min(100f, fitWidthScale / currentScale));
+        if (Math.abs(factor - 1f) > 0.01f) webView.zoomBy(factor);
+    }
+
+    private void toggleDoubleTapZoom() {
+        if (destroyed) return;
+        float currentScale = safeScale(webView.getScale());
+        float targetScale = currentScale > fitWidthScale * 1.2f
+                ? fitWidthScale
+                : fitWidthScale * 1.75f;
+        float factor = Math.max(0.01f, Math.min(100f, targetScale / currentScale));
+        if (Math.abs(factor - 1f) > 0.01f) webView.zoomBy(factor);
     }
 
     void clear() {
+        if (destroyed) return;
         restoreApplied = false;
+        documentLoadPending = false;
+        renderFailureReported = false;
         webView.stopLoading();
         webView.setTag(null);
         webView.loadDataWithBaseURL(
@@ -141,11 +202,14 @@ final class DocxWebViewController {
     }
 
     void destroy() {
+        if (destroyed) return;
+        destroyed = true;
+        documentLoadPending = false;
         webView.stopLoading();
-        webView.setOnLongClickListener(null);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             webView.setOnScrollChangeListener(null);
         }
+        webView.setOnTouchListener(null);
         webView.setWebViewClient(new WebViewClient());
         webView.removeAllViews();
         webView.destroy();
@@ -199,17 +263,45 @@ final class DocxWebViewController {
 
         @Override
         public void onPageFinished(WebView view, String url) {
-            if (restoreApplied) return;
-            restoreApplied = true;
-            fitWidthScale = safeScale(view.getScale());
-            Object tag = view.getTag();
-            State state = tag instanceof State ? (State) tag : null;
-            if (state == null) return;
-            float currentScale = safeScale(view.getScale());
-            float targetScale = safeScale(state.scale);
-            float factor = Math.max(0.01f, Math.min(100f, targetScale / currentScale));
-            if (Math.abs(factor - 1f) > 0.01f) view.zoomBy(factor);
-            view.post(() -> view.scrollTo(state.scrollX, state.scrollY));
+            if (!restoreApplied) {
+                restoreApplied = true;
+                fitWidthScale = safeScale(view.getScale());
+                Object tag = view.getTag();
+                State state = tag instanceof State ? (State) tag : null;
+                if (state != null) {
+                    float currentScale = safeScale(view.getScale());
+                    float targetScale = safeScale(state.scale);
+                    float factor = Math.max(0.01f, Math.min(100f, targetScale / currentScale));
+                    if (Math.abs(factor - 1f) > 0.01f) view.zoomBy(factor);
+                    view.post(() -> view.scrollTo(state.scrollX, state.scrollY));
+                }
+            }
+            if (documentLoadPending) {
+                documentLoadPending = false;
+                renderHandler.onRendered();
+            }
+        }
+
+        @Override
+        public void onReceivedError(
+                WebView view,
+                WebResourceRequest request,
+                WebResourceError error
+        ) {
+            if (request.isForMainFrame() && documentLoadPending) reportRenderFailure();
+        }
+
+        @Override
+        public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+            reportRenderFailure();
+            destroyed = true;
+            documentLoadPending = false;
+            view.post(() -> {
+                ViewParent parent = view.getParent();
+                if (parent instanceof ViewGroup) ((ViewGroup) parent).removeView(view);
+                view.destroy();
+            });
+            return true;
         }
 
         @Override
@@ -256,6 +348,13 @@ final class DocxWebViewController {
             String scheme = uri.getScheme();
             return "data".equalsIgnoreCase(scheme) || "about".equalsIgnoreCase(scheme);
         }
+    }
+
+    private void reportRenderFailure() {
+        if (renderFailureReported) return;
+        renderFailureReported = true;
+        documentLoadPending = false;
+        renderHandler.onFailure();
     }
 
     static final class State {

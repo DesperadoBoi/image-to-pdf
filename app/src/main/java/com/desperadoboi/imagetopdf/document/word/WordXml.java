@@ -11,6 +11,37 @@ import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class WordXml {
+    static final String WORD_TRANSITIONAL =
+            "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    static final String WORD_STRICT =
+            "http://purl.oclc.org/ooxml/wordprocessingml/main";
+    private static final String MC =
+            "http://schemas.openxmlformats.org/markup-compatibility/2006";
+    private static final String PACKAGE_RELATIONSHIPS_TRANSITIONAL =
+            "http://schemas.openxmlformats.org/package/2006/relationships";
+    private static final String PACKAGE_RELATIONSHIPS_STRICT =
+            "http://purl.oclc.org/ooxml/package/relationships";
+    private static final String CONTENT_TYPES_TRANSITIONAL =
+            "http://schemas.openxmlformats.org/package/2006/content-types";
+    private static final String CONTENT_TYPES_STRICT =
+            "http://purl.oclc.org/ooxml/package/content-types";
+    private static final String DRAWING_MAIN_TRANSITIONAL =
+            "http://schemas.openxmlformats.org/drawingml/2006/main";
+    private static final String DRAWING_MAIN_STRICT =
+            "http://purl.oclc.org/ooxml/drawingml/main";
+    private static final String DRAWING_WORD_TRANSITIONAL =
+            "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
+    private static final String DRAWING_WORD_STRICT =
+            "http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing";
+    private static final String DRAWING_PICTURE_TRANSITIONAL =
+            "http://schemas.openxmlformats.org/drawingml/2006/picture";
+    private static final String DRAWING_PICTURE_STRICT =
+            "http://purl.oclc.org/ooxml/drawingml/picture";
+    private static final String OFFICE_RELATIONSHIPS_TRANSITIONAL =
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+    private static final String OFFICE_RELATIONSHIPS_STRICT =
+            "http://purl.oclc.org/ooxml/officeDocument/relationships";
+    private static final String VML = "urn:schemas-microsoft-com:vml";
     private static final String PROCESS_DOCDECL =
             "http://xmlpull.org/v1/doc/features.html#process-docdecl";
 
@@ -77,11 +108,83 @@ final class WordXml {
 
     static String attribute(XmlPullParser parser, String localName) {
         for (int index = 0; index < parser.getAttributeCount(); index++) {
-            if (localName.equals(parser.getAttributeName(index))) {
+            String namespace = parser.getAttributeNamespace(index);
+            if (localName.equals(parser.getAttributeName(index))
+                    && (namespace == null
+                    || namespace.isEmpty()
+                    || isWordNamespace(namespace)
+                    || OFFICE_RELATIONSHIPS_TRANSITIONAL.equals(namespace)
+                    || OFFICE_RELATIONSHIPS_STRICT.equals(namespace))) {
                 return parser.getAttributeValue(index);
             }
         }
         return null;
+    }
+
+    static boolean isWordElement(XmlPullParser parser, String localName) {
+        return localName.equals(parser.getName()) && isWordNamespace(parser.getNamespace());
+    }
+
+    static String wordElementName(XmlPullParser parser) {
+        return isWordNamespace(parser.getNamespace()) ? parser.getName() : null;
+    }
+
+    static boolean isMarkupCompatibilityElement(
+            XmlPullParser parser,
+            String localName
+    ) {
+        return localName.equals(parser.getName()) && MC.equals(parser.getNamespace());
+    }
+
+    static boolean isPackageRelationshipElement(XmlPullParser parser) {
+        String namespace = parser.getNamespace();
+        return "Relationship".equals(parser.getName())
+                && (PACKAGE_RELATIONSHIPS_TRANSITIONAL.equals(namespace)
+                || PACKAGE_RELATIONSHIPS_STRICT.equals(namespace));
+    }
+
+    static boolean isContentTypeElement(XmlPullParser parser, String localName) {
+        String namespace = parser.getNamespace();
+        return localName.equals(parser.getName())
+                && (CONTENT_TYPES_TRANSITIONAL.equals(namespace)
+                || CONTENT_TYPES_STRICT.equals(namespace));
+    }
+
+    static boolean isImageMetadataElement(XmlPullParser parser, String localName) {
+        if (!localName.equals(parser.getName())) return false;
+        String namespace = parser.getNamespace();
+        return DRAWING_MAIN_TRANSITIONAL.equals(namespace)
+                || DRAWING_MAIN_STRICT.equals(namespace)
+                || DRAWING_WORD_TRANSITIONAL.equals(namespace)
+                || DRAWING_WORD_STRICT.equals(namespace)
+                || DRAWING_PICTURE_TRANSITIONAL.equals(namespace)
+                || DRAWING_PICTURE_STRICT.equals(namespace)
+                || VML.equals(namespace);
+    }
+
+    static boolean supportsAlternateChoice(XmlPullParser parser) {
+        String requires = attribute(parser, "Requires");
+        if (requires == null || requires.trim().isEmpty()) return false;
+        for (String prefix : requires.trim().split("\\s+")) {
+            String namespace = parser.getNamespace(prefix);
+            if (!isSupportedAlternateNamespace(namespace)) return false;
+        }
+        return true;
+    }
+
+    private static boolean isWordNamespace(String namespace) {
+        return WORD_TRANSITIONAL.equals(namespace) || WORD_STRICT.equals(namespace);
+    }
+
+    private static boolean isSupportedAlternateNamespace(String namespace) {
+        return isWordNamespace(namespace)
+                || DRAWING_MAIN_TRANSITIONAL.equals(namespace)
+                || DRAWING_MAIN_STRICT.equals(namespace)
+                || DRAWING_WORD_TRANSITIONAL.equals(namespace)
+                || DRAWING_WORD_STRICT.equals(namespace)
+                || DRAWING_PICTURE_TRANSITIONAL.equals(namespace)
+                || DRAWING_PICTURE_STRICT.equals(namespace)
+                || VML.equals(namespace);
     }
 
     static void skipElement(XmlPullParser parser, Budget budget)
