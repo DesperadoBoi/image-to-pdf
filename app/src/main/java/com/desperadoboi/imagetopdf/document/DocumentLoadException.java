@@ -17,6 +17,8 @@ public class DocumentLoadException extends IOException {
         DOCX_CORRUPTED,
         DOCX_ENCRYPTED,
         DOCX_UNSUPPORTED,
+        DOCX_MACRO_ENABLED,
+        DOCX_UNSAFE_ACTIVE_CONTENT,
         CANCELLED,
         PROVIDER_UNREADABLE
     }

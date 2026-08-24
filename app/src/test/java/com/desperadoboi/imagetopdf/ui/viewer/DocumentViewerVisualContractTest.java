@@ -194,6 +194,11 @@ public final class DocumentViewerVisualContractTest {
                 "@string/viewer_reset_zoom_100",
                 byId(menu, "@+id/action_viewer_zoom_100").getAttributeNS(ANDROID, "title")
         );
+        assertEquals(
+                "@string/viewer_word_fit_page_width",
+                byId(menu, "@+id/action_viewer_word_fit_page_width")
+                        .getAttributeNS(ANDROID, "title")
+        );
         assertNull(findById(menu, "@+id/action_viewer_fit_width"));
         assertNull(findById(menu, "@+id/action_viewer_fit_sheet"));
 
@@ -241,6 +246,32 @@ public final class DocumentViewerVisualContractTest {
         assertTrue(activity.contains("ZoomController.shouldShowResetAction("));
         assertTrue(activity.contains(".setVisible(resetVisible);"));
         assertTrue(activity.contains("spreadsheetCanvasView.resetTo100Percent();"));
+        assertTrue(activity.contains("wordWebViewController.fitPageWidth();"));
+        assertTrue(activity.contains("R.string.viewer_word_fit_width_applied"));
+    }
+
+    @Test
+    public void docxErrorActionIsLocalizedInEnglish() throws Exception {
+        Document english = parse(repositoryRoot().resolve(
+                "app/src/main/res/values-en/viewer_strings.xml"
+        ));
+
+        assertEquals("Close", namedText(english, "viewer_action_close"));
+    }
+
+    @Test
+    public void docxDoubleTapUsesAnExplicitZoomToggleWithoutConsumingOtherTouches()
+            throws Exception {
+        String controller = Files.readString(repositoryRoot().resolve(
+                "app/src/main/java/com/desperadoboi/imagetopdf/ui/viewer/"
+                        + "DocxWebViewController.java"
+        ));
+
+        assertTrue(controller.contains("new GestureDetector("));
+        assertTrue(controller.contains("public boolean onDoubleTap(MotionEvent event)"));
+        assertTrue(controller.contains("toggleDoubleTapZoom();"));
+        assertTrue(controller.contains("doubleTapDetector.onTouchEvent(event);"));
+        assertTrue(controller.contains("return false;"));
     }
 
     @Test

@@ -30,15 +30,23 @@
     <string name="viewer_word_image_failed">The document image could not be displayed</string>
     <string name="viewer_word_content_description">Word document in page view</string>
     <string name="viewer_word_go_to_top">Go to the start of the document</string>
+    <string name="viewer_word_fit_page_width">Fit page width</string>
+    <string name="viewer_word_fit_width_applied">Page fitted to screen width</string>
+    <string name="viewer_word_loaded_announcement">Document opened. Pages: %1$d</string>
     <string name="viewer_info_contents_label">Contents</string>
     <string name="viewer_word_info_counts">Paragraphs: %1$d · tables: %2$d · images: %3$d</string>
-    <string name="viewer_error_docx_corrupted">The DOCX document is damaged or has no Word main part</string>
+    <string name="viewer_error_docx_open_title">Couldn’t open document</string>
+    <string name="viewer_error_docx_corrupted">The DOCX file is damaged or has no Word main part.</string>
     <string name="viewer_error_docx_too_large">The DOCX document exceeds safe local viewing limits</string>
     <string name="viewer_error_docx_encrypted">Encrypted DOCX documents cannot be opened without a password</string>
-    <string name="viewer_error_docx_unsupported">The document contains unsupported active or external Word content</string>
+    <string name="viewer_error_docx_unsupported">This Word package variant is not supported yet.</string>
+    <string name="viewer_error_docx_macro_enabled">Macro-enabled DOCM documents cannot be opened. Save a safe copy as DOCX.</string>
+    <string name="viewer_error_docx_unsafe_content">The document contains ActiveX, OLE, or other unsafe active content.</string>
+    <string name="viewer_error_docx_internal">The file may be damaged or contain formatting that isn’t supported yet.</string>
     <string name="viewer_error_doc_not_supported">The old DOC format is not supported yet. Save the file as DOCX.</string>
     <string name="viewer_type_docx">DOCX</string>
     <string name="viewer_type_doc">DOC</string>
     <string name="viewer_word_link_unavailable">No browser is available to open this link</string>
     <string name="viewer_word_link_failed">The link could not be opened</string>
+    <string name="viewer_action_close">Close</string>
 </resources>

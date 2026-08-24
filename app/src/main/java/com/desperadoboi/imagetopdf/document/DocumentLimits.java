@@ -30,7 +30,9 @@ public final class DocumentLimits {
     public static final long MAX_DOCX_ENTRY_BYTES = 32L * 1024L * 1024L;
     public static final long MAX_DOCX_MEDIA_ENTRY_BYTES = 16L * 1024L * 1024L;
     public static final long MAX_DOCX_MEDIA_BYTES = 80L * 1024L * 1024L;
-    public static final int MAX_DOCX_COMPRESSION_RATIO = 100;
+    // WordprocessingML can be highly repetitive. Absolute package, entry, XML-event,
+    // and model limits remain the primary ZIP-bomb bounds.
+    public static final int MAX_DOCX_COMPRESSION_RATIO = 250;
     public static final int MAX_DOCX_XML_EVENTS = 3_000_000;
     public static final int MAX_WORD_BLOCKS = 30_000;
     public static final int MAX_WORD_PARAGRAPHS = 20_000;

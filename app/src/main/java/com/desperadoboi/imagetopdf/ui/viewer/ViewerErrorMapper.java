@@ -38,6 +38,10 @@ public final class ViewerErrorMapper {
                 return ViewerErrorType.DOCX_ENCRYPTED;
             case DOCX_UNSUPPORTED:
                 return ViewerErrorType.DOCX_UNSUPPORTED;
+            case DOCX_MACRO_ENABLED:
+                return ViewerErrorType.DOCX_MACRO_ENABLED;
+            case DOCX_UNSAFE_ACTIVE_CONTENT:
+                return ViewerErrorType.DOCX_UNSAFE_ACTIVE_CONTENT;
             case TOO_LARGE:
                 return ViewerErrorType.GENERIC_TOO_LARGE;
             case ENCRYPTED:
@@ -74,6 +78,10 @@ public final class ViewerErrorMapper {
                 return ViewerErrorType.DOCX_ENCRYPTED;
             case UNSUPPORTED:
                 return ViewerErrorType.DOCX_UNSUPPORTED;
+            case MACRO_ENABLED:
+                return ViewerErrorType.DOCX_MACRO_ENABLED;
+            case UNSAFE_ACTIVE_CONTENT:
+                return ViewerErrorType.DOCX_UNSAFE_ACTIVE_CONTENT;
             case CANCELLED:
                 return ViewerErrorType.CANCELLED;
             case CORRUPTED:

@@ -75,7 +75,7 @@ public final class DocxPackageInspector {
                 if (mainContentType != null
                         && mainContentType.toLowerCase(Locale.ROOT)
                         .contains("macroenabled")) {
-                    throw unsupported("Macro-enabled Word packages are not supported");
+                    throw macroEnabled("Macro-enabled Word packages are not supported");
                 }
                 if (!CONTENT_TYPE_DOCUMENT.equals(mainContentType)) {
                     return Inspection.notDocx(entries.keySet());
@@ -87,7 +87,6 @@ public final class DocxPackageInspector {
                             zipFile,
                             relationshipsEntry,
                             root.target,
-                            entries.keySet(),
                             cancelled
                     );
                 }
@@ -129,7 +128,8 @@ public final class DocxPackageInspector {
         for (String segment : combined.split("/", -1)) {
             if (segment.isEmpty() || ".".equals(segment)) continue;
             if ("..".equals(segment)) {
-                return null;
+                if (segments.isEmpty()) return null;
+                segments.removeLast();
             } else {
                 if (segment.indexOf(':') >= 0 || containsControlCharacter(segment)) {
                     return null;
@@ -198,7 +198,10 @@ public final class DocxPackageInspector {
                 }
             }
             if (isForbiddenPart(name)) {
-                throw unsupported("Active or embedded content is not supported");
+                if (isMacroPart(name)) {
+                    throw macroEnabled("Macro-enabled Word content is not supported");
+                }
+                throw unsafe("Active or embedded content is not supported");
             }
         }
         return new CollectedEntries(entries, mediaCount, mediaBytes);
@@ -216,8 +219,7 @@ public final class DocxPackageInspector {
             int event;
             while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
                 if (event != XmlPullParser.START_TAG) continue;
-                String element = parser.getName();
-                if ("Override".equals(element)) {
+                if (WordXml.isContentTypeElement(parser, "Override")) {
                     String partName = WordXml.attribute(parser, "PartName");
                     String contentType = WordXml.attribute(parser, "ContentType");
                     if (partName == null || !partName.startsWith("/")
@@ -230,7 +232,7 @@ public final class DocxPackageInspector {
                         throw corrupted("Duplicate or unsafe content type override", null);
                     }
                     rejectActiveContentType(contentType);
-                } else if ("Default".equals(element)) {
+                } else if (WordXml.isContentTypeElement(parser, "Default")) {
                     rejectActiveContentType(WordXml.attribute(parser, "ContentType"));
                 }
             }
@@ -251,7 +253,7 @@ public final class DocxPackageInspector {
             int event;
             while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
                 if (event != XmlPullParser.START_TAG
-                        || !"Relationship".equals(parser.getName())) {
+                        || !WordXml.isPackageRelationshipElement(parser)) {
                     continue;
                 }
                 String id = WordXml.attribute(parser, "Id");
@@ -260,10 +262,10 @@ public final class DocxPackageInspector {
                 if (id == null || type == null || !ids.add(id)) {
                     throw corrupted("Package relationship is invalid", null);
                 }
-                if ("External".equalsIgnoreCase(mode)) {
-                    throw unsupported("External package relationships are not supported");
-                }
                 if (type.endsWith("/officeDocument")) {
+                    if ("External".equalsIgnoreCase(mode)) {
+                        throw unsafe("External office document relationship is not supported");
+                    }
                     String target = normalizeRelationshipTarget(
                             null,
                             WordXml.attribute(parser, "Target")
@@ -282,7 +284,6 @@ public final class DocxPackageInspector {
             ZipFile zipFile,
             ZipEntry entry,
             String sourcePart,
-            Set<String> entries,
             AtomicBoolean cancelled
     ) throws IOException, XmlPullParserException, WordParseException {
         Set<String> ids = new HashSet<>();
@@ -292,7 +293,7 @@ public final class DocxPackageInspector {
             int event;
             while ((event = WordXml.next(parser, budget)) != XmlPullParser.END_DOCUMENT) {
                 if (event != XmlPullParser.START_TAG
-                        || !"Relationship".equals(parser.getName())) {
+                        || !WordXml.isPackageRelationshipElement(parser)) {
                     continue;
                 }
                 String id = WordXml.attribute(parser, "Id");
@@ -305,47 +306,36 @@ public final class DocxPackageInspector {
                     throw corrupted("Document relationship is invalid", null);
                 }
                 if (isForbiddenRelationshipType(type)) {
-                    throw unsupported("Active or embedded relationships are not supported");
+                    throw unsafe("Active or embedded relationships are not supported");
                 }
                 if (external) {
-                    if (!type.endsWith("/hyperlink") || !isSafeHttps(target)) {
-                        throw unsupported("External document resources are not supported");
-                    }
+                    // External resources are never fetched. A safe HTTPS hyperlink is retained
+                    // later as explicit user-action metadata; all other external targets degrade.
                     continue;
                 }
                 String normalized = normalizeRelationshipTarget(sourcePart, target);
                 if (normalized == null) {
                     throw corrupted("Document relationship target is unsafe", null);
                 }
-                if (isRequiredInternalRelationship(type) && !entries.contains(normalized)) {
-                    throw corrupted("Related DOCX part is missing", null);
-                }
+                // Optional or renderable parts are resolved lazily. Missing harmless parts
+                // degrade in the parser/image store instead of hiding readable document text.
             }
         }
     }
 
-    private static boolean isSafeHttps(String target) {
-        if (target == null || target.length() > 2_048) return false;
+    static String safeExternalHyperlink(String target) {
+        if (target == null || target.length() > 2_048) return null;
         try {
             URI uri = new URI(target);
             return "https".equalsIgnoreCase(uri.getScheme())
                     && uri.getHost() != null
-                    && uri.getUserInfo() == null;
+                    && uri.getUserInfo() == null
+                    && !containsControlCharacter(target)
+                    ? target
+                    : null;
         } catch (URISyntaxException exception) {
-            return false;
+            return null;
         }
-    }
-
-    private static boolean isRequiredInternalRelationship(String type) {
-        return type.endsWith("/styles")
-                || type.endsWith("/numbering")
-                || type.endsWith("/settings")
-                || type.endsWith("/theme")
-                || type.endsWith("/image")
-                || type.endsWith("/header")
-                || type.endsWith("/footer")
-                || type.endsWith("/footnotes")
-                || type.endsWith("/endnotes");
     }
 
     private static boolean isForbiddenRelationshipType(String type) {
@@ -364,10 +354,12 @@ public final class DocxPackageInspector {
         if (contentType == null) return;
         String lower = contentType.toLowerCase(Locale.ROOT);
         if (lower.contains("macroenabled")
-                || lower.contains("vbaproject")
-                || lower.contains("activex")
+                || lower.contains("vbaproject")) {
+            throw macroEnabled("Macro-enabled content type is not supported");
+        }
+        if (lower.contains("activex")
                 || lower.contains("oleobject")) {
-            throw unsupported("Active content type is not supported");
+            throw unsafe("Active content type is not supported");
         }
     }
 
@@ -422,6 +414,10 @@ public final class DocxPackageInspector {
                 || lower.endsWith(".js")
                 || lower.endsWith(".vbs")
                 || lower.endsWith(".ps1");
+    }
+
+    private static boolean isMacroPart(String name) {
+        return name.toLowerCase(Locale.ROOT).endsWith("vbaproject.bin");
     }
 
     private static boolean containsControlCharacter(String value) {
@@ -539,6 +535,17 @@ public final class DocxPackageInspector {
 
     private static WordParseException unsupported(String message) {
         return new WordParseException(WordParseException.Reason.UNSUPPORTED, message);
+    }
+
+    private static WordParseException macroEnabled(String message) {
+        return new WordParseException(WordParseException.Reason.MACRO_ENABLED, message);
+    }
+
+    private static WordParseException unsafe(String message) {
+        return new WordParseException(
+                WordParseException.Reason.UNSAFE_ACTIVE_CONTENT,
+                message
+        );
     }
 
     private static WordParseException encrypted(String message) {

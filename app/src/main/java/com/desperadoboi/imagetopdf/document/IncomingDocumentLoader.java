@@ -145,11 +145,13 @@ public final class IncomingDocumentLoader {
             String mimeType,
             String displayName
     ) {
-        boolean spreadsheet = exception.getFamily()
-                == OoxmlPackageDetector.Family.SPREADSHEET
-                || isSpreadsheetHint(mimeType, displayName);
-        boolean word = exception.getFamily() == OoxmlPackageDetector.Family.WORD
-                || isWordHint(mimeType, displayName);
+        OoxmlPackageDetector.Family family = exception.getFamily();
+        boolean spreadsheet = family == OoxmlPackageDetector.Family.SPREADSHEET
+                || (family == OoxmlPackageDetector.Family.UNKNOWN
+                && isSpreadsheetHint(mimeType, displayName));
+        boolean word = family == OoxmlPackageDetector.Family.WORD
+                || (family == OoxmlPackageDetector.Family.UNKNOWN
+                && isWordHint(mimeType, displayName));
         if (spreadsheet) {
             switch (exception.getReason()) {
                 case TOO_LARGE:
@@ -167,6 +169,12 @@ public final class IncomingDocumentLoader {
                     return DocumentLoadException.Reason.DOCX_TOO_LARGE;
                 case ENCRYPTED:
                     return DocumentLoadException.Reason.DOCX_ENCRYPTED;
+                case MACRO_ENABLED:
+                    return DocumentLoadException.Reason.DOCX_MACRO_ENABLED;
+                case UNSAFE_ACTIVE_CONTENT:
+                    return DocumentLoadException.Reason.DOCX_UNSAFE_ACTIVE_CONTENT;
+                case UNSUPPORTED_PACKAGE:
+                    return DocumentLoadException.Reason.DOCX_UNSUPPORTED;
                 case CORRUPTED:
                 default:
                     return DocumentLoadException.Reason.DOCX_CORRUPTED;
@@ -202,6 +210,10 @@ public final class IncomingDocumentLoader {
                 return DocumentLoadException.Reason.DOCX_ENCRYPTED;
             case UNSUPPORTED:
                 return DocumentLoadException.Reason.DOCX_UNSUPPORTED;
+            case MACRO_ENABLED:
+                return DocumentLoadException.Reason.DOCX_MACRO_ENABLED;
+            case UNSAFE_ACTIVE_CONTENT:
+                return DocumentLoadException.Reason.DOCX_UNSAFE_ACTIVE_CONTENT;
             case CANCELLED:
                 return DocumentLoadException.Reason.CANCELLED;
             case CORRUPTED:

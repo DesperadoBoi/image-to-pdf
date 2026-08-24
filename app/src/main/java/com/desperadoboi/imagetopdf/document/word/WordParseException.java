@@ -7,6 +7,8 @@ public final class WordParseException extends IOException {
         CORRUPTED,
         TOO_LARGE,
         UNSUPPORTED,
+        MACRO_ENABLED,
+        UNSAFE_ACTIVE_CONTENT,
         ENCRYPTED,
         CANCELLED
     }

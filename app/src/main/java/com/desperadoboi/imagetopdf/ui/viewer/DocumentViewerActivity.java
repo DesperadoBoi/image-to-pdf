@@ -280,6 +280,17 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         wordWebViewController = new DocxWebViewController(
                 wordContent,
                 this::openSafeHyperlink,
+                new DocxWebViewController.RenderHandler() {
+                    @Override
+                    public void onRendered() {
+                        handleWordRendered();
+                    }
+
+                    @Override
+                    public void onFailure() {
+                        handleWordRenderFailure();
+                    }
+                },
                 this::updateOverflowMenu
         );
         spreadsheetCanvasView.setOnZoomChangeListener((scale, zoomMode, finished, userInitiated) -> {
@@ -749,11 +760,7 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                     R.string.viewer_error_memory
             );
         } else if (failure != null) {
-            showError(
-                    R.drawable.ic_viewer_state_corrupted_48,
-                    R.string.viewer_error_corrupted_title,
-                    R.string.viewer_error_docx_corrupted
-            );
+            showViewerError(ViewerErrorType.DOCX_INTERNAL);
         }
     }
 
@@ -772,6 +779,26 @@ public final class DocumentViewerActivity extends AppCompatActivity {
         wordWebViewController.load(wordHtml, restored);
         showOnly(wordContent);
         updateOverflowMenu();
+    }
+
+    private void handleWordRendered() {
+        if (currentDocument == null || currentDocument.getDocumentType() != DocumentType.DOCX
+                || wordContent.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        updateOverflowMenu();
+        wordContent.announceForAccessibility(getString(
+                R.string.viewer_word_loaded_announcement,
+                Math.max(1, wordPageCount)
+        ));
+    }
+
+    private void handleWordRenderFailure() {
+        if (currentDocument == null || currentDocument.getDocumentType() != DocumentType.DOCX
+                || isFinishing() || isDestroyed()) {
+            return;
+        }
+        showViewerError(ViewerErrorType.DOCX_INTERNAL);
     }
 
     private void showWordFailure(WordParseException exception) {
@@ -985,6 +1012,13 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 restoredWordScrollY = 0;
                 return true;
             }
+            if (itemId == R.id.action_viewer_word_fit_page_width) {
+                if (wordWebViewController != null) wordWebViewController.fitPageWidth();
+                wordContent.announceForAccessibility(getString(
+                        R.string.viewer_word_fit_width_applied
+                ));
+                return true;
+            }
             if (itemId == R.id.action_viewer_file_info) {
                 showFileInfo();
                 return true;
@@ -1013,6 +1047,10 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                 && !wordWebViewController.isAtTop();
         popupMenu.getMenu().findItem(R.id.action_viewer_word_top)
                 .setVisible(wordTopVisible);
+        popupMenu.getMenu().findItem(R.id.action_viewer_word_fit_page_width)
+                .setVisible(wordContent != null
+                        && wordContent.getVisibility() == View.VISIBLE
+                        && wordWebViewController != null);
     }
 
     private void showZoomIndicator(float scale) {
@@ -1149,11 +1187,32 @@ public final class DocumentViewerActivity extends AppCompatActivity {
                         R.string.viewer_error_docx_unsupported
                 );
                 break;
+            case DOCX_MACRO_ENABLED:
+                showError(
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_docx_macro_enabled
+                );
+                break;
+            case DOCX_UNSAFE_ACTIVE_CONTENT:
+                showError(
+                        R.drawable.ic_viewer_state_unsupported_48,
+                        R.string.viewer_error_unsupported_title,
+                        R.string.viewer_error_docx_unsafe_content
+                );
+                break;
             case DOCX_CORRUPTED:
                 showError(
                         R.drawable.ic_viewer_state_corrupted_48,
-                        R.string.viewer_error_corrupted_title,
+                        R.string.viewer_error_docx_open_title,
                         R.string.viewer_error_docx_corrupted
+                );
+                break;
+            case DOCX_INTERNAL:
+                showError(
+                        R.drawable.ic_viewer_state_corrupted_48,
+                        R.string.viewer_error_docx_open_title,
+                        R.string.viewer_error_docx_internal
                 );
                 break;
             case PROVIDER_PERMISSION:

@@ -49,6 +49,8 @@ public final class DocxHtmlRendererTest {
                 + "box-shadow:none;border:0"));
         assertTrue(css.contains("body{background:#e7eaee"));
         assertTrue(css.contains(".docx-page{position:relative;flex:none;background:#fff"));
+        assertTrue(css.contains("prefers-color-scheme:dark"));
+        assertTrue(css.contains("body{background:#252a31"));
         assertTrue(css.contains("box-sizing:border-box;overflow:hidden"));
         assertTrue(css.contains("-webkit-text-size-adjust:100%"));
     }

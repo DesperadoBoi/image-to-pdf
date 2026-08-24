@@ -49,8 +49,8 @@ WordprocessingML main content type. Main part может находиться н
 `word/document.xml`: используется нормализованная цель relationship. MIME или `.docx` не
 превращают обычный ZIP, DOCM/DOTX/DOTM или повреждённый package в DOCX. Macro-enabled workbook
 content type определяется как XLSM независимо от имени и не передаётся обычному XLSX parser.
-OLE Compound File не передаётся OOXML parser и показывается как неподдерживаемый XLS/DOC с
-форматным сообщением.
+OLE Compound File не передаётся OOXML parser. При DOCX MIME/имени такой контейнер получает
+ошибку encrypted/password-protected DOCX; без Word hint он остаётся неподдерживаемым XLS/DOC.
 
 ## Renderers
 
@@ -80,13 +80,17 @@ OLE Compound File не передаётся OOXML parser и показывает
   layouts; во время pinch они не создаются. Accessibility использует виртуальные nodes только
   для видимых непустых ячеек и заголовков, причём merged cell публикуется один раз.
 - DOCX parser использует `java.util.zip`, streaming `XmlPullParser` и read-only block model.
+  Transitional и Strict WordprocessingML/relationship namespaces поддерживаются явно.
+  Известные элементы разбираются, неизвестные harmless extension subtrees безопасно
+  пропускаются; для `mc:AlternateContent` выбирается поддерживаемый `Choice`, затем `Fallback`.
   Читаются main document relationships, styles, numbering, settings validation, theme,
   inline raster media, headers, footers, footnotes и endnotes. Paragraph поддерживает
   несколько runs, preserved spaces, tab, line/page break, soft/no-break hyphen, Unicode,
   headings, alignment, indents и spacing. Run formatting включает safe font fallback,
   size, bold/italic/underline/strike, color/highlight, subscript/superscript; hidden text не
   показывается. Document defaults, paragraph/character styles, direct formatting и bounded
-  `basedOn` inheritance применяются без циклов.
+  `basedOn` inheritance ограничено глубиной; duplicate style IDs разрешаются детерминированно,
+  а цикл стилей деградирует к defaults вместо отказа всего документа.
 - Numbering поддерживает decimal, lower/upper letter, lower/upper Roman, bullets,
   многоуровневые placeholders, start values и indentation. Для неизвестного формата
   остаётся безопасный marker, текст paragraph не теряется.
@@ -121,35 +125,43 @@ OLE Compound File не передаётся OOXML parser и показывает
   browser.
 - `WordViewerViewModel` удерживает выполняющийся parse, готовую модель и сформированный HTML
   при rotation. WebView восстанавливает scroll X/Y и zoom, использует fit-width overview,
-  platform pinch/double-tap zoom и фиксированный `textZoom=100`, поэтому Android fontScale
-  не меняет геометрию Word-страницы. Закрытие viewer, новый document или уничтожение
-  ViewModel устанавливают cancellation token.
+  platform pinch/double-tap zoom и доступную overflow-команду возврата по ширине страницы.
+  Фиксированный `textZoom=100` сохраняет геометрию Word-страницы; текст остаётся selectable,
+  а увеличение выполняется page zoom. После layout объявляется готовность документа, main-frame
+  и renderer-process failures переходят в DOCX-specific internal error. В dark appearance
+  затемняется только neutral canvas, белая бумага и авторские цвета документа сохраняются.
+  Закрытие viewer, новый document или уничтожение ViewModel устанавливают cancellation token.
 - images декодируются с bounds/inSampleSize, EXIF orientation, максимальной стороной 4096 px,
   fit-center, pinch/double-tap zoom и pan.
 
 ## DOCX security limits
 
 - source не более 50 MiB; не более 1 024 ZIP entries, 150 MiB суммарного uncompressed
-  content, 32 MiB на entry, ratio 100:1;
+  content, 32 MiB на entry, ratio 250:1;
 - не более 100 media entries, 16 MiB на media entry и 80 MiB media суммарно;
 - ZIP обязан начинаться с local-header signature; central/local directory сверяются.
   Запрещены ZIP64, multi-disk, encrypted и неизвестные compression methods;
 - запрещены absolute, backslash, traversal, control-character и duplicate/case-folded ZIP
-  paths. Internal relationship target не может содержать `..`, scheme или выходить из
-  package;
+  paths. Internal relationship target нормализует `.` и `..` относительно source part, но
+  scheme, абсолютный target и выход за корень package запрещены;
 - XML: максимум 64 уровня, 3 миллиона events и 128 attributes на element; DOCDECL, DTD и
   custom entities запрещены;
 - модель: 30 000 blocks, 20 000 paragraphs, 100 000 runs, 500 tables, 20 000 rows,
   50 000 cells, 100 image occurrences, 8 192 characters на run и 8 миллионов characters
   суммарно; `basedOn` depth 32, nested-table depth 4;
-- запрещены macro-enabled content type, VBA, ActiveX, OLE/package/control relationships,
-  external template/image/resource, embedded executable/script и unsafe external hyperlink;
+- macro-enabled content type получает отдельную ошибку; VBA, ActiveX, OLE/package/control,
+  dangerous external template и embedded executable/script блокируются как unsafe active
+  content. Обычные external image/resource relationships не выполняются и деградируют,
+  неизвестные metadata parts игнорируются. Только нормализованная HTTPS hyperlink сохраняется
+  для явного пользовательского перехода;
 - parsing выполняется вне main thread, проверяет cancellation, ловит `OutOfMemoryError` и
   переводит его в bounded too-large/memory state. Ни один bitmap всего документа и один
   giant document `Spannable` не создаются.
 
 Внешние ресурсы DOCX не запрашиваются по сети, macros и embedded code не выполняются,
-содержимое/metadata документа не логируются. `INTERNET` permission не добавлен.
+содержимое/metadata документа не логируются. Ошибки различают damaged, encrypted, macro-enabled,
+unsafe active content, too large, unsupported package, legacy DOC и internal rendering failure.
+`INTERNET` permission не добавлен.
 
 ## XLSX security limits
 
@@ -210,7 +222,8 @@ encryption/macro/external-link filtering и fuzz corpus. Оценка перво
 grant loss, rotation, повторный `onNewIntent`, encrypted/corrupted/empty PDF, очень большую
 страницу, XLSX с несколькими листами и rotation, повреждённый/зашифрованный/слишком большой
 XLSX, DOCX с RU/EN styles/lists/tables/images/links и rotation, повреждённый/зашифрованный/
-слишком большой DOCX, macro/external-resource reject, horizontal/vertical table scroll,
+слишком большой DOCX, macro/active-content reject, external-resource degradation,
+horizontal/vertical table scroll,
 lazy image release и возврат reading position. Проверить, что DOC не предлагается. Затем
 quoted multiline CSV, UTF-8 BOM, Windows-1251 TXT, EXIF JPEG и HEIC/HEIF только на
 устройствах с системным decoder. Отдельно пройти каталог и viewer на 320–412 dp, tablet,

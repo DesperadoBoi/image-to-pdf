@@ -47,7 +47,8 @@ final class DocxCssBuilder {
                 + "color:#596574;background:#f4f5f7;font:9pt sans-serif;text-align:center;"
                 + "padding:6pt}"
                 + "a{color:#1565c0;text-decoration:underline}"
-                + "@media(prefers-color-scheme:dark){body{background:#e7eaee;color:#1d2633}"
-                + ".docx-page{background:#fff}}";
+                + "@media(prefers-color-scheme:dark){body{background:#252a31;color:#1d2633}"
+                + ".docx-page{background:#fff;border-color:#626b76;"
+                + "box-shadow:0 1px 5px rgba(0,0,0,.5)}}";
     }
 }
