@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="pdf_watermark_content_max_width">720dp</dimen>
+    <dimen name="pdf_watermark_preview_height">280dp</dimen>
+    <dimen name="pdf_watermark_preview_padding">10dp</dimen>
+    <dimen name="pdf_watermark_section_spacing">28dp</dimen>
+    <dimen name="pdf_watermark_control_spacing">10dp</dimen>
+    <dimen name="pdf_watermark_position_size">152dp</dimen>
+</resources>

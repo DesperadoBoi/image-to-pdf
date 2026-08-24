@@ -6,7 +6,6 @@ import android.graphics.pdf.PdfRenderer;
 import android.os.ParcelFileDescriptor;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -20,9 +19,9 @@ public final class PdfDocumentRenderer {
     private final Executor callbackExecutor;
     private final ExecutorService renderExecutor = Executors.newSingleThreadExecutor();
     private final AtomicLong requestIds = new AtomicLong();
-    private final PageLruCache<Bitmap> cache = new PageLruCache<>(
+    private final PageLruCache<RenderedPage> cache = new PageLruCache<>(
             2,
-            PdfDocumentRenderer::recycle
+            page -> recycle(page == null ? null : page.bitmap)
     );
 
     private volatile boolean closed;
@@ -53,9 +52,28 @@ public final class PdfDocumentRenderer {
     }
 
     public void renderPage(int pageIndex, int targetWidth, int targetHeight, RenderCallback callback) {
-        Bitmap cached = cache.get(pageIndex);
-        if (cached != null && !cached.isRecycled()) {
-            callback.onRendered(pageIndex, cached);
+        renderPageDetailed(pageIndex, targetWidth, targetHeight, new DetailedRenderCallback() {
+            @Override
+            public void onRendered(RenderedPage page) {
+                callback.onRendered(page.getPageIndex(), page.getBitmap());
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                callback.onError(exception);
+            }
+        });
+    }
+
+    public void renderPageDetailed(
+            int pageIndex,
+            int targetWidth,
+            int targetHeight,
+            DetailedRenderCallback callback
+    ) {
+        RenderedPage cached = cache.get(pageIndex);
+        if (cached != null && !cached.bitmap.isRecycled()) {
+            callback.onRendered(cached);
             return;
         }
         long requestId = requestIds.incrementAndGet();
@@ -84,15 +102,19 @@ public final class PdfDocumentRenderer {
             int pageIndex,
             int targetWidth,
             int targetHeight,
-            RenderCallback callback
+            DetailedRenderCallback callback
     ) {
         Bitmap bitmap = null;
+        int pageWidth = 0;
+        int pageHeight = 0;
         Exception failure = null;
         try {
             if (renderer == null || pageIndex < 0 || pageIndex >= renderer.getPageCount()) {
                 throw new IOException("PDF page is unavailable");
             }
             try (PdfRenderer.Page page = renderer.openPage(pageIndex)) {
+                pageWidth = page.getWidth();
+                pageHeight = page.getHeight();
                 float scale = Math.min(
                         Math.max(1, targetWidth) / (float) page.getWidth(),
                         MAX_RENDER_EDGE / (float) Math.max(page.getWidth(), page.getHeight())
@@ -128,13 +150,21 @@ public final class PdfDocumentRenderer {
             bitmap = null;
         }
         Bitmap result = bitmap;
+        int resultPageWidth = pageWidth;
+        int resultPageHeight = pageHeight;
         Exception resultFailure = failure;
         callbackExecutor.execute(() -> {
             if (closed || requestId != activeRequestId) {
                 recycle(result);
             } else if (result != null) {
-                cache.put(pageIndex, result);
-                callback.onRendered(pageIndex, result);
+                RenderedPage renderedPage = new RenderedPage(
+                        pageIndex,
+                        resultPageWidth,
+                        resultPageHeight,
+                        result
+                );
+                cache.put(pageIndex, renderedPage);
+                callback.onRendered(renderedPage);
             } else {
                 callback.onError(resultFailure);
             }
@@ -168,5 +198,34 @@ public final class PdfDocumentRenderer {
     public interface RenderCallback {
         void onRendered(int pageIndex, Bitmap bitmap);
         void onError(Exception exception);
+    }
+
+    public interface DetailedRenderCallback {
+        void onRendered(RenderedPage page);
+        void onError(Exception exception);
+    }
+
+    public static final class RenderedPage {
+        private final int pageIndex;
+        private final int pageWidthPoints;
+        private final int pageHeightPoints;
+        private final Bitmap bitmap;
+
+        private RenderedPage(
+                int pageIndex,
+                int pageWidthPoints,
+                int pageHeightPoints,
+                Bitmap bitmap
+        ) {
+            this.pageIndex = pageIndex;
+            this.pageWidthPoints = pageWidthPoints;
+            this.pageHeightPoints = pageHeightPoints;
+            this.bitmap = bitmap;
+        }
+
+        public int getPageIndex() { return pageIndex; }
+        public int getPageWidthPoints() { return pageWidthPoints; }
+        public int getPageHeightPoints() { return pageHeightPoints; }
+        public Bitmap getBitmap() { return bitmap; }
     }
 }

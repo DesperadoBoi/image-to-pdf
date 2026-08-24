@@ -1,0 +1,740 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground">
+
+    <ImageButton
+        android:id="@+id/button_pdf_watermark_back"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/touch_target"
+        android:background="@drawable/bg_icon_button_round"
+        android:contentDescription="@string/pdf_watermark_back_content_description"
+        android:padding="12dp"
+        android:src="@drawable/ic_action_back_24"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="?attr/colorOnSurface" />
+
+    <TextView
+        android:id="@+id/text_pdf_watermark_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:gravity="center_vertical"
+        android:maxLines="2"
+        android:minHeight="@dimen/touch_target"
+        android:text="@string/pdf_watermark_title"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/button_pdf_watermark_replace"
+        app:layout_constraintStart_toEndOf="@id/button_pdf_watermark_back"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageButton
+        android:id="@+id/button_pdf_watermark_replace"
+        android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/touch_target"
+        android:background="@drawable/bg_icon_button_round"
+        android:contentDescription="@string/pdf_watermark_choose_another_content_description"
+        android:padding="12dp"
+        android:src="@drawable/ic_source_files_24"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="?attr/colorOnSurface"
+        tools:visibility="visible" />
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_pdf_watermark"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingBottom="@dimen/content_spacing_medium"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_pdf_watermark_title"
+        app:layout_constraintWidth_max="@dimen/pdf_watermark_content_max_width"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:id="@+id/content_pdf_watermark_controls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_pdf_watermark_file_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="middle"
+                android:maxLines="2"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold"
+                tools:text="example_document.pdf" />
+
+            <TextView
+                android:id="@+id/text_pdf_watermark_file_pages"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="12 страниц" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_pdf_watermark_preview"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/pdf_watermark_preview_height"
+                android:layout_marginTop="@dimen/content_spacing_small"
+                android:contentDescription="@string/pdf_watermark_loading_page"
+                android:importantForAccessibility="yes"
+                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                app:cardCornerRadius="@dimen/standard_card_corner_radius"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutline"
+                app:strokeWidth="@dimen/standard_outline_width">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="@dimen/pdf_watermark_preview_padding">
+
+                    <ImageView
+                        android:id="@+id/image_pdf_watermark_preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:importantForAccessibility="no"
+                        android:scaleType="fitCenter" />
+
+                    <com.desperadoboi.imagetopdf.ui.watermark.WatermarkOverlayView
+                        android:id="@+id/overlay_pdf_watermark_preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:importantForAccessibility="no" />
+
+                    <ProgressBar
+                        android:id="@+id/progress_pdf_watermark_preview"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/pdf_watermark_loading_page" />
+
+                    <TextView
+                        android:id="@+id/text_pdf_watermark_preview_error"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:accessibilityLiveRegion="polite"
+                        android:gravity="center"
+                        android:padding="@dimen/content_spacing_medium"
+                        android:text="@string/pdf_watermark_error_render"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurface"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_pdf_watermark_retry_preview"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal|bottom"
+                        android:minHeight="@dimen/touch_target"
+                        android:text="@string/pdf_watermark_retry"
+                        android:visibility="gone" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <LinearLayout
+                android:id="@+id/layout_pdf_watermark_page_navigation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/button_pdf_watermark_previous"
+                    android:layout_width="@dimen/touch_target"
+                    android:layout_height="@dimen/touch_target"
+                    android:background="@drawable/bg_icon_button_round"
+                    android:contentDescription="@string/pdf_watermark_previous_page_content_description"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_action_chevron_left_24"
+                    app:tint="?attr/colorOnSurface" />
+
+                <TextView
+                    android:id="@+id/text_pdf_watermark_page_counter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/touch_target"
+                    android:gravity="center"
+                    android:minWidth="96dp"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold"
+                    tools:text="2 / 12" />
+
+                <ImageButton
+                    android:id="@+id/button_pdf_watermark_next"
+                    android:layout_width="@dimen/touch_target"
+                    android:layout_height="@dimen/touch_target"
+                    android:background="@drawable/bg_icon_button_round"
+                    android:contentDescription="@string/pdf_watermark_next_page_content_description"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_action_chevron_right_24"
+                    app:tint="?attr/colorOnSurface" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_section_spacing"
+                android:text="@string/pdf_watermark_text_section"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/input_layout_pdf_watermark_text"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                android:hint="@string/pdf_watermark_text_label"
+                app:counterEnabled="true"
+                app:counterMaxLength="60">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_pdf_watermark_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:imeOptions="flagNoExtractUi|actionDone"
+                    android:inputType="textCapSentences"
+                    android:maxLength="60"
+                    android:maxLines="2" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/group_pdf_watermark_presets"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="4dp"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_copy"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_preset_copy" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_draft"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_preset_draft" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_confidential"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_preset_confidential" />
+            </com.google.android.material.chip.ChipGroup>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_section_spacing"
+                android:text="@string/pdf_watermark_style_section"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/group_pdf_watermark_style"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_pdf_watermark_single"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/pdf_watermark_style_single" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_pdf_watermark_tiled"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/touch_target"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/pdf_watermark_style_tiled" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_section_spacing"
+                android:text="@string/pdf_watermark_appearance_section"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/text_pdf_watermark_opacity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurface"
+                tools:text="Прозрачность · 30%" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/slider_pdf_watermark_opacity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/touch_target"
+                android:value="30"
+                android:valueFrom="10"
+                android:valueTo="80"
+                android:stepSize="1" />
+
+            <TextView
+                android:id="@+id/text_pdf_watermark_size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurface"
+                tools:text="Размер · 48" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/slider_pdf_watermark_size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/touch_target"
+                android:value="48"
+                android:valueFrom="18"
+                android:valueTo="96"
+                android:stepSize="1" />
+
+            <TextView
+                android:id="@+id/text_pdf_watermark_rotation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurface"
+                tools:text="Поворот · −45°" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/slider_pdf_watermark_rotation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/touch_target"
+                android:value="-45"
+                android:valueFrom="-60"
+                android:valueTo="60"
+                android:stepSize="1" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                android:text="@string/pdf_watermark_color_section"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurface" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/group_pdf_watermark_colors"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="4dp"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_gray"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_color_gray"
+                    app:chipIcon="@drawable/ic_watermark_dot_24"
+                    app:chipIconVisible="true" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_red"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_color_red"
+                    app:chipIcon="@drawable/ic_watermark_dot_24"
+                    app:chipIconVisible="true" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_blue"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_color_blue"
+                    app:chipIcon="@drawable/ic_watermark_dot_24"
+                    app:chipIconVisible="true" />
+            </com.google.android.material.chip.ChipGroup>
+
+            <LinearLayout
+                android:id="@+id/section_pdf_watermark_position"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_section_spacing"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/pdf_watermark_position_section"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold" />
+
+                <GridLayout
+                    android:id="@+id/grid_pdf_watermark_position"
+                    android:layout_width="@dimen/pdf_watermark_position_size"
+                    android:layout_height="@dimen/pdf_watermark_position_size"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                    android:columnCount="3"
+                    android:rowCount="3">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_top_left"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_top_left"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_top_center"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_top_center"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_top_right"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_top_right"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_center_left"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_center_left"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_center"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_center"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_center_right"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_center_right"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_bottom_left"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_bottom_left"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_bottom_center"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_bottom_center"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_position_bottom_right"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="@dimen/touch_target"
+                        android:layout_height="@dimen/touch_target"
+                        android:contentDescription="@string/pdf_watermark_position_bottom_right"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        android:checkable="true"
+                        app:icon="@drawable/ic_watermark_dot_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp" />
+                </GridLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_section_spacing"
+                android:text="@string/pdf_watermark_pages_section"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:textStyle="bold" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/group_pdf_watermark_pages"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="4dp"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_all_pages"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_pages_all" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_current_page"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_pages_current" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_pdf_watermark_range"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target"
+                    android:text="@string/pdf_watermark_pages_range" />
+            </com.google.android.material.chip.ChipGroup>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/input_layout_pdf_watermark_range"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/pdf_watermark_control_spacing"
+                android:hint="@string/pdf_watermark_range_label"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_pdf_watermark_range"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/pdf_watermark_range_hint"
+                    android:imeOptions="flagNoExtractUi|actionDone"
+                    android:inputType="text"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:id="@+id/text_pdf_watermark_export_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/content_spacing_medium"
+                android:accessibilityLiveRegion="polite"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:visibility="gone"
+                tools:text="Создаём PDF · 3 из 12"
+                tools:visibility="visible" />
+
+            <ProgressBar
+                android:id="@+id/progress_pdf_watermark_export"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_pdf_watermark_cancel_export"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/touch_target"
+                android:text="@string/pdf_watermark_cancel_export"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_pdf_watermark_create"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/content_spacing_medium"
+                android:minHeight="@dimen/primary_button_height"
+                android:text="@string/pdf_watermark_title"
+                app:icon="@drawable/ic_action_create_pdf_24" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:id="@+id/state_pdf_watermark_source"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="@dimen/content_spacing_large"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_pdf_watermark_title">
+
+        <ProgressBar
+            android:id="@+id/progress_pdf_watermark_source"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/pdf_watermark_loading_source"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/text_pdf_watermark_source_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/pdf_watermark_source_prompt_title"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/text_pdf_watermark_source_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/content_spacing_small"
+            android:accessibilityLiveRegion="polite"
+            android:gravity="center"
+            android:text="@string/pdf_watermark_source_prompt_message"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_pdf_watermark_choose_source"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/content_spacing_large"
+            android:minHeight="@dimen/touch_target"
+            android:text="@string/pdf_watermark_choose_pdf"
+            app:icon="@drawable/ic_source_files_24" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

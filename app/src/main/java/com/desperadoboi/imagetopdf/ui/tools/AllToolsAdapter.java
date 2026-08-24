@@ -115,6 +115,9 @@ public final class AllToolsAdapter
         if (toolId == ToolId.ID_SCAN) {
             return R.string.tool_id_scan_description;
         }
+        if (toolId == ToolId.PDF_WATERMARK) {
+            return R.string.tool_pdf_watermark_description;
+        }
         return 0;
     }
 

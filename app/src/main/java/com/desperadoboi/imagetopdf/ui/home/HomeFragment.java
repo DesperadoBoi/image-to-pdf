@@ -152,6 +152,9 @@ public final class HomeFragment extends Fragment {
                     } else if (ToolId.ID_SCAN.name().equals(toolName)
                             && navigationCallback != null) {
                         navigationCallback.onIdCardScanRequested();
+                    } else if (ToolId.PDF_WATERMARK.name().equals(toolName)
+                            && navigationCallback != null) {
+                        navigationCallback.onPdfWatermarkRequested();
                     } else if (ToolId.DOCUMENT_VIEWER.name().equals(toolName)) {
                         openDocumentPicker();
                     }
@@ -332,5 +335,7 @@ public final class HomeFragment extends Fragment {
         void onSmartScanRequested();
 
         void onIdCardScanRequested();
+
+        void onPdfWatermarkRequested();
     }
 }

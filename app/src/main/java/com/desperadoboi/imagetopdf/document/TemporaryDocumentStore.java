@@ -100,6 +100,16 @@ public final class TemporaryDocumentStore {
         }
     }
 
+    public void delete(String fileName) {
+        delete(resolveOwnedFile(fileName));
+    }
+
+    public File resolveOwnedFile(String fileName) {
+        if (fileName == null || fileName.trim().isEmpty()) return null;
+        File candidate = new File(cacheDirectory, fileName);
+        return isOwnedCacheFile(candidate) && candidate.isFile() ? candidate : null;
+    }
+
     public boolean isOwnedCacheFile(File file) {
         if (file == null || !file.getName().startsWith("viewer_")) {
             return false;

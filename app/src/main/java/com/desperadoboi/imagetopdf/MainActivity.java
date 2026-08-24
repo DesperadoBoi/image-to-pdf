@@ -33,7 +33,9 @@ import com.desperadoboi.imagetopdf.ui.smartscan.ScanReviewFragment;
 import com.desperadoboi.imagetopdf.ui.smartscan.ScanSessionViewModel;
 import com.desperadoboi.imagetopdf.ui.smartscan.SmartScanFragment;
 import com.desperadoboi.imagetopdf.pdf.IdCardPdfGenerator;
+import com.desperadoboi.imagetopdf.pdf.PdfWatermarkGenerator;
 import com.desperadoboi.imagetopdf.ui.tools.AllToolsFragment;
+import com.desperadoboi.imagetopdf.ui.watermark.PdfWatermarkFragment;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,7 +48,8 @@ public class MainActivity extends AppCompatActivity
         PdfResultFragment.NavigationCallback,
         SmartScanFragment.NavigationCallback,
         ScanReviewFragment.NavigationCallback,
-        IdCardScanFragment.NavigationCallback {
+        IdCardScanFragment.NavigationCallback,
+        PdfWatermarkFragment.NavigationCallback {
     private DocumentSessionViewModel sessionViewModel;
     private ScanSessionViewModel scanSessionViewModel;
     private IdCardScanViewModel idCardScanViewModel;
@@ -97,6 +100,11 @@ public class MainActivity extends AppCompatActivity
                         System.currentTimeMillis(),
                         IdCardCacheStorage.DEFAULT_TTL_MS
                 );
+                new PdfWatermarkGenerator(getApplicationContext())
+                        .cleanupExpiredTemporaryFiles(
+                                System.currentTimeMillis(),
+                                PdfWatermarkGenerator.DEFAULT_TEMP_TTL_MS
+                        );
             } finally {
                 cleanupExecutor.shutdown();
             }
@@ -250,6 +258,25 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
+    public void onPdfWatermarkRequested() {
+        showPdfWatermark();
+    }
+
+    @Override
+    public void onPdfWatermarkClosed() {
+        boolean popped = getSupportFragmentManager().popBackStackImmediate(
+                PdfWatermarkFragment.TAG,
+                FragmentManager.POP_BACK_STACK_INCLUSIVE
+        );
+        if (!popped) showHome();
+    }
+
+    @Override
+    public void onPdfWatermarkResultRequested() {
+        showPdfResult();
+    }
+
+    @Override
     public void onScanReviewRequested() {
         if (scanSessionViewModel.getState().getCurrentReviewPage() == null
                 || getSupportFragmentManager().findFragmentByTag(ScanReviewFragment.TAG) != null
@@ -383,6 +410,13 @@ public class MainActivity extends AppCompatActivity
                 PdfResultFragment resultFragment = findVisibleFragment(PdfResultFragment.TAG);
                 if (resultFragment != null) {
                     resultFragment.handleBackPressed();
+                    return;
+                }
+                PdfWatermarkFragment watermarkFragment = findVisibleFragment(
+                        PdfWatermarkFragment.TAG
+                );
+                if (watermarkFragment != null) {
+                    watermarkFragment.handleBackPressed();
                     return;
                 }
                 ImagePickerFragment imagePickerFragment = findVisibleFragment(
@@ -522,6 +556,23 @@ public class MainActivity extends AppCompatActivity
                 .setReorderingAllowed(true)
                 .replace(R.id.fragment_container, new AllToolsFragment(), AllToolsFragment.TAG)
                 .addToBackStack(AllToolsFragment.TAG)
+                .commit();
+    }
+
+    private void showPdfWatermark() {
+        if (getSupportFragmentManager().findFragmentByTag(PdfWatermarkFragment.TAG) != null
+                || getSupportFragmentManager().isStateSaved()) {
+            return;
+        }
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(
+                        R.id.fragment_container,
+                        new PdfWatermarkFragment(),
+                        PdfWatermarkFragment.TAG
+                )
+                .addToBackStack(PdfWatermarkFragment.TAG)
                 .commit();
     }
 

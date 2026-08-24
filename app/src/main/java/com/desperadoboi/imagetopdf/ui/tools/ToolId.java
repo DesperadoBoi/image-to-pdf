@@ -17,6 +17,7 @@ public enum ToolId {
     PRINT_PDF,
     DRAW_ON_PDF,
     ADD_TEXT,
+    PDF_WATERMARK,
     SIGN_PDF,
     LOCK_PDF,
     UNLOCK_PDF,

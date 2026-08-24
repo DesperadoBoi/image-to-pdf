@@ -94,24 +94,27 @@ public final class ToolCatalog {
                 tool(ToolId.ADD_TEXT, R.string.tool_add_text,
                         R.drawable.ic_tool_add_text, ToolCategory.EDIT,
                         ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 13),
+                tool(ToolId.PDF_WATERMARK, R.string.tool_pdf_watermark,
+                        R.drawable.ic_tool_pdf_watermark, ToolCategory.EDIT,
+                        ToolAvailability.AVAILABLE, false, ToolDefinition.NOT_ON_HOME, 14),
                 tool(ToolId.SIGN_PDF, R.string.tool_sign_pdf,
                         R.drawable.ic_tool_signature, ToolCategory.EDIT,
-                        ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 14),
+                        ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 15),
                 tool(ToolId.LOCK_PDF, R.string.tool_lock_pdf,
                         R.drawable.ic_tool_lock_pdf, ToolCategory.SECURITY,
-                        ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 15),
+                        ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 16),
                 tool(ToolId.UNLOCK_PDF, R.string.tool_unlock_pdf,
                         R.drawable.ic_tool_unlock_pdf, ToolCategory.SECURITY,
-                        ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 16),
+                        ToolAvailability.COMING_SOON, false, ToolDefinition.NOT_ON_HOME, 17),
                 tool(ToolId.DOCUMENT_VIEWER, R.string.tool_document_viewer,
                         R.drawable.ic_tool_document_viewer, ToolCategory.POPULAR,
-                        ToolAvailability.AVAILABLE, false, ToolDefinition.NOT_ON_HOME, 19),
+                        ToolAvailability.AVAILABLE, false, ToolDefinition.NOT_ON_HOME, 20),
                 tool(ToolId.CAMERA, R.string.tool_camera,
                         R.drawable.ic_tool_camera, ToolCategory.CREATE,
-                        ToolAvailability.AVAILABLE, true, 6, 17),
+                        ToolAvailability.AVAILABLE, true, 6, 18),
                 tool(ToolId.MORE, R.string.tool_more,
                         R.drawable.ic_tool_more, ToolCategory.POPULAR,
-                        ToolAvailability.AVAILABLE, true, 7, 18)
+                        ToolAvailability.AVAILABLE, true, 7, 19)
         );
         return Collections.unmodifiableList(new ArrayList<>(tools));
     }

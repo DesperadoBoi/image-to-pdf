@@ -201,6 +201,38 @@ CameraX captures создаются в `filesDir/captured_images`. При отм
 - Open и Share используют системные intent с `application/pdf` и read grant;
 - Back/Edit pages сохраняют session и output PDF, а New document удаляет только app-owned camera captures.
 
+### Водяной знак PDF
+
+`PdfWatermarkFragment` запускается только из `AllToolsFragment` и использует отдельный
+activity-scoped `PdfWatermarkViewModel`. `SavedStateHandle` хранит безопасное имя cache-файла,
+номер страницы, immutable `PdfWatermarkOptions`, выбор страниц и фазу export, но никогда не
+хранит `Bitmap`, исходный `Uri` или историю введённых текстов. Исходный PDF выбирается через
+`OpenDocument(application/pdf)`, проверяется существующим `IncomingDocumentLoader` и
+копируется в случайно именованный app-cache файл для безопасного random access.
+
+Preview переиспользует `PdfDocumentRenderer`: страницы рендерятся по одной, а ограниченный LRU
+содержит не более двух результатов. Водяной знак не требует повторного PDF-render при движении
+slider — `WatermarkOverlayView` рисует его отдельным Canvas-слоем. `WatermarkGeometry` и
+`WatermarkPainter` являются общими для preview и export: размер задан в PDF points, а позиция,
+поворот, edge padding и шаг tiled-сетки сначала рассчитываются в coordinate space страницы,
+после чего preview применяет только единый PDF-to-View scale.
+
+Текущий Android API не умеет импортировать существующие PDF page objects в `PdfDocument`, а
+подключённые зависимости не содержат PDF writer/editor. Поэтому `PdfWatermarkGenerator`
+неизбежно растеризует исходные страницы через `PdfRenderer` и создаёт новый PDF через
+`PdfDocument`; векторный текст и графика исходника в output не сохраняются. Добавление крупной
+PDF-библиотеки только ради этого сценария отклонено. Растеризация выполняется последовательно с
+ориентиром 180 DPI, лимитом 8 миллионов pixels и 6000 px на сторону; одновременно существует
+только bitmap текущей страницы. Размер и ориентация каждой output-страницы повторяют исходную,
+включая landscape и документы со смешанной ориентацией.
+
+Export сначала формирует случайный временный PDF в app cache, сообщает page-based progress и
+проверяет `CancellationToken` между страницами и при SAF-copy. После `CreateDocument` временный
+файл копируется с truncate, а затем удаляется; незавершённый destination удаляется best effort.
+Исходный cache удаляется при закрытии сессии, а оба cache-каталога дополнительно имеют TTL
+cleanup. После успеха публикуется обычный `PdfResult`, поэтому Open и Share остаются в
+существующем result flow и используют текущий FileProvider/SAF контракт.
+
 ### Безопасность и приватность
 
 - не добавлять `INTERNET` permission для основной офлайн-функции;

@@ -68,6 +68,8 @@ public class ToolCatalogTest {
                 ToolCatalog.get(ToolId.MORE).getAvailability());
         assertEquals(ToolAvailability.AVAILABLE,
                 ToolCatalog.get(ToolId.DOCUMENT_VIEWER).getAvailability());
+        assertEquals(ToolAvailability.AVAILABLE,
+                ToolCatalog.get(ToolId.PDF_WATERMARK).getAvailability());
     }
 
     @Test
@@ -89,7 +91,7 @@ public class ToolCatalogTest {
                 ToolId.PRINT_PDF, ToolId.MORE);
         assertCategoryContains(ToolCategory.EDIT,
                 ToolId.MERGE_PDF, ToolId.COMPRESS_PDF, ToolId.DRAW_ON_PDF,
-                ToolId.ADD_TEXT, ToolId.SIGN_PDF);
+                ToolId.ADD_TEXT, ToolId.PDF_WATERMARK, ToolId.SIGN_PDF);
         assertCategoryContains(ToolCategory.SECURITY,
                 ToolId.LOCK_PDF, ToolId.UNLOCK_PDF);
     }
@@ -119,6 +121,7 @@ public class ToolCatalogTest {
                 ToolId.COMPRESS_PDF,
                 ToolId.DRAW_ON_PDF,
                 ToolId.ADD_TEXT,
+                ToolId.PDF_WATERMARK,
                 ToolId.SIGN_PDF
         );
         assertToolOrder(
@@ -134,6 +137,7 @@ public class ToolCatalogTest {
                 ToolId.IMAGE_TO_PDF,
                 ToolId.SMART_SCAN,
                 ToolId.ID_SCAN,
+                ToolId.PDF_WATERMARK,
                 ToolId.DOCUMENT_VIEWER
         );
         for (ToolDefinition definition : ToolCatalog.getTools()) {
