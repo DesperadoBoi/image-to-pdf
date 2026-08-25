@@ -102,13 +102,16 @@
 
     </FrameLayout>
 
-    <LinearLayout
+    <GridLayout
         android:id="@+id/layout_scan_review_tools"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:gravity="center"
+        android:alignmentMode="alignMargins"
+        android:columnCount="@integer/scan_review_column_count"
         android:orientation="horizontal"
-        android:paddingVertical="4dp"
+        android:paddingVertical="@dimen/scan_review_tools_spacing"
+        android:rowOrderPreserved="true"
+        android:useDefaultMargins="false"
         app:layout_constraintBottom_toTopOf="@id/button_scan_review_add"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -117,39 +120,91 @@
             android:id="@+id/button_scan_review_retake"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="@dimen/touch_target"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:layout_gravity="fill"
+            android:layout_margin="@dimen/scan_review_action_margin"
+            android:gravity="center"
+            android:maxLines="2"
+            android:minHeight="@dimen/touch_target"
             android:minWidth="0dp"
-            android:text="@string/scan_review_retake" />
+            android:paddingHorizontal="@dimen/scan_review_action_horizontal_padding"
+            android:text="@string/scan_review_retake"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="@color/scan_review_action_content"
+            app:backgroundTint="@color/scan_review_action_container"
+            app:icon="@drawable/ic_action_reset_24"
+            app:iconGravity="textStart"
+            app:iconPadding="@dimen/scan_review_action_icon_spacing"
+            app:iconTint="@color/scan_review_action_content" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_scan_review_rotate"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="@dimen/touch_target"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:layout_gravity="fill"
+            android:layout_margin="@dimen/scan_review_action_margin"
+            android:gravity="center"
+            android:maxLines="2"
+            android:minHeight="@dimen/touch_target"
             android:minWidth="0dp"
-            android:text="@string/scan_review_rotate" />
+            android:paddingHorizontal="@dimen/scan_review_action_horizontal_padding"
+            android:text="@string/scan_review_rotate"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="@color/scan_review_action_content"
+            app:backgroundTint="@color/scan_review_action_container"
+            app:icon="@drawable/ic_action_rotate_right_24"
+            app:iconGravity="textStart"
+            app:iconPadding="@dimen/scan_review_action_icon_spacing"
+            app:iconTint="@color/scan_review_action_content" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_scan_review_auto"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="@dimen/touch_target"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:layout_gravity="fill"
+            android:layout_margin="@dimen/scan_review_action_margin"
+            android:gravity="center"
+            android:maxLines="2"
+            android:minHeight="@dimen/touch_target"
             android:minWidth="0dp"
-            android:text="@string/scan_review_auto" />
+            android:paddingHorizontal="@dimen/scan_review_action_horizontal_padding"
+            android:text="@string/scan_review_auto"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="@color/scan_review_action_content"
+            app:backgroundTint="@color/scan_review_action_container"
+            app:icon="@drawable/ic_action_crop_24"
+            app:iconGravity="textStart"
+            app:iconPadding="@dimen/scan_review_action_icon_spacing"
+            app:iconTint="@color/scan_review_action_content" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_scan_review_original"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="@dimen/touch_target"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:layout_gravity="fill"
+            android:layout_margin="@dimen/scan_review_action_margin"
+            android:gravity="center"
+            android:maxLines="2"
+            android:minHeight="@dimen/touch_target"
             android:minWidth="0dp"
-            android:text="@string/scan_review_original" />
+            android:paddingHorizontal="@dimen/scan_review_action_horizontal_padding"
+            android:text="@string/scan_review_original"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="@color/scan_review_action_content"
+            app:backgroundTint="@color/scan_review_action_container"
+            app:icon="@drawable/ic_source_gallery_24"
+            app:iconGravity="textStart"
+            app:iconPadding="@dimen/scan_review_action_icon_spacing"
+            app:iconTint="@color/scan_review_action_content" />
 
-    </LinearLayout>
+    </GridLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_scan_review_add"

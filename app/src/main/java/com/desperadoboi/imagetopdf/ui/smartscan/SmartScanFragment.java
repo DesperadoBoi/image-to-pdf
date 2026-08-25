@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -80,7 +81,6 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     private View gridOverlay;
     private TextView permissionText;
     private TextView cameraStatusText;
-    private TextView pageCountText;
     private ImageButton torchButton;
     private ImageButton gridButton;
     private ImageButton shutterButton;
@@ -100,6 +100,7 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private boolean sensorRegistered;
+    private boolean compactLandscapeControls;
     private LevelState levelState = LevelState.UNAVAILABLE;
     private boolean idCaptureRequestInFlight;
     private boolean idCaptureRestored;
@@ -180,6 +181,7 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
+        configureResponsiveControls(view);
         configureActions(view);
         if (idCardMode) {
             configureIdCardPresentation(view);
@@ -253,7 +255,6 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         gridOverlay = null;
         permissionText = null;
         cameraStatusText = null;
-        pageCountText = null;
         torchButton = null;
         gridButton = null;
         shutterButton = null;
@@ -334,7 +335,6 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         gridOverlay = view.findViewById(R.id.view_scan_grid);
         permissionText = view.findViewById(R.id.text_scan_permission);
         cameraStatusText = view.findViewById(R.id.text_scan_camera_status);
-        pageCountText = view.findViewById(R.id.text_scan_page_count);
         torchButton = view.findViewById(R.id.button_scan_torch);
         gridButton = view.findViewById(R.id.button_scan_grid);
         shutterButton = view.findViewById(R.id.button_scan_shutter);
@@ -344,6 +344,15 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         captureProgress = view.findViewById(R.id.progress_scan_capture);
         levelIndicator = view.findViewById(R.id.view_scan_level);
         frameOverlay = view.findViewById(R.id.view_scan_frame);
+    }
+
+    private void configureResponsiveControls(View view) {
+        Configuration configuration = getResources().getConfiguration();
+        compactLandscapeControls = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                && configuration.screenHeightDp < 480;
+        if (!compactLandscapeControls) return;
+        view.findViewById(R.id.text_scan_mode).setVisibility(View.GONE);
+        levelIndicator.setVisibility(View.GONE);
     }
 
     private void configureIdCardPresentation(View view) {
@@ -367,7 +376,6 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         frameOverlay.setIdCardMode(true);
         gridButton.setVisibility(View.GONE);
         view.findViewById(R.id.button_scan_more).setVisibility(View.GONE);
-        pageCountText.setVisibility(View.GONE);
         doneButton.setVisibility(View.GONE);
     }
 
@@ -399,7 +407,6 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
         shutterButton.setEnabled(cameraReady && !capturing);
         captureProgress.setVisibility(capturing ? View.VISIBLE : View.GONE);
         if (idCardMode) {
-            pageCountText.setVisibility(View.GONE);
             doneButton.setVisibility(View.GONE);
             gridOverlay.setVisibility(View.GONE);
             gridButton.setVisibility(View.GONE);
@@ -408,11 +415,16 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
             openReviewIfReady();
             return;
         }
-        pageCountText.setVisibility(pageCount > 0 ? View.VISIBLE : View.GONE);
         doneButton.setVisibility(pageCount > 0 ? View.VISIBLE : View.GONE);
         if (pageCount > 0) {
-            pageCountText.setText(getString(R.string.smart_scan_page_count, pageCount));
             doneButton.setText(getString(R.string.smart_scan_done, pageCount));
+            doneButton.setContentDescription(getResources().getQuantityString(
+                    R.plurals.smart_scan_done_content_description,
+                    pageCount,
+                    pageCount
+            ));
+        } else {
+            doneButton.setContentDescription(null);
         }
         gridOverlay.setVisibility(cameraState.isGridEnabled() ? View.VISIBLE : View.GONE);
         gridButton.setSelected(cameraState.isGridEnabled());
@@ -858,6 +870,10 @@ public final class SmartScanFragment extends Fragment implements SensorEventList
     }
 
     private void registerLevelSensor() {
+        if (compactLandscapeControls) {
+            if (levelIndicator != null) levelIndicator.setVisibility(View.GONE);
+            return;
+        }
         if (sensorRegistered || accelerometer == null || !hasCameraPermission()) {
             if (accelerometer == null && levelIndicator != null) {
                 levelIndicator.setVisibility(View.GONE);

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="smart_scan_title">Scan document</string>
+    <string name="smart_scan_mode_document">Document</string>
+    <string name="smart_scan_frame_hint">Place the document inside the frame</string>
+    <string name="smart_scan_local_hint">Scanning happens on this device</string>
+    <string name="smart_scan_permission_message">Camera access is required to scan documents.</string>
+    <string name="smart_scan_permission_rationale">The camera is used only to photograph pages. Images stay on this device.</string>
+    <string name="smart_scan_done">Done · %1$d</string>
+    <plurals name="smart_scan_done_content_description">
+        <item quantity="one">Finish scanning, %1$d page</item>
+        <item quantity="other">Finish scanning, %1$d pages</item>
+    </plurals>
+    <string name="smart_scan_capture_content_description">Photograph a page</string>
+    <string name="smart_scan_back_content_description">Return to the home screen</string>
+    <string name="smart_scan_grid_content_description">Grid</string>
+    <string name="smart_scan_more_content_description">More actions</string>
+    <string name="smart_scan_exit_title">Cancel scanning?</string>
+    <string name="smart_scan_exit_message">Captured pages will be deleted</string>
+    <string name="smart_scan_exit_confirm">Cancel scanning</string>
+    <string name="smart_scan_exit_keep">Continue</string>
+    <string name="smart_scan_no_camera">Camera unavailable</string>
+    <string name="smart_scan_camera_bind_error">Unable to start the camera</string>
+    <string name="smart_scan_capture_error">Unable to take the photo</string>
+    <string name="smart_scan_temp_file_error">Unable to prepare the photo</string>
+    <string name="smart_scan_removed_page">A temporary page photo is no longer available</string>
+    <string name="smart_scan_flash_unavailable">Flashlight unavailable</string>
+    <string name="scan_review_title">Page %1$d</string>
+    <string name="scan_review_back_content_description">Return to the camera</string>
+    <string name="scan_review_delete_content_description">Delete the current photo</string>
+    <string name="scan_review_image_content_description">Perspective adjustment for page %1$d</string>
+    <string name="scan_review_auto">Auto</string>
+    <string name="scan_review_original">Original</string>
+    <string name="scan_review_add_page">Add page</string>
+</resources>

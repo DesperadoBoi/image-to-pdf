@@ -195,9 +195,6 @@ public final class ScanReviewFragment extends Fragment {
         autoButton.setText(R.string.id_card_find_edges);
         originalButton.setVisibility(View.GONE);
         addButton.setText(R.string.id_card_apply_correction);
-        view.findViewById(R.id.button_scan_review_retake).setContentDescription(
-                getString(R.string.id_card_action_retry)
-        );
         view.findViewById(R.id.button_scan_review_back).setContentDescription(
                 getString(R.string.id_card_review_back_description)
         );

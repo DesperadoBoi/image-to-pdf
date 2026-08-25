@@ -12,4 +12,7 @@
     <dimen name="page_edit_strip_number_spacing">4dp</dimen>
     <dimen name="page_edit_strip_corner_radius">6dp</dimen>
     <dimen name="page_edit_strip_selected_stroke">1dp</dimen>
+    <dimen name="scan_controls_padding">4dp</dimen>
+    <dimen name="scan_controls_spacing">2dp</dimen>
+    <dimen name="scan_shutter_size">64dp</dimen>
 </resources>

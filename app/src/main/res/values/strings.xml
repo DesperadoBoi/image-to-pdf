@@ -269,8 +269,13 @@
     <string name="smart_scan_permission_allow">Разрешить</string>
     <string name="smart_scan_gallery">Галерея</string>
     <string name="smart_scan_open_settings">Открыть настройки</string>
-    <string name="smart_scan_page_count">Страниц: %1$d</string>
-    <string name="smart_scan_done">Готово (%1$d)</string>
+    <string name="smart_scan_done">Готово · %1$d</string>
+    <plurals name="smart_scan_done_content_description">
+        <item quantity="one">Завершить сканирование, %1$d страница</item>
+        <item quantity="few">Завершить сканирование, %1$d страницы</item>
+        <item quantity="many">Завершить сканирование, %1$d страниц</item>
+        <item quantity="other">Завершить сканирование, %1$d страницы</item>
+    </plurals>
     <string name="smart_scan_capture_content_description">Сфотографировать страницу</string>
     <string name="smart_scan_back_content_description">Вернуться на главный экран</string>
     <string name="smart_scan_torch_content_description">Фонарик</string>
